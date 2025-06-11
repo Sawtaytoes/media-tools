@@ -1,11 +1,6 @@
-import colors from "ansi-colors"
-import cliProgress from "cli-progress"
 import {
   spawn,
 } from "node:child_process";
-import {
-  unlink,
-} from "node:fs/promises"
 import { extname } from "node:path";
 import {
   concatMap,
@@ -19,73 +14,13 @@ import { ffmpegPath as defaultFfmpegPath } from "./appPaths.js";
 import { catchNamedError } from "./catchNamedError.js"
 import { getFileDuration } from "./getFileDuration.js";
 import { getMediaInfo } from "./getMediaInfo.js";
-import { convertTimecodeToMilliseconds } from "./parseTimestamps.js";
 import { logWarning } from "./logMessage.js";
 
-const cliProgressBar = (
-  new cliProgress
-  .SingleBar({
-    format: (
-      "Progress |"
-      .concat(
-        (
-          colors
-          .cyan(
-            "{bar}"
-          )
-        ),
-        "| {percentage}%",
-      )
-    ),
-    barCompleteChar: "\u2588",
-    barIncompleteChar: "\u2591",
-    hideCursor: true,
-  })
-)
-
-// frame=  478 fps= 52 q=16.0 size=   38656kB time=00:00:19.93 bitrate=15883.9kbits/s speed=2.18x
-const progressRegex = (
-  /.*time=(.+) bitrate=.*\r?/
-)
-
-export type ExtensionMimeType = (
-  | ".otf"
-  | ".ttf"
-)
-
-export const extensionMimeType: (
-  Record<
-    ExtensionMimeType,
-    string
-  >
-) = {
-  ".otf": "mimetype=application/x-opentype-font",
-  ".ttf": "mimetype=application/x-truetype-font",
-}
-
-export const convertNaNToTimecode = (
-  timecode: string,
-) => (
-  (
-    (
-      timecode
-      .replace(
-        /\d{2}:\d{2}:\d{2}\.\d+/,
-        "",
-      )
-    )
-    === ""
-  )
-  ? timecode
-  : "00:00:00.00"
-)
-
-export const runFfmpeg = ({
+export const runFfmpegNullOutput = ({
   args,
   envVars,
   ffmpegPath = defaultFfmpegPath,
   inputFilePaths,
-  outputFilePath,
 }: {
   args: string[]
   envVars?: (
@@ -96,7 +31,6 @@ export const runFfmpeg = ({
   ),
   ffmpegPath?: string
   inputFilePaths: string[]
-  outputFilePath: string
 }): (
   Observable<
     string
@@ -155,6 +89,9 @@ export const runFfmpeg = ({
 
             "-stats",
 
+            // "-hwaccel",
+            // "none", // Do we need this?
+
             ...(
               inputFilePaths
               .filter((
@@ -176,43 +113,6 @@ export const runFfmpeg = ({
             ),
 
             ...args,
-
-            // ...(
-            //   (
-            //     attachmentFilePaths
-            //     || []
-            //   )
-            //   .map((
-            //     attachmentFilePath,
-            //   ) => ({
-            //     attachmentFilePath,
-            //     fileExtension: (
-            //       extname(
-            //         attachmentFilePath
-            //       )
-            //     ),
-            //   }))
-            //   .filter(({
-            //     fileExtension,
-            //   }) => (
-            //     fileExtension
-            //     in extensionMimeType
-            //   ))
-            //   .flatMap(({
-            //     attachmentFilePath,
-            //     fileExtension,
-            //   }) => ([
-            //     "-attach",
-            //     attachmentFilePath,
-            //     "-metadata:s:t",
-            //     (
-            //       extensionMimeType
-            //       [fileExtension as ExtensionMimeType]
-            //     ),
-            //   ]))
-            // ),
-
-            outputFilePath,
           ]
           .filter(
             Boolean
@@ -243,8 +143,6 @@ export const runFfmpeg = ({
           )
         )
 
-        let hasStarted = false
-
         childProcess
         .stdout
         .on(
@@ -265,64 +163,22 @@ export const runFfmpeg = ({
         .on(
           'data',
           (
-            data,
+            dataBuffer,
           ) => {
-            if (
-              data
+            const data = (
+              dataBuffer
               .toString()
-              .includes(
-                "time="
-              )
-            ) {
-              if (hasStarted) {
-                cliProgressBar
-                .update(
-                  convertTimecodeToMilliseconds(
-                    convertNaNToTimecode(
-                      data
-                      .toString()
-                      .replace(
-                        progressRegex,
-                        "$1",
-                      )
-                    )
-                  )
-                )
-              }
-              else {
-                hasStarted = true
+            )
 
-                cliProgressBar
-                .start(
-                  (
-                    duration
-                    * 1000
-                    // fileSizeInKilobytes
-                    // * fileSizeMultiplier
-                  ),
-                  (
-                    convertTimecodeToMilliseconds(
-                      convertNaNToTimecode(
-                        data
-                        .toString()
-                        .replace(
-                          progressRegex,
-                          "$1",
-                        )
-                      )
-                    )
-                  ),
-                  {},
-                )
-              }
-            }
-            else {
-              console
-              .info(
-                data
-                .toString()
-              )
-            }
+            observer
+            .next(
+              data
+            )
+
+            // console
+            // .info(
+            //   data
+            // )
           },
         )
 
@@ -336,23 +192,18 @@ export const runFfmpeg = ({
               code
               === null
             ) {
-              unlink(
-                outputFilePath
+              logWarning(
+                "ffmpeg",
+                "Process canceled by user.",
               )
-              .then(() => {
-                logWarning(
-                  "ffmpeg",
-                  "Process canceled by user.",
-                )
 
-                setTimeout(
-                  () => {
-                    process
-                    .exit()
-                  },
-                  500,
-                )
-              })
+              setTimeout(
+                () => {
+                  process
+                  .exit()
+                },
+                500,
+              )
             }
           },
         )
@@ -360,24 +211,9 @@ export const runFfmpeg = ({
         childProcess
         .on(
           'exit',
-          (
-            code,
-          ) => {
-            if (
-              code
-              === 0
-            ) {
-              observer
-              .next(
-                outputFilePath
-              )
-            }
-
+          () => {
             observer
             .complete()
-
-            cliProgressBar
-            .stop()
 
             process
             .stdin
@@ -459,7 +295,7 @@ export const runFfmpeg = ({
       })
   )),
     catchNamedError(
-      runFfmpeg
+      runFfmpegNullOutput
     ),
   )
 )

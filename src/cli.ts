@@ -35,6 +35,7 @@ import { replaceAttachments } from "./replaceAttachments.js"
 import { replaceFlacWithPcmAudio } from "./replaceFlacWithPcmAudio.js"
 import { replaceTracks } from "./replaceTracks.js"
 import { splitChapters } from "./splitChapters.js"
+import { storeCropData } from "./storeCropData.js"
 import { upscaleInterlacedDvdRipsWithTopaz } from "./upscaleInterlacedDvdRipsWithTopaz.js"
 import {
   videoAiEnhancement,
@@ -1670,6 +1671,70 @@ yargs(
       chapterSplitsList: (
         argv
         .chapterSplits
+      ),
+      sourcePath: (
+        argv
+        .sourcePath
+      ),
+    })
+    .subscribe()
+  }
+)
+.command(
+  "storeCropData <sourcePath>",
+  "Output a JSON file in the source path containing crop data for all listed media files. Crop data includes the aspect ratio of each media file. Files are typically all 16:9, but may have black bars. This identifies those internal resolutions separate from the media file itself.",
+  (
+    yargs,
+  ) => (
+    yargs
+    .example(
+      "$0 storeCropData \"~/movies\" -r",
+      "Recursively looks through all folders in '~/movies' and adds or updates those crop values."
+    )
+    .example(
+      "$0 storeCropData \"~/movies\" -r -d 2",
+      "Recursively looks through all folders in '~/movies' and child folders where higher channel count audio tracks aren't the default."
+    )
+    .positional(
+      "sourcePath",
+      {
+        demandOption: true,
+        describe: "Directory containing media files or containing other directories of media files.",
+        type: "string",
+      },
+    )
+    .option(
+      "isRecursive",
+      {
+        alias: "r",
+        boolean: true,
+        default: false,
+        describe: "Recursively looks in folders for media files.",
+        nargs: 0,
+        type: "boolean",
+      },
+    )
+    .option(
+      "recursiveDepth",
+      {
+        alias: "d",
+        default: 0,
+        describe: "How many deep of child directories to follow (2 or 3) when using `isRecursive`.",
+        nargs: 1,
+        number: true,
+        type: "number",
+      },
+    )
+  ),
+  (argv) => {
+    storeCropData({
+      isRecursive: (
+        argv
+        .isRecursive
+      ),
+      recursiveDepth: (
+        argv
+        .recursiveDepth
       ),
       sourcePath: (
         argv
