@@ -14,6 +14,7 @@ RUN log() { echo "[$(date +"%Y-%m-%d %H:%M:%S")] $1"; };
 # Install the application dependencies
 RUN \
   touch .env && \
+  add-apt-repository ppa:savoury1/ffmpeg7 && \
   apt update && \
   apt install -y --no-install-recommends build-essential ca-certificates chromium ffmpeg git locales mediainfo pipx python3 wget && \
   \
