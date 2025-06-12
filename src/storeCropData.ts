@@ -2,7 +2,6 @@ import { writeFile } from "node:fs/promises"
 import { cpus } from "node:os"
 import { join } from "node:path"
 import {
-  concatAll,
   concatMap,
   filter,
   from,
@@ -10,7 +9,6 @@ import {
   mergeAll,
   of,
   reduce,
-  take,
   tap,
 } from "rxjs"
 
@@ -19,6 +17,7 @@ import { filterIsVideoFile } from "./filterIsVideoFile.js"
 import { readFilesAtDepth } from "./readFilesAtDepth.js"
 import { AspectRatioCalculation, getCropData } from "./getCropData.js"
 import { getMediaInfo, VideoTrack } from "./getMediaInfo.js"
+import { logInfo } from "./logMessage.js"
 
 export const storeCropData = ({
   isRecursive,
@@ -42,7 +41,6 @@ export const storeCropData = ({
   })
   .pipe(
     filterIsVideoFile(),
-    take(20),
     map((
       fileInfo,
     ) => (
@@ -174,16 +172,13 @@ export const storeCropData = ({
         tap((
           cropData,
         ) => {
-          console
-          .info(
+          logInfo(
+            "CALCULATED ASPECT RATIOS",
             (
               fileInfo
               .fullPath
             ),
-            "\n",
-            cropData,
-            "\n",
-            "\n",
+            // cropData,
           )
         }),
       )
@@ -203,7 +198,7 @@ export const storeCropData = ({
         ...aspectRatioCalculationData,
         [
           fileInfo
-          .filename
+          .fullPath
         ]: {
           ...aspectRatioCalculation,
           filename: (

@@ -314,7 +314,6 @@ export const getCropData = ({
         >
       ),
     ),
-    tap(t => {console.log(t)}),
     map((
       cropData,
     ) => {
