@@ -14,10 +14,17 @@ import {
 
 import { catchNamedError } from "./catchNamedError.js"
 import { filterIsVideoFile } from "./filterIsVideoFile.js"
-import { readFilesAtDepth } from "./readFilesAtDepth.js"
-import { AspectRatioCalculation, getCropData } from "./getCropData.js"
-import { getMediaInfo, VideoTrack } from "./getMediaInfo.js"
+import {
+  getCropData,
+  getRelativeAspectRatio,
+  type AspectRatioCalculation,
+} from "./getCropData.js"
+import {
+  getMediaInfo,
+  type VideoTrack,
+} from "./getMediaInfo.js"
 import { logInfo } from "./logMessage.js"
+import { readFilesAtDepth } from "./readFilesAtDepth.js"
 
 export const storeCropData = ({
   isRecursive,
@@ -143,8 +150,12 @@ export const storeCropData = ({
             of({
               exactMaxHeightAspectRatio: displayAspectRatio,
               exactMedianAspectRadio: displayAspectRatio,
-              relativeMaxHeightAspectRatio: displayAspectRatio,
-              relativeMedianAspectRadio: displayAspectRatio,
+              relativeMaxHeightAspectRatio: getRelativeAspectRatio(
+                  displayAspectRatio
+                ),
+              relativeMedianAspectRadio: getRelativeAspectRatio(
+                  displayAspectRatio
+                ),
             } satisfies (
               AspectRatioCalculation
             ))

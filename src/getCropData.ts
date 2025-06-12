@@ -23,7 +23,7 @@ export type AspectRatioCalculation = {
 
 export const ffmpegCropdetectRegex = /lavfi\.cropdetect\.(?<measurementType>\w)=(?<measurementValue>.+)/
 
-export const aspectRatioMinimums = [
+export const minimumAspectRatios = [
   1.33,
   1.37,
   1.78,
@@ -33,38 +33,47 @@ export const aspectRatioMinimums = [
   2.39,
 ] as const
 
-export const getRelativeAspectRatio = ({
+export const getAspectRatio = ({
   height,
   width,
 }: {
   height: number
   width: number
-}) => {
-  const aspectRatio = (
+}) => (
+  (
+    width
+    / height
+  )
+  .toFixed(2)
+)
+
+export const getRelativeAspectRatio = (
+  aspectRatio: (
+    | string
+    | number
+  )
+) => {
+  const exactAspectRatio = (
     Number(
-      (
-        width
-        / height
-      )
-      .toFixed(2)
+      aspectRatio
     )
   )
 
   const relativeAspectRatio = (
-    aspectRatioMinimums
+    minimumAspectRatios
     .find((
-      aspectRatioMinimum,
+      minimumAspectRatio,
     ) => (
       Math
       .min(
         Number(
-          aspectRatioMinimum
+          minimumAspectRatio
         )
         + 0.02,
-        aspectRatio,
+        exactAspectRatio,
       )
       === (
-        aspectRatio
+        exactAspectRatio
       )
     ))
   )
@@ -350,54 +359,28 @@ export const getCropData = ({
 
       return {
         exactMaxHeightAspectRatio: (
-          (
-            (
-              maxHeightCrop
-              .width
-            )
-            / (
-              maxHeightCrop
-              .height
-            )
+          getAspectRatio(
+            maxHeightCrop
           )
-          .toFixed(2)
         ),
         exactMedianAspectRadio: (
-          (
-            (
-              medianCrop
-              .width
-            )
-            / (
-              medianCrop
-              .height
-            )
+          getAspectRatio(
+            medianCrop
           )
-          .toFixed(2)
         ),
         relativeMaxHeightAspectRatio: (
-          getRelativeAspectRatio({
-            height: (
+          getRelativeAspectRatio(
+            getAspectRatio(
               maxHeightCrop
-              .height
-            ),
-            width: (
-              maxHeightCrop
-              .width
-            ),
-          })
+            )
+          )
         ),
         relativeMedianAspectRadio: (
-          getRelativeAspectRatio({
-            height: (
+          getRelativeAspectRatio(
+            getAspectRatio(
               medianCrop
-              .height
-            ),
-            width: (
-              medianCrop
-              .width
-            ),
-          })
+            )
+          )
         ),
       }
     }),
