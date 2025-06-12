@@ -1,3 +1,6 @@
+import { writeFile } from "node:fs/promises"
+import { cpus } from "node:os"
+import { join } from "node:path"
 import {
   concatAll,
   concatMap,
@@ -5,15 +8,16 @@ import {
   from,
   map,
   mergeAll,
+  of,
   reduce,
+  take,
   tap,
 } from "rxjs"
 
 import { catchNamedError } from "./catchNamedError.js"
 import { filterIsVideoFile } from "./filterIsVideoFile.js"
 import { readFilesAtDepth } from "./readFilesAtDepth.js"
-import { runFfmpeg } from "./runFfmpeg.js"
-import { getCropData } from "./getCropData.js"
+import { AspectRatioCalculation, getCropData } from "./getCropData.js"
 import { getMediaInfo, VideoTrack } from "./getMediaInfo.js"
 
 export const storeCropData = ({
@@ -38,6 +42,7 @@ export const storeCropData = ({
   })
   .pipe(
     filterIsVideoFile(),
+    take(20),
     map((
       fileInfo,
     ) => (
@@ -73,44 +78,99 @@ export const storeCropData = ({
           )
           === "Video"
         )),
+      )
+      .pipe(
         map(({
-          "HDR_Format_Compatibility": hdrFormatCompatibility,
-          // "HDR_Format": hdrFormat,
-          "transfer_characteristics": transferCharacteristics,
+          DisplayAspectRatio: displayAspectRatio,
+          Duration: duration,
+          HDR_Format_Compatibility: hdrFormatCompatibility,
+          Height: height,
+          transfer_characteristics: transferCharacteristics,
+          Width: width,
         }) => (
-          Boolean(
-            (
-              transferCharacteristics
-              === "PQ"
+          {
+          displayAspectRatio: (
+            Number(
+              displayAspectRatio
             )
-            || (
-              transferCharacteristics
-              ?.includes('HLG')
+            .toFixed(2)
+          ),
+          duration: (
+            Math
+            .floor(
+              Number(
+                duration
+              )
             )
-            || (
-              hdrFormatCompatibility
-              === 'HDR10'
+          ),
+          isAnamorphic: (
+            displayAspectRatio
+            !== (
+              (
+                Number(width)
+                / Number(height)
+              )
+              .toFixed(3)
             )
-            || (
-              hdrFormatCompatibility
-              ?.endsWith('HDR10')
+          ),
+          isHdr: (
+            Boolean(
+              (
+                transferCharacteristics
+                === "PQ"
+              )
+              || (
+                transferCharacteristics
+                ?.includes('HLG')
+              )
+              || (
+                hdrFormatCompatibility
+                === 'HDR10'
+              )
+              || (
+                hdrFormatCompatibility
+                ?.endsWith('HDR10')
+              )
             )
           )
-        )),
-        concatMap((
+        })),
+        concatMap(({
+          duration,
+          displayAspectRatio,
+          isAnamorphic,
           isHdr,
-        ) => (
-          getCropData({
-            filePath: (
-              fileInfo
-              .fullPath
-            ),
-            isHdr,
-          })
+        }) => (
+          isAnamorphic
+          ? (
+            of({
+              exactMaxHeightAspectRatio: displayAspectRatio,
+              exactMedianAspectRadio: displayAspectRatio,
+              relativeMaxHeightAspectRatio: displayAspectRatio,
+              relativeMedianAspectRadio: displayAspectRatio,
+            } satisfies (
+              AspectRatioCalculation
+            ))
+          )
+          : (
+            getCropData({
+              duration,
+              filePath: (
+                fileInfo
+                .fullPath
+              ),
+              isHdr,
+            })
+          )
         )),
         filter(
           Boolean
         ),
+        map((
+          aspectRatioCalculation,
+        ) => ({
+          aspectRatioCalculation,
+          fileInfo,
+        })),
         tap((
           cropData,
         ) => {
@@ -120,12 +180,67 @@ export const storeCropData = ({
               fileInfo
               .fullPath
             ),
+            "\n",
             cropData,
+            "\n",
+            "\n",
           )
         }),
       )
     )),
-    concatAll(),
+    mergeAll(
+      cpus()
+      .length
+    ),
+    reduce(
+      (
+        aspectRatioCalculationData,
+        {
+          aspectRatioCalculation,
+          fileInfo,
+        }
+      ) => ({
+        ...aspectRatioCalculationData,
+        [
+          fileInfo
+          .filename
+        ]: {
+          ...aspectRatioCalculation,
+          filename: (
+            fileInfo
+            .filename
+          ),
+          filePath: (
+            fileInfo
+            .fullPath
+          ),
+        }
+      }),
+      {} satisfies (
+        Record<
+          string,
+          AspectRatioCalculation
+        >
+      )
+    ),
+    concatMap((
+      aspectRatioCalculationData,
+    ) => (
+      writeFile(
+        (
+          join(
+            sourcePath,
+            "aspectRatioCalculations.json",
+          )
+        ),
+        (
+          JSON
+          .stringify(
+            aspectRatioCalculationData,
+          )
+        ),
+      )
+    )),
     catchNamedError(
       storeCropData
     ),

@@ -1,80 +1,261 @@
 import {
-  concatAll,
+  cpus,
+} from "node:os"
+import {
+  bufferCount,
   filter,
+  from,
   map,
+  mergeAll,
+  Observable,
   reduce,
   tap,
-  toArray,
 } from "rxjs";
 
-import { runFfmpegNullOutput } from "./runFfmpegNullOutput.js";
-import { formatResolutionName } from "./resolutionHelpers.js";
+import { runCustomFfmpeg } from "./runCustomFfmpeg.js";
 
-export const ffmpegCropdetectRegex = /crop=(\d+):(\d+):(\d+):(\d+)/
+export type AspectRatioCalculation = {
+  exactMaxHeightAspectRatio: string
+  exactMedianAspectRadio: string
+  relativeMaxHeightAspectRatio: string
+  relativeMedianAspectRadio: string
+}
 
-export const getCropData = ({
+export const ffmpegCropdetectRegex = /lavfi\.cropdetect\.(?<measurementType>\w)=(?<measurementValue>.+)/
+
+export const aspectRatioMinimums = [
+  1.33,
+  1.37,
+  1.78,
+  1.85,
+  1.90,
+  2.10,
+  2.39,
+] as const
+
+export const getRelativeAspectRatio = ({
+  height,
+  width,
+}: {
+  height: number
+  width: number
+}) => {
+  const aspectRatio = (
+    Number(
+      (
+        width
+        / height
+      )
+      .toFixed(2)
+    )
+  )
+
+  const relativeAspectRatio = (
+    aspectRatioMinimums
+    .find((
+      aspectRatioMinimum,
+    ) => (
+      Math
+      .min(
+        Number(
+          aspectRatioMinimum
+        )
+        + 0.02,
+        aspectRatio,
+      )
+      === (
+        aspectRatio
+      )
+    ))
+  )
+
+  return (
+    relativeAspectRatio
+    ? (
+      relativeAspectRatio
+      .toFixed(2)
+    )
+    : "OUT_OF_RANGE"
+  )
+}
+
+export const getArgsForSeconds = ({
   filePath,
   isHdr,
+  seconds,
 }: {
   filePath: string
   isHdr: boolean
-}) => (
-  runFfmpegNullOutput({
-    args: [
-      // "-hwaccel",
-      // "none", // Do we need this? If so, it has to happen before the input filename.
+  seconds: number,
+}) => ([
+  "-hide_banner",
 
-      "-ss",
-      "00:01:00",
+  "-loglevel",
+  "info",
 
-      "-t",
-      "10",
+  "-skip_frame",
+  "nokey",
 
-      "-vf",
+  "-ss",
+  (
+    String(
+      seconds
+    )
+  ),
+
+  "-i",
+  filePath,
+
+  "-threads",
+  "1",
+
+  "-map",
+  "0:v",
+
+  "-frames:v",
+  "1",
+
+  "-vf",
+  (
+    (
+      isHdr
+      ? "zscale=transfer=bt709,format=yuv420p,"
+      : ""
+    )
+    .concat(
+      // Not available in ffmpeg v5 used in the Docker container
+      // "cropdetect=mode=black:mv_threshold=0,"
+      "cropdetect=skip=0:limit=16:round=4,metadata=mode=print:file='pipe\\:1'"
+    )
+  ),
+
+  "-f",
+  "null",
+  "-",
+])
+
+export const getCropData = ({
+  duration,
+  filePath,
+  isHdr,
+}: {
+  duration: number
+  filePath: string
+  isHdr: boolean
+}): (
+  Observable<
+    AspectRatioCalculation
+  >
+) => (
+  from(
+    Array(32)
+    .fill(null)
+    .map((
+      _,
+      index,
+    ) => (
       (
-        isHdr
-        ? "zscale=transfer=bt709,format=yuv420p,cropdetect=limit=5:round=2:reset=0"
-        : "format=yuv420p,cropdetect=limit=5:round=2:reset=0"
-      ),
-
-      "-f",
-      "null",
-      "-",
-    ],
-    inputFilePaths: [
-      filePath
-    ],
-  })
+        Math
+        .floor(duration / 32)
+      )
+      * index
+    ))
+    .slice(1, -1)
+  )
   .pipe(
     map((
-      line,
+      seconds,
     ) => (
-      line
-      .match(ffmpegCropdetectRegex)
+      getArgsForSeconds({
+        filePath,
+        isHdr,
+        seconds,
+      })
+    )),
+    map((
+      args,
+    ) => (
+      runCustomFfmpeg({
+        args,
+      })
+    )),
+    mergeAll(
+      cpus()
+      .length
+    ),
+    filter((
+      output,
+    ) => (
+      output
+      .startsWith(
+        "lavfi.cropdetect.h"
+      )
+      || (
+        output
+        .startsWith(
+          "lavfi.cropdetect.w"
+        )
+      )
+    )),
+    map((
+      output,
+    ) => (
+      output
+      .match(
+        ffmpegCropdetectRegex
+      )
     )),
     filter(
       Boolean
     ),
-    map(([
-      // Order matters
-      _,
-      width,
-      height,
-      // x,
-      // y,
-    ]) => ({
-      height: (
+    map((
+      match,
+    ) => (
+      match
+      .groups!
+    )),
+    map(({
+      measurementType,
+      measurementValue,
+    }) => ({
+      [measurementType]: (
         Number(
-          height
+          measurementValue
         )
       ),
-      width: (
-        Number(
-          width
-        )
-      ),
-      // height,
-      // width,
+    })),
+    bufferCount(
+      2
+    ),
+  )
+  .pipe(
+    map((
+      measurementInfos
+    ) => (
+      measurementInfos
+      .reduce(
+        (
+          measurements: {
+            h: number,
+            w: number,
+          },
+          measurement,
+        ) => ({
+          ...measurements,
+          ...measurement,
+        }),
+        {} as {
+          h: number,
+          w: number,
+        },
+      )
+    )),
+    map(({
+      h,
+      w,
+    }) => ({
+      height: h,
+      width: w,
     })),
     reduce(
       (
@@ -133,7 +314,7 @@ export const getCropData = ({
         >
       ),
     ),
-    tap(t => console.log(t)),
+    tap(t => {console.log(t)}),
     map((
       cropData,
     ) => {
@@ -169,35 +350,53 @@ export const getCropData = ({
       )
 
       return {
-        maxHeightAspectRatio: (
-          formatResolutionName({
+        exactMaxHeightAspectRatio: (
+          (
+            (
+              maxHeightCrop
+              .width
+            )
+            / (
+              maxHeightCrop
+              .height
+            )
+          )
+          .toFixed(2)
+        ),
+        exactMedianAspectRadio: (
+          (
+            (
+              medianCrop
+              .width
+            )
+            / (
+              medianCrop
+              .height
+            )
+          )
+          .toFixed(2)
+        ),
+        relativeMaxHeightAspectRatio: (
+          getRelativeAspectRatio({
             height: (
-              String(
-                maxHeightCrop
-                .height
-              )
+              maxHeightCrop
+              .height
             ),
             width: (
-              String(
-                maxHeightCrop
-                .width
-              )
+              maxHeightCrop
+              .width
             ),
           })
         ),
-        medianAspectRadio: (
-          formatResolutionName({
+        relativeMedianAspectRadio: (
+          getRelativeAspectRatio({
             height: (
-              String(
-                medianCrop
-                .height
-              )
+              medianCrop
+              .height
             ),
             width: (
-              String(
-                medianCrop
-                .width
-              )
+              medianCrop
+              .width
             ),
           })
         ),
