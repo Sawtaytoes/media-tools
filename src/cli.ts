@@ -42,6 +42,11 @@ import {
   VideoAiEnhancement,
 } from "./upscaleInterlacedDvdWithTopaz.js"
 
+console
+.time(
+  "Command Runtime"
+)
+
 process
 .on(
   "uncaughtException",
@@ -159,7 +164,12 @@ yargs(
         .videoLanguage
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -218,7 +228,12 @@ yargs(
         .subtitlesLanguage
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -263,7 +278,12 @@ yargs(
         .sourcePath
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -305,7 +325,12 @@ yargs(
         .sourceFilesPath
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -369,7 +394,12 @@ yargs(
         .sourcePath
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -429,7 +459,12 @@ yargs(
         .sourcePath
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -493,7 +528,12 @@ yargs(
         .sourcePath
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -542,7 +582,12 @@ yargs(
         .sourcePath
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -587,7 +632,12 @@ yargs(
         .sourcePath
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -632,7 +682,12 @@ yargs(
         .sourcePath
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -681,7 +736,12 @@ yargs(
         .sourcePath
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -799,7 +859,12 @@ yargs(
         .videoEncoder
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -912,7 +977,12 @@ yargs(
         .subtitlesLanguages
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -1011,7 +1081,12 @@ yargs(
         .subtitlesPath
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -1068,7 +1143,12 @@ yargs(
         .seasonNumber
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -1140,7 +1220,12 @@ yargs(
         .url
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -1197,7 +1282,12 @@ yargs(
         .seasonNumber
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -1227,7 +1317,12 @@ yargs(
         .sourcePath
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -1272,7 +1367,12 @@ yargs(
         .sourcePath
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -1380,7 +1480,12 @@ yargs(
         ))
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -1429,7 +1534,12 @@ yargs(
         .sourcePath
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -1471,7 +1581,12 @@ yargs(
         .sourceFilesPath
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -1634,7 +1749,12 @@ yargs(
         .videoLanguages
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -1677,7 +1797,12 @@ yargs(
         .sourcePath
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -1741,7 +1866,12 @@ yargs(
         .sourcePath
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .command(
@@ -1859,7 +1989,12 @@ yargs(
         .aiEnhancment
       ),
     })
-    .subscribe()
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
   }
 )
 .strict()
