@@ -34,15 +34,20 @@ export const minimumAspectRatios = [
 ] as const
 
 export const getAspectRatio = ({
+  anamorphicCorrectionMultiplier = 1,
   height,
   width,
 }: {
+  anamorphicCorrectionMultiplier?: number
   height: number
   width: number
 }) => (
   (
-    width
-    / height
+    (
+      width
+      / height
+    )
+    * anamorphicCorrectionMultiplier
   )
   .toFixed(2)
 )
@@ -143,14 +148,24 @@ export const getArgsForSeconds = ({
   "-",
 ])
 
-export const getCropData = ({
+export const getAspectRatioData = ({
+  anamorphicCorrectionMultiplier = 1,
   duration,
   filePath,
   isHdr,
+  threadCount = (
+    cpus()
+    .length
+  ),
 }: {
+  /**
+   * When anamorphic, pass this in to compute the aspect ratio relative to: `(displayAspectRatio / (videoWidth / videoHeight))`.
+  */
+  anamorphicCorrectionMultiplier?: number
   duration: number
   filePath: string
   isHdr: boolean
+  threadCount?: number
 }): (
   Observable<
     AspectRatioCalculation
@@ -189,8 +204,7 @@ export const getCropData = ({
       })
     )),
     mergeAll(
-      cpus()
-      .length
+      threadCount
     ),
     filter((
       output,
@@ -333,29 +347,35 @@ export const getCropData = ({
         )
       )
 
-      const maxHeightCrop = (
-        cropDataValues
-        .sort((
-          a,
-          b,
-        ) => (
-          b.height
-          - a.height
-        ))
-        .at(0)!
-      )
+      const maxHeightCrop = {
+        ...(
+          cropDataValues
+          .sort((
+            a,
+            b,
+          ) => (
+            b.height
+            - a.height
+          ))
+          .at(0)!
+        ),
+        anamorphicCorrectionMultiplier,
+      }
 
-      const medianCrop = (
-        cropDataValues
-        .sort((
-          a,
-          b,
-        ) => (
-          b.count
-          - a.count
-        ))
-        .at(0)!
-      )
+      const medianCrop = {
+        ...(
+          cropDataValues
+          .sort((
+            a,
+            b,
+          ) => (
+            b.count
+            - a.count
+          ))
+          .at(0)!
+        ),
+        anamorphicCorrectionMultiplier,
+      }
 
       return {
         exactMaxHeightAspectRatio: (
