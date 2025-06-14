@@ -4,6 +4,8 @@
 .yarn/install-state.gz
 
 apps.generated/
+assets/
+build/
 dist/
 node_modules/
 

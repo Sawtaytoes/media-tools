@@ -8,7 +8,7 @@ import {
 } from "rxjs"
 
 import { catchNamedError } from "./catchNamedError.js"
-import { processUhdDiscForumPost } from "./processUhdDiscForumPost.js"
+import { processUhdDiscForumPost } from "./processUhdDiscForumPost.cherrio.js"
 
 export type UhdDiscForumPostItem = {
   movieName: string

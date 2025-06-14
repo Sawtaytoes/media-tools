@@ -1,0 +1,4 @@
+{
+  "main": "build/media-tools.cjs",
+  "output": "build/sea-prep.blob"
+}
