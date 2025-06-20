@@ -18,7 +18,6 @@ import { catchNamedError } from "./catchNamedError.js"
 import { filterIsVideoFile } from "./filterIsVideoFile.js"
 import {
   getAspectRatioData,
-  getRelativeAspectRatio,
   type AspectRatioCalculation,
 } from "./getAspectRatioData.js"
 import {
@@ -437,6 +436,7 @@ export const storeAspectRatioData = ({
         )),
         mergeAll(
           threadCount
+          || 2
         ),
         reduce(
           (

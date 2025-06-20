@@ -3,16 +3,17 @@ import {
 } from "node:os"
 import {
   bufferCount,
+  concatMap,
   filter,
+  find,
   from,
   map,
   mergeAll,
   Observable,
   reduce,
-  tap,
 } from "rxjs";
 
-import { runCustomFfmpeg } from "./runCustomFfmpeg.js";
+import { runReadlineFfmpeg } from "./runReadlineFfmpeg.js";
 
 export type AspectRatioCalculation = {
   exactMaxHeightAspectRatio: string
@@ -20,6 +21,36 @@ export type AspectRatioCalculation = {
   relativeMaxHeightAspectRatio: string
   relativeMedianAspectRadio: string
 }
+
+/*
+ * **ORDER MATTERS!**
+ *
+ * The order of these thresholds is important for the `find` operator to work correctly.
+ *
+ * The first threshold that matches the duration will be used.
+ */
+export const durationSampleCountThresholds = [
+  {
+    maximumSeconds: 600,
+    sampleCount: 30,
+  },
+  {
+    maximumSeconds: 30,
+    sampleCount: 6,
+  },
+  {
+    maximumSeconds: 0,
+    sampleCount: 4,
+  },
+  {
+    maximumSeconds: 120,
+    sampleCount: 8,
+  },
+  {
+    maximumSeconds: 360,
+    sampleCount: 12,
+  },
+] as const
 
 export const ffmpegCropdetectRegex = /lavfi\.cropdetect\.(?<measurementType>\w)=(?<measurementValue>.+)/
 
@@ -71,10 +102,12 @@ export const getRelativeAspectRatio = (
     ) => (
       Math
       .min(
-        Number(
-          minimumAspectRatio
-        )
-        + 0.02,
+        (
+          Number(
+            minimumAspectRatio
+          )
+          + 0.02 // Slight padding for minor offsets.
+        ),
         exactAspectRatio,
       )
       === (
@@ -107,6 +140,7 @@ export const getArgsForSeconds = ({
   "-loglevel",
   "info",
 
+  // Might be wroth looking into `-vsync 0` instead.
   "-skip_frame",
   "nokey",
 
@@ -124,7 +158,7 @@ export const getArgsForSeconds = ({
   "1",
 
   "-map",
-  "0:v",
+  "0:v:0",
 
   "-frames:v",
   "1",
@@ -137,9 +171,11 @@ export const getArgsForSeconds = ({
       : ""
     )
     .concat(
-      // Not available in ffmpeg v5 used in the Docker container
-      // "cropdetect=mode=black:mv_threshold=0,"
-      "cropdetect=skip=0:limit=16:round=4,metadata=mode=print:file='pipe\\:1'"
+      // For ffmpeg v5
+      // "cropdetect=skip=0:limit=16:round=4,metadata=mode=print:file='pipe\\:1'"
+
+      // For ffmpeg v7+
+      "cropdetect=mode=black:skip=0:limit=16:round=4:mv_threshold=0,metadata=mode=print:file='pipe\\:1'"
     )
   ),
 
@@ -172,21 +208,46 @@ export const getAspectRatioData = ({
   >
 ) => (
   from(
-    Array(32)
-    .fill(null)
-    .map((
-      _,
-      index,
-    ) => (
-      (
-        Math
-        .floor(duration / 32)
-      )
-      * index
-    ))
-    .slice(1, -1)
+    durationSampleCountThresholds
   )
   .pipe(
+    find(({
+      maximumSeconds,
+    }) => (
+      duration
+      >= maximumSeconds
+    )),
+    filter(
+      Boolean
+    ),
+    map(({
+      sampleCount,
+    }) => (
+      sampleCount
+      + 2 // We don't use the first and last frame of the video, so we add 2 more samples to compensate.
+    )),
+    concatMap((
+      paddedSampleCount
+    ) => (
+      from(
+        Array(paddedSampleCount)
+        .fill(null)
+        .map((
+          _,
+          index,
+        ) => (
+          (
+            Math
+            .floor(
+              duration
+              / paddedSampleCount
+            )
+          )
+          * index
+        ))
+        .slice(1, -1)
+      )
+    )),
     map((
       seconds,
     ) => (
@@ -199,13 +260,15 @@ export const getAspectRatioData = ({
     map((
       args,
     ) => (
-      runCustomFfmpeg({
+      runReadlineFfmpeg({
         args,
       })
     )),
     mergeAll(
       threadCount
     ),
+  )
+  .pipe(
     filter((
       output,
     ) => (
