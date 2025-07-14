@@ -1294,7 +1294,7 @@ yargs(
   ) => (
     yargs
     .example(
-      "$0 renameMovieDemoDownloads \"~/movie-demos\"",
+      "$0 renameMovieClipDownloads \"~/movie-demos\"",
       "Renames all video files in '~/movie-demos' based the demo format for renaming with other commands."
     )
     .positional(

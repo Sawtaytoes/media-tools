@@ -23,16 +23,15 @@ yarn set version stable
 ### Usage
 
 ```sh
-yarn nameSpecialFeatures FOLDER_LOCATION DVD_COMPARE_LINK
+yarn media --help
 ```
 
-- `FOLDER_LOCATION`: The absolute path of the directory with your features.
-- `DVD_COMPARE_LINK`: The link needs a hash at the end to tell DVD Compare which release package you've selected.
+### Compile for Windows
 
-#### EXAMPLE
+This command creates an executable for Windows:
 
 ```sh
-yarn nameSpecialFeatures 'G:\Disc-Rips\Ford v Ferrari bonus' https://dvdcompare.net/comparisons/film.php?fid=52929#1
+yarn sea
 ```
 
 ## Demo Media File Naming
