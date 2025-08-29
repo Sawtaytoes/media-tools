@@ -13,6 +13,7 @@ import {
 
 import { catchNamedError } from "./catchNamedError.js"
 import { cleanupFilename } from "./cleanupFilename.js"
+import { filterIsVideoFile } from "./filterIsVideoFile.js"
 import { getRandomString } from "./getRandomString.js"
 import { getTvdbFetchClient } from "./tvdbApi.js"
 import { naturalSort } from "./naturalSort.js"
@@ -258,6 +259,7 @@ export const nameTvShowEpisodes = ({
             })
           )
           .pipe(
+            filterIsVideoFile(),
             map((
               fileInfo,
               index,

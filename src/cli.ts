@@ -25,6 +25,7 @@ import {
   type Iso6392LanguageCode,
 } from "./iso6392LanguageCodes.js"
 import { keepLanguages } from "./keepLanguages.js"
+import { FALLBACK_INTRO_FILENAME, FALLBACK_OUTRO_FILENAME, mergeOrderedChapters } from "./mergeOrderedChapters.js"
 import { mergeTracks } from "./mergeTracks.js"
 import { nameAnimeEpisodes } from "./nameAnimeEpisodes.js"
 import { nameSpecialFeatures } from "./nameSpecialFeatures.js"
@@ -971,6 +972,93 @@ yargs(
       subtitlesLanguages: (
         argv
         .subtitlesLanguages
+      ),
+    })
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
+  }
+)
+.command(
+  "mergeOrderedChapters <sourcePath> [introFilename] [outroFilename]",
+  "Merges media files with ordered chapters and separate intro and outro files. Intro and outro files need to be named \"merge-intro.mkv\" and \"merge-outro.mkv\" respectively. NOTE: All FLAC audio tracks have to be converted to PCM first as MKVToolNix can't merge FLAC audio tracks.",
+  (
+    yargs,
+  ) => (
+    yargs
+    .example(
+      "$0 mergeOrderedChapters \"~/movies\"",
+      "Merges media files with ordered chapters and separate intro and outro files."
+    )
+    .positional(
+      "sourcePath",
+      {
+        demandOption: true,
+        describe: "Directory where demo files are located.",
+        type: "string",
+      },
+    )
+    .positional(
+      "introFilename",
+      {
+        default: FALLBACK_INTRO_FILENAME,
+        demandOption: false,
+        describe: "Filename of the intro MKV file.",
+        type: "string",
+      },
+    )
+    .positional(
+      "outroFilename",
+      {
+        default: FALLBACK_OUTRO_FILENAME,
+        demandOption: false,
+        describe: "Filename of the outro MKV file.",
+        type: "string",
+      },
+    )
+    .option(
+      "insertIntroBeforeChapterNumber",
+      {
+        alias: "i",
+        demandOption: true,
+        describe: "Inserts intro before the specified chapter number.",
+        type: "number",
+      },
+    )
+    .option(
+      "insertOutroBeforeChapterNumber",
+      {
+        alias: "o",
+        demandOption: true,
+        describe: "Inserts outro before the specified chapter number.",
+        type: "number",
+      },
+    )
+  ),
+  (argv) => {
+    mergeOrderedChapters({
+      insertIntroAtIndex: (
+        argv
+        .insertIntroBeforeChapterNumber
+      ),
+      insertOutroAtIndex: (
+        argv
+        .insertOutroBeforeChapterNumber
+      ),
+      introFilename: (
+        argv
+        .introFilename
+      ),
+      outroFilename: (
+        argv
+        .outroFilename
+      ),
+      sourcePath: (
+        argv
+        .sourcePath
       ),
     })
     .subscribe(() => {

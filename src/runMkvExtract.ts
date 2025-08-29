@@ -258,6 +258,7 @@ export const runMkvExtract = ({
         .stdout
         .write(
           key
+          .toString()
         )
       }
     )

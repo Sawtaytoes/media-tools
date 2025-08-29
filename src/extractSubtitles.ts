@@ -10,7 +10,7 @@ import { type Iso6392LanguageCode } from "./iso6392LanguageCodes.js";
 import { replaceFileExtension } from "./replaceFileExtension.js";
 import { runMkvExtract } from "./runMkvExtract.js";
 
-export const extractedPath = "EXTRACTED-SUBTITLES"
+export const extractedSubtitlesPath = "EXTRACTED-SUBTITLES"
 
 export const subtitleCodecExtension = {
   "S_TEXT/ASS": "ass",
@@ -31,7 +31,7 @@ export const extractSubtitles = ({
   of(
     addFolderNameBeforeFilename({
       filePath,
-      folderName: extractedPath,
+      folderName: extractedSubtitlesPath,
     })
   )
   .pipe(

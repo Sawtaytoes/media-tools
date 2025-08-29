@@ -1,7 +1,6 @@
 import {
   concatAll,
   concatMap,
-  filter,
   map,
   of,
   tap,
@@ -18,6 +17,9 @@ import {
 } from "./inverseTelecineVideo.js"
 import { readFilesAtDepth } from "./readFilesAtDepth.js"
 
+/**
+ * @experimental This doesn't work correctly and will probably be removed in the future unless something different than ffmpeg is used.
+ */
 export const inverseTelecineDiscRips = ({
   isConstantBitrate,
   isRecursive,

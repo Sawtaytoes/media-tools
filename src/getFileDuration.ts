@@ -25,7 +25,7 @@ export const convertNumberToTimeString = (
   )
 )
 
-export const convertDurationToTimecode = (
+export const convertDurationToDvdCompareTimecode = (
   durationInSeconds: number,
 ): string => {
   const date = (
@@ -87,6 +87,63 @@ export const convertDurationToTimecode = (
       : value
     ))
     .join(":")
+  )
+}
+
+export const convertDurationToTimecode = (
+  durationInSeconds: number,
+): string => {
+  const date = (
+    new Date(
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+    )
+  )
+
+  date
+  .setMilliseconds(
+    durationInSeconds
+    * 1000
+  )
+
+  return (
+    [
+      (
+        date
+        .getHours()
+      ),
+      (
+        date
+        .getMinutes()
+      ),
+      (
+        date
+        .getSeconds()
+      ),
+    ]
+    .map((
+      value,
+    ) => (
+      convertNumberToTimeString(
+        value
+      )
+    ))
+    .join(":")
+    .concat(
+      ".",
+      String(
+        date
+        .getMilliseconds()
+      )
+      .padStart(
+        3,
+        "0",
+      ),
+    )
   )
 }
 

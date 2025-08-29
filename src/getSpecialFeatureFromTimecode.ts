@@ -54,6 +54,10 @@ export const specialFeatureMatchRenames = [
     replacement: "$1 -behindthescenes",
   },
   {
+    searchTerm: /(.*blooper.*)/i,
+    replacement: "$1 -behindthescenes",
+  },
+  {
     searchTerm: /(.*making of.*)/i,
     replacement: "$1 -behindthescenes",
   },

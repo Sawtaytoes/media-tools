@@ -14,7 +14,7 @@ import {
 import { catchNamedError } from "./catchNamedError.js"
 import { getSpecialFeatureFromTimecode, TimecodeDeviation } from "./getSpecialFeatureFromTimecode.js"
 import {
-  convertDurationToTimecode,
+  convertDurationToDvdCompareTimecode,
   getFileDuration,
 } from "./getFileDuration.js"
 import { getMediaInfo } from "./getMediaInfo.js"
@@ -83,7 +83,7 @@ export const nameSpecialFeatures = ({
             ) => ({
               fileInfo,
               timecode: (
-                convertDurationToTimecode(
+                convertDurationToDvdCompareTimecode(
                   duration
                 )
               ),
