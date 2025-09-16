@@ -11,21 +11,22 @@ import {
   from,
   map,
   OperatorFunction,
+  toArray,
   type Observable,
 } from "rxjs"
 
-import { createRenameFileOrFolderObservable, getLastItemInFilePath } from "./createRenameFileOrFolder.js"
+import { createRenameFileOrFolderObservable } from "./createRenameFileOrFolder.js"
 import { logPipelineError } from "./logPipelineError.js"
 
-export type FileInfo = {
-  filename: (
+export type FolderInfo = {
+  folderName: (
     string
   ),
   fullPath: (
     string
   ),
-  renameFile: (
-    renamedFilename: string,
+  renameFolder: (
+    newFolderName: string,
   ) => (
     Observable<
       void
@@ -33,7 +34,25 @@ export type FileInfo = {
   )
 }
 
-export const filterFileAtPath = <
+export const getIsFolder = (
+  folderPath: string
+) => (
+  from(
+    stat(
+      folderPath
+    )
+  )
+  .pipe(
+    filter((
+      stats
+    ) => (
+      stats
+      .isDirectory()
+    )),
+  )
+)
+
+export const filterFolderAtPath = <
   PipelineValue
 >(
   getFullPath: (
@@ -60,7 +79,7 @@ export const filterFileAtPath = <
         stats
       ) => (
         stats
-        .isFile()
+        .isDirectory()
       )),
       map(() => (
         pipelineValue
@@ -69,13 +88,13 @@ export const filterFileAtPath = <
   ))
 )
 
-export const readFiles = ({
+export const getFolder = ({
   sourcePath,
 }: {
   sourcePath: string,
 }): (
   Observable<
-    FileInfo
+    FolderInfo
   >
 ) => (
   defer(() => (
@@ -86,44 +105,40 @@ export const readFiles = ({
   .pipe(
     concatAll(),
     map((
-      filePath,
+      folderName,
     ) => ({
-      filename: (
-        getLastItemInFilePath(
-          filePath
-        )
-      ),
+      folderName,
       fullPath: (
         join(
           sourcePath,
-          filePath,
+          folderName,
         )
       ),
     })),
-    filterFileAtPath(({
+    filterFolderAtPath(({
       fullPath
     }) => (
       fullPath
     )),
     map(({
-      filename,
+      folderName,
       fullPath,
     }) => ({
-      filename,
+      folderName,
       fullPath,
-      renameFile: (
+      renameFolder: (
         createRenameFileOrFolderObservable({
           fullPath,
           sourcePath,
         })
       ),
     } satisfies (
-      FileInfo
+      FolderInfo
     ) as (
-      FileInfo
+      FolderInfo
     ))),
     logPipelineError(
-      readFiles
+      getFolder
     ),
   )
 )

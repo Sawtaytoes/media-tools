@@ -21,7 +21,7 @@ import { FALLBACK_TIMECODE, getChapters } from "./getChapters.js"
 import { insertIntoArray } from "./insertIntoArray.js"
 import { logInfo } from "./logMessage.js"
 import { mergeMediaFiles } from "./mergeMediaFiles.js"
-import { readFiles } from "./readFiles.js"
+import { getFiles } from "./getFiles.js"
 import { segmentSplitsFolderName, splitSegmentFfmpeg } from "./splitChaptersFfmpeg.js"
 import { getChaptersOld } from "./getChapters-old.js"
 
@@ -41,7 +41,7 @@ export const mergeOrderedChapters = ({
   outroFilename?: string
   sourcePath: string
 }) => (
-  readFiles({
+  getFiles({
     sourcePath,
   })
   .pipe(

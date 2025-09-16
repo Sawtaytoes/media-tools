@@ -25,7 +25,7 @@ import {
   type VideoTrack,
 } from "./getMediaInfo.js"
 import { logInfo } from "./logMessage.js"
-import { readFilesAtDepth } from "./readFilesAtDepth.js"
+import { getFilesAtDepth } from "./getFilesAtDepth.js"
 
 export type AspectRatioData = (
   Record<
@@ -193,7 +193,7 @@ export const storeAspectRatioData = ({
             concatMap((
               folderName,
             ) => (
-              readFilesAtDepth({
+              getFilesAtDepth({
                 depth: (
                   isRecursive
                   ? (
@@ -213,7 +213,7 @@ export const storeAspectRatioData = ({
           )
         )
         : (
-          readFilesAtDepth({
+          getFilesAtDepth({
             depth: (
               isRecursive
               ? (

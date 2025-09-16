@@ -36,8 +36,8 @@ import {
   parseMediaFileChapterTimestamp,
   convertTimecodeToMilliseconds,
 } from "./parseTimestamps.js"
-import { readFiles } from "./readFiles.js"
-import { readFolder } from "./readFolder.js"
+import { getFiles } from "./getFiles.js"
+import { getFolder } from "./getFolder.js"
 
 const xmlParser = (
   new XMLParser()
@@ -60,7 +60,7 @@ export const mergeTracks = ({
 }) => (
   combineLatest([
     (
-      readFolder({
+      getFolder({
         sourcePath: (
           subtitlesPath
         ),
@@ -70,7 +70,7 @@ export const mergeTracks = ({
       )
     ),
     (
-      readFiles({
+      getFiles({
         sourcePath: (
           mediaFilesPath
         ),
@@ -118,7 +118,7 @@ export const mergeTracks = ({
                   .fullPath
                 ),
                 (
-                  readFiles({
+                  getFiles({
                     sourcePath: (
                       subtitlesFolderInfo
                       .fullPath
@@ -159,7 +159,7 @@ export const mergeTracks = ({
                   )
                   .pipe(
                     concatMap(() => (
-                      readFiles({
+                      getFiles({
                         sourcePath: (
                           join(
                             (
@@ -193,7 +193,7 @@ export const mergeTracks = ({
                 (
                   hasAutomaticOffset
                   ? (
-                    readFiles({
+                    getFiles({
                       sourcePath: (
                         subtitlesFolderInfo
                         .fullPath

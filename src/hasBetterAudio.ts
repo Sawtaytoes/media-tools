@@ -14,7 +14,7 @@ import {
   getMediaInfo,
   type AudioTrack,
 } from "./getMediaInfo.js"
-import { readFilesAtDepth } from "./readFilesAtDepth.js"
+import { getFilesAtDepth } from "./getFilesAtDepth.js"
 
 export const hasBetterAudio = ({
   isRecursive,
@@ -25,7 +25,7 @@ export const hasBetterAudio = ({
   recursiveDepth: number
   sourcePath: string
 }) => (
-  readFilesAtDepth({
+  getFilesAtDepth({
     depth: (
       isRecursive
       ? (

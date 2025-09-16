@@ -21,7 +21,7 @@ import { catchNamedError } from "./catchNamedError.js"
 import { cleanupFilename } from "./cleanupFilename.js"
 import { filterIsVideoFile } from "./filterIsVideoFile.js"
 import { naturalSort } from "./naturalSort.js"
-import { readFiles } from "./readFiles.js"
+import { getFiles } from "./getFiles.js"
 import { logInfo } from "./logMessage.js"
 
 export const nameAnimeEpisodes = ({
@@ -33,7 +33,7 @@ export const nameAnimeEpisodes = ({
   seasonNumber: number,
   sourcePath: string,
 }) => (
-  readFiles({
+  getFiles({
     sourcePath,
   })
   .pipe(

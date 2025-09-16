@@ -13,7 +13,7 @@ import { getTrackLanguages } from "./getTrackLanguages.js"
 import { type Iso6392LanguageCode } from "./iso6392LanguageCodes.js"
 import { keepSpecifiedLanguageTracks } from "./keepSpecifiedLanguageTracks.js"
 import { logInfo } from "./logMessage.js"
-import { readFilesAtDepth } from "./readFilesAtDepth.js"
+import { getFilesAtDepth } from "./getFilesAtDepth.js"
 
 export const keepLanguages = ({
   audioLanguages: selectedAudioLanguages,
@@ -30,7 +30,7 @@ export const keepLanguages = ({
   sourcePath: string
   subtitlesLanguages: Iso6392LanguageCode[]
 }) => (
-  readFilesAtDepth({
+  getFilesAtDepth({
     depth: (
       isRecursive
       ? 1

@@ -16,7 +16,7 @@ import {
 import { catchNamedError } from "./catchNamedError.js"
 import { filterIsVideoFile } from "./filterIsVideoFile.js"
 import { getMkvInfo } from "./getMkvInfo.js"
-import { readFilesAtDepth } from "./readFilesAtDepth.js"
+import { getFilesAtDepth } from "./getFilesAtDepth.js"
 
 export const hasWrongDefaultTrack = ({
   isRecursive,
@@ -25,7 +25,7 @@ export const hasWrongDefaultTrack = ({
   isRecursive: boolean
   sourcePath: string
 }) => (
-  readFilesAtDepth({
+  getFilesAtDepth({
     depth: (
       isRecursive
       ? 1

@@ -7,10 +7,10 @@ import {
 } from "rxjs"
 
 import { logPipelineError } from "./logPipelineError.js"
-import { readFiles } from "./readFiles.js"
-import { readFolder } from "./readFolder.js"
+import { getFiles } from "./getFiles.js"
+import { getFolder } from "./getFolder.js"
 
-export const readFilesAtDepth = ({
+export const getFilesAtDepth = ({
   depth,
   sourcePath,
 }: {
@@ -18,12 +18,12 @@ export const readFilesAtDepth = ({
   sourcePath: string
 }): (
   ReturnType<
-    typeof readFiles
+    typeof getFiles
   >
 ) => (
   concat(
     (
-      readFiles({
+      getFiles({
         sourcePath,
       })
     ),
@@ -34,14 +34,14 @@ export const readFilesAtDepth = ({
           > 0
         ),
         (
-          readFolder({
+          getFolder({
             sourcePath,
           })
           .pipe(
             concatMap((
               folderInfo,
             ) => (
-              readFilesAtDepth({
+              getFilesAtDepth({
                 depth: (depth - 1),
                 sourcePath: (
                   folderInfo
@@ -58,7 +58,7 @@ export const readFilesAtDepth = ({
   )
   .pipe(
     logPipelineError(
-      readFilesAtDepth
+      getFilesAtDepth
     ),
   )
 )

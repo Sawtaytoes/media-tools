@@ -10,7 +10,7 @@ import {
 
 import { catchNamedError } from "./catchNamedError.js"
 import { filterIsVideoFile } from "./filterIsVideoFile.js"
-import { readFilesAtDepth } from "./readFilesAtDepth.js"
+import { getFilesAtDepth } from "./getFilesAtDepth.js"
 import { reorderTracksFfmpeg } from "./reorderTracksFfmpeg.js"
 import { setOnlyFirstTracksAsDefault } from "./setOnlyFirstTracksAsDefault.js"
 
@@ -27,7 +27,7 @@ export const reorderTracks = ({
   subtitlesTrackIndexes: number[]
   videoTrackIndexes: number[]
 }) => (
-  readFilesAtDepth({
+  getFilesAtDepth({
     depth: (
       isRecursive
       ? 1

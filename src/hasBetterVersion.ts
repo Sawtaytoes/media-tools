@@ -12,7 +12,7 @@ import { catchNamedError } from "./catchNamedError.js"
 import { filterIsVideoFile } from "./filterIsVideoFile.js"
 import { getUhdDiscForumPostData } from "./getUhdDiscForumPostData.js"
 import { naturalSort } from "./naturalSort.js"
-import { readFilesAtDepth } from "./readFilesAtDepth.js"
+import { getFilesAtDepth } from "./getFilesAtDepth.js"
 
 export const hasBetterVersion = ({
   isRecursive,
@@ -28,7 +28,7 @@ export const hasBetterVersion = ({
     mergeMap((
       uhdDiscForumPostGroups,
     ) => (
-      readFilesAtDepth({
+      getFilesAtDepth({
         depth: (
           isRecursive
           ? recursiveDepth

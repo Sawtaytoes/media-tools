@@ -12,7 +12,7 @@ import {
 
 import { catchNamedError } from "./catchNamedError.js"
 import { getMediaInfo } from "./getMediaInfo.js"
-import { readFilesAtDepth } from "./readFilesAtDepth.js"
+import { getFilesAtDepth } from "./getFilesAtDepth.js"
 
 export const hasManyAudioTracks = ({
   isRecursive,
@@ -21,7 +21,7 @@ export const hasManyAudioTracks = ({
   isRecursive: boolean
   sourcePath: string
 }) => (
-  readFilesAtDepth({
+  getFilesAtDepth({
     depth: (
       isRecursive
       ? 1

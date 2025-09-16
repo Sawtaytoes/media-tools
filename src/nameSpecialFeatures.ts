@@ -19,7 +19,7 @@ import {
 } from "./getFileDuration.js"
 import { getMediaInfo } from "./getMediaInfo.js"
 import { parseSpecialFeatures } from "./parseSpecialFeatures.js"
-import { readFilesAtDepth } from "./readFilesAtDepth.js"
+import { getFilesAtDepth } from "./getFilesAtDepth.js"
 import { searchDvdCompare } from "./searchDvdCompare.js"
 
 const getNextFilenameCount = (
@@ -58,7 +58,7 @@ export const nameSpecialFeatures = ({
     concatMap((
       specialFeatures,
     ) => (
-      readFilesAtDepth({
+      getFilesAtDepth({
         depth: 0,
         sourcePath,
       })

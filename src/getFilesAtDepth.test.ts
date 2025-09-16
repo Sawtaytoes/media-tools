@@ -3,10 +3,10 @@ import { EmptyError, firstValueFrom, toArray } from "rxjs"
 import { beforeEach, describe, expect, test } from "vitest"
 
 import { captureLogMessage } from "./captureLogMessage.js"
-import { readFilesAtDepth } from "./readFilesAtDepth.js"
-import { FileInfo } from "./readFiles.js"
+import { getFilesAtDepth } from "./getFilesAtDepth.js"
+import { FileInfo } from "./getFiles.js"
 
-describe(readFilesAtDepth.name, () => {
+describe(getFilesAtDepth.name, () => {
   beforeEach(() => {
     vol
     .fromJSON({
@@ -23,7 +23,7 @@ describe(readFilesAtDepth.name, () => {
       async () => {
         expect(
           firstValueFrom(
-            readFilesAtDepth({
+            getFilesAtDepth({
               depth: 0,
               sourcePath: "non-existent-path",
             })
@@ -40,7 +40,7 @@ describe(readFilesAtDepth.name, () => {
   test("emits no files when source only contains folders", async () => {
     await expect(
       firstValueFrom(
-        readFilesAtDepth({
+        getFilesAtDepth({
           depth: 0,
           sourcePath: "G:\\Movies",
         })
@@ -58,7 +58,7 @@ describe(readFilesAtDepth.name, () => {
   test("emits files when source contains files", async () => {
     await expect(
       firstValueFrom(
-        readFilesAtDepth({
+        getFilesAtDepth({
           depth: 0,
           sourcePath: "G:\\Movies\\Star Wars (1977)",
         })
@@ -87,7 +87,7 @@ describe(readFilesAtDepth.name, () => {
   test("emits files when source contains files 1-level deep", async () => {
     await expect(
       firstValueFrom(
-        readFilesAtDepth({
+        getFilesAtDepth({
           depth: 1,
           sourcePath: "G:\\Movies",
         })
@@ -121,7 +121,7 @@ describe(readFilesAtDepth.name, () => {
   test("emits files when source contains files 2-levels deep", async () => {
     await expect(
       firstValueFrom(
-        readFilesAtDepth({
+        getFilesAtDepth({
           depth: 2,
           sourcePath: "G:",
         })

@@ -14,7 +14,7 @@ import {
 
 import { catchNamedError } from "./catchNamedError.js"
 import { filterIsAudioFile } from "./filterIsAudioFile.js"
-import { readFilesAtDepth } from "./readFilesAtDepth.js"
+import { getFilesAtDepth } from "./getFilesAtDepth.js"
 
 export const hasDuplicateMusicFiles = ({
   isRecursive,
@@ -25,7 +25,7 @@ export const hasDuplicateMusicFiles = ({
   recursiveDepth: number
   sourcePath: string
 }) => (
-  readFilesAtDepth({
+  getFilesAtDepth({
     depth: (
       isRecursive
       ? (

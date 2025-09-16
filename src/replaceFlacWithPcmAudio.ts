@@ -16,7 +16,7 @@ import {
   getMediaInfo,
   type AudioTrack,
 } from "./getMediaInfo.js"
-import { readFilesAtDepth } from "./readFilesAtDepth.js"
+import { getFilesAtDepth } from "./getFilesAtDepth.js"
 import { logInfo } from "./logMessage.js"
 
 export const replaceFlacWithPcmAudio = ({
@@ -26,7 +26,7 @@ export const replaceFlacWithPcmAudio = ({
   isRecursive: boolean
   sourcePath: string
 }) => (
-  readFilesAtDepth({
+  getFilesAtDepth({
     depth: (
       isRecursive
       ? 1

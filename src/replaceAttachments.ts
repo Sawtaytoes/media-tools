@@ -8,7 +8,7 @@ import {
 } from "rxjs"
 
 import { catchNamedError } from "./catchNamedError.js"
-import { readFiles } from "./readFiles.js"
+import { getFiles } from "./getFiles.js"
 import { replaceAttachmentsMkvMerge } from "./replaceAttachmentsMkvMerge.js"
 import { logInfo } from "./logMessage.js"
 
@@ -19,7 +19,7 @@ export const replaceAttachments = ({
   destinationFilesPath: string
   sourceFilesPath: string
 }) => (
-  readFiles({
+  getFiles({
     sourcePath: (
       sourceFilesPath
     ),
@@ -29,7 +29,7 @@ export const replaceAttachments = ({
     concatMap((
       mediaFiles,
     ) => (
-      readFiles({
+      getFiles({
         sourcePath: (
           destinationFilesPath
         ),

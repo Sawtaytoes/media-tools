@@ -1,4 +1,5 @@
 import { cpus } from "node:os"
+import { toArray } from "rxjs"
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 
@@ -36,6 +37,7 @@ import { reorderTracks } from "./reorderTracks.js"
 import { replaceAttachments } from "./replaceAttachments.js"
 import { replaceFlacWithPcmAudio } from "./replaceFlacWithPcmAudio.js"
 import { replaceTracks } from "./replaceTracks.js"
+import { setDisplayWidth } from "./setDisplayWidth.js"
 import { splitChapters } from "./splitChapters.js"
 import { storeAspectRatioData } from "./storeAspectRatioData.js"
 
@@ -1227,6 +1229,9 @@ yargs(
         .seasonNumber
       ),
     })
+    .pipe(
+      toArray(),
+    )
     .subscribe(() => {
       console
       .timeEnd(
@@ -1831,6 +1836,85 @@ yargs(
       videoLanguages: (
         argv
         .videoLanguages
+      ),
+    })
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
+  }
+)
+.command(
+  "setDisplayWidth <sourcePath>",
+  "Sets the display width (DAR) of a video file. Helpful when a DVD was incorrectly set to 4:3 rather than 16:9.",
+  (
+    yargs,
+  ) => (
+    yargs
+    .example(
+      "$0 setDisplayWidth \"~/disc-rips/dot-hack--sign\" -w 853",
+      "Sets the display width (DAR) of 4:3 video files to 16:9."
+    )
+    .positional(
+      "sourcePath",
+      {
+        demandOption: true,
+        describe: "Directory where video files are located.",
+        type: "string",
+      },
+    )
+    .option(
+      "displayWidth",
+      {
+        alias: "w",
+        default: 853,
+        describe: "Display width of the video file. For DVDs, they're all 3:2, but you can set them to the proper 4:3 or 16:9 aspect ratio with anamorphic (non-square) pixels using this value. This uncommon in Blu-ray and online media; it's a holdover from the NTSC analog broadcasting days.",
+        type: "number",
+      },
+    )
+    .option(
+      "isRecursive",
+      {
+        alias: "r",
+        boolean: true,
+        default: false,
+        describe: "Recursively looks in folders for media files.",
+        nargs: 0,
+        type: "boolean",
+      },
+    )
+
+    .option(
+      "recursiveDepth",
+      {
+        alias: "d",
+        default: 0,
+        describe: "How many deep of child directories to follow (2 or 3) when using `isRecursive`.",
+        nargs: 1,
+        number: true,
+        type: "number",
+      },
+    )
+  ),
+  (argv) => {
+    setDisplayWidth({
+      displayWidth: (
+        argv
+        .displayWidth
+      ),
+      isRecursive: (
+        argv
+        .isRecursive
+      ),
+      recursiveDepth: (
+        argv
+        .recursiveDepth
+      ),
+      sourcePath: (
+        argv
+        .sourcePath
       ),
     })
     .subscribe(() => {

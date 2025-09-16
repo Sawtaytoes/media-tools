@@ -13,12 +13,9 @@ import {
 import { catchNamedError } from "./catchNamedError.js"
 import { extractSubtitles } from "./extractSubtitles.js"
 import { filterIsVideoFile } from "./filterIsVideoFile.js"
-import {
-  getMkvInfo,
-  type MkvTookNixTrackType,
-} from "./getMkvInfo.js"
+import { getMkvInfo } from "./getMkvInfo.js"
 import { type Iso6392LanguageCode } from "./iso6392LanguageCodes.js"
-import { readFilesAtDepth } from "./readFilesAtDepth.js"
+import { getFilesAtDepth } from "./getFilesAtDepth.js"
 
 export const copyOutSubtitles = ({
   isRecursive,
@@ -29,7 +26,7 @@ export const copyOutSubtitles = ({
   sourcePath: string
   subtitlesLanguage?: Iso6392LanguageCode
 }) => (
-  readFilesAtDepth({
+  getFilesAtDepth({
     depth: (
       isRecursive
       ? 1

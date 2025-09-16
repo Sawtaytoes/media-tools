@@ -16,7 +16,7 @@ import {
   type MkvTookNixTrackType,
 } from "./getMkvInfo.js"
 import { type Iso6392LanguageCode } from "./iso6392LanguageCodes.js"
-import { readFilesAtDepth } from "./readFilesAtDepth.js"
+import { getFilesAtDepth } from "./getFilesAtDepth.js"
 import { updateTrackLanguage } from "./updateTrackLanguage.js"
 
 export const changeTrackLanguages = ({
@@ -47,7 +47,7 @@ export const changeTrackLanguages = ({
   }
 
   return (
-    readFilesAtDepth({
+    getFilesAtDepth({
       depth: (
         isRecursive
         ? 1

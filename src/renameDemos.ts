@@ -6,7 +6,7 @@ import {
 import { catchNamedError } from "./catchNamedError.js"
 import { getDemoName } from "./getDemoName.js"
 import { getMediaInfo } from "./getMediaInfo.js"
-import { readFilesAtDepth } from "./readFilesAtDepth.js"
+import { getFilesAtDepth } from "./getFilesAtDepth.js"
 
 export const renameDemos = ({
   isRecursive,
@@ -15,7 +15,7 @@ export const renameDemos = ({
   isRecursive: boolean
   sourcePath: string
 }) => (
-  readFilesAtDepth({
+  getFilesAtDepth({
     depth: (
       isRecursive
       ? 1

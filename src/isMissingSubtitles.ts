@@ -16,7 +16,7 @@ import {
   getMediaInfo,
   type TextTrack,
 } from "./getMediaInfo.js"
-import { readFilesAtDepth } from "./readFilesAtDepth.js"
+import { getFilesAtDepth } from "./getFilesAtDepth.js"
 
 export const isMissingSubtitles = ({
   isRecursive,
@@ -25,7 +25,7 @@ export const isMissingSubtitles = ({
   isRecursive: boolean
   sourcePath: string
 }) => (
-  readFilesAtDepth({
+  getFilesAtDepth({
     depth: (
       isRecursive
       ? 1

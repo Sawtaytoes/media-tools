@@ -1,7 +1,7 @@
 import { extname } from "node:path"
 import { filter } from "rxjs"
 
-import { type FileInfo } from "./readFiles.js"
+import { type FileInfo } from "./getFiles.js"
 
 export const videoFileExtensions = (
   new Set([

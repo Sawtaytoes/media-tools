@@ -12,7 +12,7 @@ import {
 import { catchNamedError } from "./catchNamedError.js"
 import { filterIsVideoFile } from "./filterIsVideoFile.js"
 import { naturalSort } from "./naturalSort.js"
-import { readFiles } from "./readFiles.js"
+import { getFiles } from "./getFiles.js"
 import { splitChaptersMkvMerge } from "./splitChaptersMkvMerge.js"
 import { logInfo } from "./logMessage.js"
 
@@ -23,7 +23,7 @@ export const splitChapters = ({
   chapterSplitsList: string[]
   sourcePath: string
 }) => (
-  readFiles({
+  getFiles({
     sourcePath,
   })
   .pipe(

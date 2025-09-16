@@ -10,7 +10,7 @@ import {
 
 import { catchNamedError } from "./catchNamedError.js"
 import { getMediaInfo } from "./getMediaInfo.js"
-import { readFilesAtDepth } from "./readFilesAtDepth.js"
+import { getFilesAtDepth } from "./getFilesAtDepth.js"
 
 export const hasImaxEnhancedAudio = ({
   isRecursive,
@@ -19,7 +19,7 @@ export const hasImaxEnhancedAudio = ({
   isRecursive: boolean,
   sourcePath: string
 }) => (
-  readFilesAtDepth({
+  getFilesAtDepth({
     depth: (
       isRecursive
       ? 1

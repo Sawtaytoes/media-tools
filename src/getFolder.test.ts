@@ -2,11 +2,11 @@ import { vol } from "memfs"
 import { EmptyError, firstValueFrom, toArray } from "rxjs"
 import { beforeEach, describe, expect, test } from "vitest"
 
-import { FileInfo, filterFileAtPath, readFiles } from "./readFiles.js"
+import { FolderInfo, filterFolderAtPath, getFolder } from "./getFolder.js"
 import { getOperatorValue } from "./test-runners.js"
 import { captureLogMessage } from "./captureLogMessage.js"
 
-describe(filterFileAtPath.name, () => {
+describe(filterFolderAtPath.name, () => {
   beforeEach(() => {
     vol
     .fromJSON({
@@ -14,12 +14,12 @@ describe(filterFileAtPath.name, () => {
     })
   })
 
-  test("emits if path is a file", async () => {
-    const inputValue = "G:\\Movies\\Super Mario Bros (1993)\\Super Mario Bros (1993).mkv"
+  test("emits if path is a directory", async () => {
+    const inputValue = "G:\\Movies\\Super Mario Bros (1993)"
 
     expect(
       getOperatorValue(
-        filterFileAtPath((
+        filterFolderAtPath((
           filePath
         ) => (
           filePath
@@ -33,12 +33,12 @@ describe(filterFileAtPath.name, () => {
     )
   })
 
-  test("throws an error if path is a directory", async () => {
-    const inputValue = "G:\\Movies\\Super Mario Bros (1993)"
+  test("throws an error if path is a file", async () => {
+    const inputValue = "G:\\Movies\\Super Mario Bros (1993)\\Super Mario Bros (1993).mkv"
 
     expect(
       getOperatorValue(
-        filterFileAtPath((
+        filterFolderAtPath((
           filePath
         ) => (
           filePath
@@ -53,14 +53,14 @@ describe(filterFileAtPath.name, () => {
   })
 })
 
-describe(readFiles.name, () => {
+describe(getFolder.name, () => {
   test("errors if source path can't be found", async () => {
     captureLogMessage(
       "error",
       async () => {
         expect(
           firstValueFrom(
-            readFiles({
+            getFolder({
               sourcePath: "non-existent-path",
             })
           )
@@ -73,7 +73,7 @@ describe(readFiles.name, () => {
     )
   })
 
-  test("emits files from source path", async () => {
+  test("emits folders from source path", async () => {
     vol
     .fromJSON({
       "G:\\Movies\\Star Wars (1977)\\Star Wars (1977).mkv": "",
@@ -83,8 +83,8 @@ describe(readFiles.name, () => {
 
     await expect(
       firstValueFrom(
-        readFiles({
-          sourcePath: "G:\\Movies\\Star Wars (1977)",
+        getFolder({
+          sourcePath: "G:\\Movies",
         })
         .pipe(
           toArray(),
@@ -94,17 +94,17 @@ describe(readFiles.name, () => {
     .resolves
     .toEqual([
       {
-        filename: "Star Wars (1977)",
-        fullPath: "G:\\Movies\\Star Wars (1977)\\Star Wars (1977).mkv",
-        renameFile: expect.any(Function),
+        folderName: "Star Wars (1977)",
+        fullPath: "G:\\Movies\\Star Wars (1977)",
+        renameFolder: expect.any(Function),
       },
       {
-        filename: "Star Wars (1977) {edition-4K77}",
-        fullPath: "G:\\Movies\\Star Wars (1977)\\Star Wars (1977) {edition-4K77}.mkv",
-        renameFile: expect.any(Function),
+        folderName: "Super Mario Bros (1993)",
+        fullPath: "G:\\Movies\\Super Mario Bros (1993)",
+        renameFolder: expect.any(Function),
       },
     ] satisfies (
-      FileInfo[]
+      FolderInfo[]
     ))
   })
 })

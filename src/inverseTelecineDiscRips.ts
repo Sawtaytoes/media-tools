@@ -15,7 +15,7 @@ import {
   type Pulldown,
   type VideoEncoder,
 } from "./inverseTelecineVideo.js"
-import { readFilesAtDepth } from "./readFilesAtDepth.js"
+import { getFilesAtDepth } from "./getFilesAtDepth.js"
 
 /**
  * @experimental This doesn't work correctly and will probably be removed in the future unless something different than ffmpeg is used.
@@ -33,7 +33,7 @@ export const inverseTelecineDiscRips = ({
   pulldown: Pulldown,
   videoEncoder: VideoEncoder,
 }) => (
-  readFilesAtDepth({
+  getFilesAtDepth({
     depth: (
       isRecursive
       ? 1

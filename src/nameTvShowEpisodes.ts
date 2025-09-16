@@ -17,7 +17,7 @@ import { filterIsVideoFile } from "./filterIsVideoFile.js"
 import { getRandomString } from "./getRandomString.js"
 import { getTvdbFetchClient } from "./tvdbApi.js"
 import { naturalSort } from "./naturalSort.js"
-import { readFiles } from "./readFiles.js"
+import { getFiles } from "./getFiles.js"
 
 export const nameTvShowEpisodes = ({
   searchTerm,
@@ -28,7 +28,7 @@ export const nameTvShowEpisodes = ({
   seasonNumber: number,
   sourcePath: string,
 }) => (
-  readFiles({
+  getFiles({
     sourcePath,
   })
   .pipe(

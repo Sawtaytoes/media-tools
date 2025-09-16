@@ -4,7 +4,7 @@ import {
   mergeMap,
   toArray,
 } from 'rxjs'
-import { readFiles } from './readFiles.js';
+import { getFiles } from './getFiles.js';
 import { catchNamedError } from './catchNamedError.js';
 
 
@@ -13,7 +13,7 @@ export const renameMovieClipDownloads = ({
 }: {
   sourcePath: string
 }) => (
-  readFiles({
+  getFiles({
     sourcePath,
   })
   .pipe(
