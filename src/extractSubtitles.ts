@@ -9,13 +9,15 @@ import { addFolderNameBeforeFilename } from "./addFolderNameBeforeFilename.js";
 import { type Iso6392LanguageCode } from "./iso6392LanguageCodes.js";
 import { replaceFileExtension } from "./replaceFileExtension.js";
 import { runMkvExtract } from "./runMkvExtract.js";
+import { subtitlesFileExtensions } from "./filterIsSubtitlesFile.js";
 
 export const extractedSubtitlesPath = "EXTRACTED-SUBTITLES"
 
 export const subtitleCodecExtension = {
-  "S_TEXT/ASS": "ass",
-  "S_TEXT/UTF8": "srt",
-}
+  "S_HDMV/PGS": ".sup",
+  "S_TEXT/ASS": ".ass",
+  "S_TEXT/UTF8": ".srt",
+} as const satisfies Record<string, typeof subtitlesFileExtensions[number]>
 
 export const extractSubtitles = ({
   codec_id,
@@ -28,6 +30,7 @@ export const extractSubtitles = ({
   languageCode: Iso6392LanguageCode | "und",
   trackId: number,
 }) => (
+  console.log("\n\n\n-------", subtitleCodecExtension[codec_id]) ||
   of(
     addFolderNameBeforeFilename({
       filePath,
@@ -46,7 +49,6 @@ export const extractSubtitles = ({
             `track${trackId}`,
             ".",
             languageCode,
-            ".",
             (
               subtitleCodecExtension
               [codec_id]

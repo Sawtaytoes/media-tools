@@ -3,17 +3,23 @@ import { filter } from "rxjs"
 
 import { type FileInfo } from "./getFiles.js"
 
-export const subtitlesFileExtensions = (
-  new Set([
-    ".ass",
-    ".srt",
-  ])
+export const subtitlesFileExtensions = [
+  ".ass",
+  ".srt",
+  ".ssa",
+  ".sup",
+] as const
+
+export const subtitlesFileExtensionSet = (
+  new Set(
+    subtitlesFileExtensions
+  )
 )
 
 export const getIsSubtitlesFile = (
   sourceFilePath: string
 ) => (
-  subtitlesFileExtensions
+  subtitlesFileExtensionSet
   .has(
     extname(
       sourceFilePath

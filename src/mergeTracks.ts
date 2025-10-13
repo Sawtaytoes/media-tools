@@ -26,18 +26,16 @@ import {
 
 import { catchNamedError } from "./catchNamedError.js"
 import { ChaptersXml } from "./ChaptersXml.js"
+import { subtitlesFileExtensionSet } from "./filterIsSubtitlesFile.js"
+import { getFiles } from "./getFiles.js"
+import { getFolder } from "./getFolder.js"
 import { getMediaInfo } from "./getMediaInfo.js"
 import { logInfo } from "./logMessage.js"
-import {
-  fileExtensionsWithSubtitles,
-  mergeSubtitlesMkvMerge,
-} from "./mergeSubtitlesMkvMerge.js"
+import { mergeSubtitlesMkvMerge } from "./mergeSubtitlesMkvMerge.js"
 import {
   parseMediaFileChapterTimestamp,
   convertTimecodeToMilliseconds,
 } from "./parseTimestamps.js"
-import { getFiles } from "./getFiles.js"
-import { getFolder } from "./getFolder.js"
 
 const xmlParser = (
   new XMLParser()
@@ -128,7 +126,7 @@ export const mergeTracks = ({
                     filter((
                       subtitlesFileInfo,
                     ) => (
-                      fileExtensionsWithSubtitles
+                      subtitlesFileExtensionSet
                       .has(
                         extname(
                           subtitlesFileInfo

@@ -15,18 +15,8 @@ import {
 
 export const subtitledFolderName = "SUBTITLED"
 
-export const fileExtensionsWithSubtitles = (
-  new Set([
-    ".ass",
-    ".srt",
-    ".ssa",
-    ".sup",
-  ])
-)
-
 export const mergeSubtitlesMkvMerge = ({
   attachmentFilePaths,
-  // audioLanguage,
   destinationFilePath,
   chaptersFilePath,
   offsetInMilliseconds,
