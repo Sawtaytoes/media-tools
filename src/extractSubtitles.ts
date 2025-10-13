@@ -30,7 +30,6 @@ export const extractSubtitles = ({
   languageCode: Iso6392LanguageCode | "und",
   trackId: number,
 }) => (
-  console.log("\n\n\n-------", subtitleCodecExtension[codec_id]) ||
   of(
     addFolderNameBeforeFilename({
       filePath,
