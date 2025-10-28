@@ -282,6 +282,7 @@ export const hasSurroundSound = ({
                 )
               )
               .concat(
+                " ",
                 (
                   track
                   .Format_AdditionalFeatures
