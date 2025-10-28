@@ -15,6 +15,7 @@ import {
   type AudioTrack,
 } from "./getMediaInfo.js"
 import { getFilesAtDepth } from "./getFilesAtDepth.js"
+import { logInfo } from "./logMessage.js"
 
 export const hasBetterAudio = ({
   isRecursive,
@@ -236,13 +237,11 @@ export const hasBetterAudio = ({
           channelCount,
           track,
         }) => {
-          console
-          .info(
+          logInfo(
             (
               fileInfo
               .fullPath
             ),
-            "\n",
             channelCount,
             track,
           )
