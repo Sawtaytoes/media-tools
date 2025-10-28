@@ -1,4 +1,3 @@
-import { cpus } from "node:os"
 import { dirname } from "node:path"
 import {
   concatAll,
@@ -6,7 +5,7 @@ import {
   filter,
   groupBy,
   map,
-  mergeAll,
+  mergeMap,
   reduce,
   take,
   tap,
@@ -50,7 +49,7 @@ export const hasSurroundSound = ({
         .fullPath
       )
     )),
-    map((
+    mergeMap((
       groupObservable,
     ) => (
       groupObservable
@@ -298,10 +297,6 @@ export const hasSurroundSound = ({
         }),
       )
     )),
-    mergeAll(
-      cpus()
-      .length
-    ),
     catchNamedError(
       hasSurroundSound
     ),
