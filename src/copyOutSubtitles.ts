@@ -3,9 +3,7 @@ import {
   concatMap,
   filter,
   from,
-  ignoreElements,
   map,
-  mergeAll,
   tap,
   toArray,
 } from "rxjs"
@@ -59,9 +57,7 @@ export const copyOutSubtitles = ({
                   track
                   .type
                 )
-                === (
-                  "subtitles"
-                )
+                === "subtitles"
               )
               && (
                 subtitlesLanguage
@@ -71,9 +67,7 @@ export const copyOutSubtitles = ({
                     .properties
                     .language
                   )
-                  === (
-                    subtitlesLanguage
-                  )
+                  === subtitlesLanguage
                 )
                 : true
               )

@@ -1,12 +1,7 @@
 import {
-  execFile as execFileCallback,
-} from "node:child_process"
+  spawn,
+} from "node:child_process";
 import {
-  promisify,
-} from "node:util"
-import {
-  defer,
-  from,
   map,
   Observable,
 } from "rxjs"
@@ -87,56 +82,6 @@ export type MkvInfo = {
   warnings: any[]
 }
 
-const execFile = (
-  promisify(
-    execFileCallback
-  )
-)
-
-type ExecFileParameters = (
-  Parameters<
-    typeof execFile
-  >
-)
-
-export const createExecFileObservable = ({
-  appExecutablePath,
-  args,
-  options,
-}: {
-  appExecutablePath: ExecFileParameters[0]
-  args: ExecFileParameters[1]
-  options?: ExecFileParameters[2]
-}) => (
-  from(
-    execFile(
-      appExecutablePath,
-      args,
-      options,
-    )
-  )
-  .pipe(
-    map(({
-      stderr,
-      stdout,
-    }) => {
-      if (
-        stderr
-      ) {
-        throw (
-          stderr
-          .toString()
-        )
-      }
-
-      return (
-        stdout
-        .toString()
-      )
-    }),
-  )
-)
-
 export const getMkvInfo = (
   filePath: string,
 ): (
@@ -144,18 +89,186 @@ export const getMkvInfo = (
     MkvInfo
   >
 ) => (
-  defer(() => (
-    createExecFileObservable({
-      appExecutablePath: mkvMergePath,
-      args: [
-        "--identification-format",
-        "json",
+  new Observable<
+    string
+  >((
+    observer,
+  ) => {
+    const commandArgs = [
+      "--identification-format",
+      "json",
 
-        "--identify",
-        `${filePath}`,
-      ],
-    })
-  ))
+      "--identify",
+      `${filePath}`,
+    ]
+
+    console
+    .info(
+      (
+        [mkvMergePath]
+        .concat(
+          commandArgs
+        )
+      ),
+      "\n",
+    )
+
+    const childProcess = (
+      spawn(
+        mkvMergePath,
+        commandArgs,
+      )
+    )
+
+    const chunks: Uint8Array[] = []
+
+    childProcess
+    .stdout
+    .on(
+      'data',
+      (
+        chunk: Uint8Array,
+      ) => {
+        chunks
+        .push(
+          chunk
+        )
+      },
+    )
+
+    childProcess
+    .stderr
+    .on(
+      'data',
+      (
+        error,
+      ) => {
+        console
+        .error(
+          error
+          .toString()
+        )
+
+        observer
+        .error(
+          error
+        )
+      },
+    )
+
+    childProcess
+    .on(
+      'close',
+      (
+        code,
+      ) => {
+        (
+          (
+            code
+            === null
+          )
+          ? (
+            setTimeout(
+              () => {
+                process
+                .exit()
+              },
+              500,
+            )
+          )
+          : (
+            Promise
+            .resolve()
+          )
+        )
+      },
+    )
+
+    childProcess
+    .on(
+      'exit',
+      (
+        code,
+      ) => {
+        if (
+          code
+          === 0
+        ) {
+          const bufferOutput = (
+            Buffer
+            .concat(
+              chunks
+            )
+            .toString(
+              "utf8"
+            )
+          )
+
+          observer
+          .next(
+            bufferOutput
+            .replace(
+              /("codec_private_data"\s*:\s*)"[^"]*"/g,
+              '$1""',
+            )
+          )
+        }
+
+        observer
+        .complete()
+
+        process
+        .stdin
+        .setRawMode(
+          false
+        )
+      },
+    )
+
+    process
+    .stdin
+    .setRawMode(
+      true
+    )
+
+    process
+    .stdin
+    .resume()
+
+    process
+    .stdin
+    .setEncoding(
+      'utf8'
+    )
+
+    process
+    .stdin
+    .on(
+      'data',
+      (
+        key,
+      ) => {
+        // [CTRL][C]
+        if (
+          (
+            key
+            .toString()
+          )
+          === "\u0003"
+        ) {
+          childProcess
+          .kill()
+        }
+
+        process
+        .stdout
+        .write(
+          key
+          .toString()
+        )
+      }
+    )
+  })
   .pipe(
     map((
       mkvInfoJsonString,
