@@ -1,50 +1,44 @@
-import pty from "@lydell/node-pty" // TODO: Potentially change this to node-pty for Linux and install from `Dockerfile`.
-import express from "express"
-import http from "node:http"
+import pty from "@lydell/node-pty"
+import { serve } from "@hono/node-server"
+import { serveStatic } from "@hono/node-server/serve-static"
+import { Hono } from "hono"
 import os from "node:os"
-import path from "node:path"
 import { Server } from "socket.io"
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+const app = new Hono()
 
-// Serve static files from the 'public' directory
-app.use(express.static(path.join(import.meta.dirname, "..", 'public')));
+app.use("/*", serveStatic({ root: "./public" }))
 
-io.on('connection', (socket) => {
-  console.log('A user connected');
+const PORT = Number(process.env.PORT ?? 3000)
 
-  // Determine the shell based on the operating system
-  const shell = os.platform() === 'win32' ? 'powershell.exe' : 'bash';
+// serve() returns an http.Server — Socket.IO attaches its WebSocket upgrade
+// handler after the fact, which works fine even on an already-listening server.
+const server = serve({ fetch: app.fetch, port: PORT })
+const io = new Server(server)
 
-  // Spawn a new pseudo-terminal
+io.on("connection", (socket) => {
+  console.log("A user connected")
+
+  const shell = os.platform() === "win32" ? "powershell.exe" : "bash"
+
   const ptyProcess = pty.spawn(shell, [], {
-    name: 'xterm-color',
     cols: 80,
-    rows: 30,
     cwd: process.env.HOME,
-    env: process.env,
-  });
+    env: process.env as Record<string, string>,
+    name: "xterm-color",
+    rows: 30,
+  })
 
-  // Relay data from the terminal to the client
-  ptyProcess.on('data', (data) => {
-    socket.emit('output', data);
-  });
+  ptyProcess.onData((data) => {
+    socket.emit("output", data)
+  })
 
-  // Relay data from the client to the terminal
-  socket.on('input', (input) => {
-    ptyProcess.write(input);
-  });
+  socket.on("input", (input) => {
+    ptyProcess.write(input)
+  })
 
-  // Handle disconnection
-  socket.on('disconnect', () => {
-    ptyProcess.kill();
-    console.log('User disconnected');
-  });
-});
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+  socket.on("disconnect", () => {
+    ptyProcess.kill()
+    console.log("User disconnected")
+  })
+})

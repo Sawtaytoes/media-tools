@@ -4,6 +4,8 @@ import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
 
 import { changeTrackLanguages } from "./changeTrackLanguages.js"
+import { copyFiles } from "./copyFiles.js"
+import { moveFiles } from "./moveFiles.js"
 import { copyOutSubtitles } from "./copyOutSubtitles.js"
 import { fixIncorrectDefaultTracks } from "./fixIncorrectDefaultTracks.js"
 import { getAudioOffsets } from "./getAudioOffsets.js"
@@ -2196,6 +2198,100 @@ yargs(
       threadCount: (
         argv
         .threads
+      ),
+    })
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
+  }
+)
+.command(
+  "copyFiles <sourcePath> <destinationPath>",
+  "Copy all files from one directory to another. Does not recurse into subdirectories. Useful for copying modified files back after commands like keepLanguages or reorderTracks create a subdirectory (e.g. LANGUAGE-TRIMMED) with the results.",
+  (
+    yargs,
+  ) => (
+    yargs
+    .example(
+      "$0 copyFiles \"/work/LANGUAGE-TRIMMED\" \"/work\"",
+      "Copies all files from the LANGUAGE-TRIMMED output directory back into the work directory, overwriting originals."
+    )
+    .positional(
+      "sourcePath",
+      {
+        demandOption: true,
+        describe: "Directory to copy files from.",
+        type: "string",
+      },
+    )
+    .positional(
+      "destinationPath",
+      {
+        demandOption: true,
+        describe: "Directory to copy files into. Created if it does not already exist.",
+        type: "string",
+      },
+    )
+  ),
+  (argv) => {
+    copyFiles({
+      destinationPath: (
+        argv
+        .destinationPath
+      ),
+      sourcePath: (
+        argv
+        .sourcePath
+      ),
+    })
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
+  }
+)
+.command(
+  "moveFiles <sourcePath> <destinationPath>",
+  "Copy all files from one directory to another, then delete the source directory. Equivalent to copyFiles followed by deleting the source. Useful when you want to clean up the output subdirectory after copying results back.",
+  (
+    yargs,
+  ) => (
+    yargs
+    .example(
+      "$0 moveFiles \"/work/LANGUAGE-TRIMMED\" \"/work\"",
+      "Copies all files from LANGUAGE-TRIMMED into the work directory, then deletes the LANGUAGE-TRIMMED directory."
+    )
+    .positional(
+      "sourcePath",
+      {
+        demandOption: true,
+        describe: "Directory to move files from. Deleted after all files are copied.",
+        type: "string",
+      },
+    )
+    .positional(
+      "destinationPath",
+      {
+        demandOption: true,
+        describe: "Directory to move files into. Created if it does not already exist.",
+        type: "string",
+      },
+    )
+  ),
+  (argv) => {
+    moveFiles({
+      destinationPath: (
+        argv
+        .destinationPath
+      ),
+      sourcePath: (
+        argv
+        .sourcePath
       ),
     })
     .subscribe(() => {
