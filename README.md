@@ -1,90 +1,211 @@
 # Media File Tools
 
-## Special Features File Naming
+A Node.js toolkit for batch media file operations: MKV track manipulation, file renaming, subtitle merging, IVTC, aspect ratio analysis, and more. Ships as both a **CLI** and a **REST API**.
 
-This package renames a folder of ripped disc special features using timecodes from [dvdcompare.net](https://dvdcompare.net).
+---
 
-### Installation
+## Prerequisites
 
-You'll need Python 3, Node.js, and Yarn.
+- **Node.js** 22+
+- **Yarn** 4+
+- **Python 3** (for some legacy helpers)
+- External binaries on `PATH`: `mkvtoolnix`, `ffmpeg`, `mediainfo`
+
+## Installation
 
 ```sh
-pip install -r installed_packages.txt --target .venv
 yarn install
-yarn dlx @yarnpkg/sdks vscode
+yarn dlx @yarnpkg/sdks vscode   # one-time VS Code SDK setup
 ```
 
-### Update
+Copy `.env.example` to `.env` if environment variables are needed (e.g. `PORT`).
+
+---
+
+## CLI
+
+Run any command through the `yarn media` script:
 
 ```sh
-yarn set version stable
+yarn media <command> [options]
+yarn media --help                  # list all commands
+yarn media <command> --help        # options for a specific command
 ```
 
-### Usage
+### Commands
 
-```sh
-yarn media --help
+| Command | Syntax | Description |
+|---|---|---|
+| `changeTrackLanguages` | `<sourcePath>` | Change the language tag on video, audio, or subtitle tracks. Useful when tracks were mislabelled (e.g. English subs marked as Japanese). |
+| `copyFiles` | `<sourcePath> <destinationPath>` | Copy all files from one directory into another. Does not recurse. Handy for moving processed files (e.g. from a `LANGUAGE-TRIMMED` output dir) back to the original. |
+| `copyOutSubtitles` | `<sourcePath>` | Extract subtitle tracks into separate files alongside each video file. |
+| `fixIncorrectDefaultTracks` | `<sourcePath>` | Set the first track of each type (video/audio/subs) as the default and unset all others. |
+| `getAudioOffsets` | `<sourceFilesPath> <destinationFilesPath>` | Print the audio offset between matching files in two directories. |
+| `hasBetterAudio` | `<sourcePath>` | List files where a higher channel-count audio track is not first. |
+| `hasBetterVersion` | `<sourcePath>` | List Ultra HD Blu-ray releases where a better version exists (sourced from criterionforum.org). |
+| `hasDuplicateMusicFiles` | `<sourcePath>` | List directories containing duplicate music files (same name, different format, or `(2)`/` - Copy` copies). |
+| `hasImaxEnhancedAudio` | `<sourcePath>` | List files that contain an IMAX Enhanced audio track. |
+| `hasManyAudioTracks` | `<sourcePath>` | List files with more than one audio track. |
+| `hasSurroundSound` | `<sourcePath>` | List files with audio channel counts above 2. |
+| `hasWrongDefaultTrack` | `<sourcePath>` | List files where the default audio or subtitle track is not the first track. |
+| `inverseTelecineDiscRips` | `<sourcePath>` | Re-encode the video track to convert 60i disc rips back to 24p (IVTC). SDR, 8-bit, native 24fps sources only. |
+| `isMissingSubtitles` | `<sourcePath>` | List files and folders that have no subtitle tracks. |
+| `keepLanguages` | `<sourcePath>` | Remove all audio and subtitle tracks except the specified ISO 639-2 languages. |
+| `mergeOrderedChapters` | `<sourcePath> [introFilename] [outroFilename]` | Merge files that use ordered chapters with a shared intro/outro into self-contained files. Requires PCM audio (convert FLAC first). |
+| `mergeTracks` | `<subtitlesPath> <mediaFilesPath> [offsets...]` | Add subtitle tracks (and optionally chapters) from a matching directory into media files. |
+| `moveFiles` | `<sourcePath> <destinationPath>` | Copy all files to a destination then delete the source directory. Equivalent to `copyFiles` + delete. |
+| `nameAnimeEpisodes` | `<sourcePath> <searchTerm>` | Rename episode files using titles from MyAnimeList. |
+| `nameSpecialFeatures` | `<sourcePath> <url>` | Rename disc special features using timecodes from a dvdcompare.net URL. |
+| `nameTvShowEpisodes` | `<sourcePath> <searchTerm>` | Rename episode files using titles from TVDB. |
+| `renameDemos` | `<sourcePath>` | Rename demo files to the standard format (see [Demo file format](#demo-file-format)). |
+| `renameMovieClipDownloads` | `<sourcePath>` | Rename TomSawyer AVSForums movie clips to the demo format. |
+| `reorderTracks` | `<sourcePath>` | Reorder video, audio, or subtitle tracks by index. |
+| `replaceAttachments` | `<sourceFilesPath> <destinationFilesPath>` | Copy font/attachment files from source MKVs into matching destination MKVs. |
+| `replaceFlacWithPcmAudio` | `<sourcePath>` | Convert FLAC audio tracks to PCM at the same bit depth. |
+| `replaceTracks` | `<sourceFilesPath> <destinationFilesPath> [offsets...]` | Replace audio, subtitle, or chapter tracks in destination files with tracks from matching source files. |
+| `setDisplayWidth` | `<sourcePath>` | Override the display width (DAR) of video files. Useful for correcting 4:3 vs 16:9 on anamorphic DVD rips. |
+| `splitChapters` | `<sourcePath> <chapterSplits...>` | Split a large file into separate files at given chapter boundaries. Useful for disc rips that contain multiple episodes. |
+| `storeAspectRatioData` | `<sourcePath> [folders...]` | Scan media files and write their internal crop/aspect ratio data to a JSON file. |
+
+### Common options
+
+Most commands support:
+
+| Option | Alias | Description |
+|---|---|---|
+| `--recursive` | `-r` | Recurse into subdirectories. |
+| `--recursiveDepth N` | `-d N` | Limit recursion to N levels deep (use with `-r`). |
+
+Language options accept [ISO 639-2](https://en.wikipedia.org/wiki/List_of_ISO_639-2_codes) three-letter codes (e.g. `eng`, `jpn`, `fra`).
+
+### Demo file format
+
+`renameDemos` and related commands produce filenames following this pattern:
+
+```
+<Title> (<Year>) [<Scene>] {<Resolution> [<AspectRatio>] <DynamicRange> & <AudioFormat>}
 ```
 
-### Compile for Windows
+Examples:
 
-This command creates an executable for Windows:
+- `Ford v Ferrari (2019) [Broken Brakes] {4K HDR10 & Dolby Atmos TrueHD}`
+- `Pink Floyd - The Dark Side Of The Moon - Any Colour You Like {FHD SDR & Dolby Atmos TrueHD}`
+- `[Dolby] Argon {SD SDR & Dolby Digital 5.1}`
+
+### Build a standalone Windows executable
 
 ```sh
 yarn sea
 ```
 
-## Demo Media File Naming
+Output: `dist/media-tools.exe`
 
-Rename demo media files with the correct video and audio codecs used by inspecting each individual file.
+---
 
-This is useful when bringing down a load of demo files which may or may not be correctly named.
+## REST API
 
-Demo files need their names done a certain way. Once that's done, this library can take over the rest.
+The API runs long-running commands as background **jobs** and streams their output over SSE.
 
-Examples of demo filenames:
-
-- Movie Demo ➡️ `Ford v Ferrari (2019) [1st Miles Race] {FHD 2.39 SDR & DTS-ES MA Matrix 6.1}`
-- Movie Demo ➡️ `Ford v Ferrari (2019) [Broken Brakes] {4K HDR10 & Dolby Atmos TrueHD}`
-- Music Video ➡️ `Pink Floyd - The Dark Side Of The Moon - Any Colour You Like {FHD SDR & Dolby Atmos TrueHD}`
-- Music Video ➡️ `Queen - I Want It All {SD SDR & DTS 96-24 5.1}`
-- Technology Demo ➡️ `[Dolby] Argon {SD SDR & Dolby Digital 5.1}`
-- Technology Demo ➡️ `[LG] Cymatic Jazz {4K HLG & AAC 2.0}`
-
-### Usage
+### Start the server
 
 ```sh
-yarn nameDemoFiles FOLDER_LOCATION
+tsx src/api.ts               # default port 3000
+PORT=8080 tsx src/api.ts     # custom port
 ```
 
-- `FOLDER_LOCATION`: The absolute path of the directory with your demo media.
+### Job lifecycle
 
-#### EXAMPLE
+1. `POST /jobs/<command>` — creates a job, starts it immediately, returns `{ jobId, logsUrl }` with HTTP 202.
+2. `GET /jobs/:id/logs` — SSE stream. Each event is JSON:
+   - `{ "line": "..." }` — a log line from stdout/stderr.
+   - `{ "done": true, "status": "completed" | "failed" }` — terminal event.
+3. `GET /jobs/:id` — poll job state at any time.
+
+### Endpoints
+
+#### Job management
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/jobs` | List all jobs (logs excluded from response). |
+| `GET` | `/jobs/:id` | Get a single job including its buffered logs. |
+| `GET` | `/jobs/:id/logs` | SSE stream of log lines and a final done event. |
+
+#### Job commands
+
+All commands are started with `POST`. The body is JSON. `sourcePath` is required for all commands that take it.
+
+| Path | Required body fields | Optional body fields |
+|---|---|---|
+| `POST /jobs/changeTrackLanguages` | `sourcePath` | `audioLanguage`, `subtitlesLanguage`, `videoLanguage`, `isRecursive` |
+| `POST /jobs/copyFiles` | `sourcePath`, `destinationPath` | — |
+| `POST /jobs/fixIncorrectDefaultTracks` | `sourcePath` | `isRecursive` |
+| `POST /jobs/hasBetterAudio` | `sourcePath` | `isRecursive`, `recursiveDepth` |
+| `POST /jobs/hasBetterVersion` | `sourcePath` | `isRecursive`, `recursiveDepth` |
+| `POST /jobs/hasDuplicateMusicFiles` | `sourcePath` | `isRecursive`, `recursiveDepth` |
+| `POST /jobs/hasImaxEnhancedAudio` | `sourcePath` | `isRecursive` |
+| `POST /jobs/hasManyAudioTracks` | `sourcePath` | `isRecursive` |
+| `POST /jobs/hasSurroundSound` | `sourcePath` | `isRecursive`, `recursiveDepth` |
+| `POST /jobs/hasWrongDefaultTrack` | `sourcePath` | `isRecursive` |
+| `POST /jobs/isMissingSubtitles` | `sourcePath` | `isRecursive` |
+| `POST /jobs/keepLanguages` | `sourcePath` | `audioLanguages[]`, `subtitlesLanguages[]`, `useFirstAudioLanguage`, `useFirstSubtitlesLanguage`, `isRecursive` |
+| `POST /jobs/mergeTracks` | `subtitlesPath`, `mediaFilesPath` | `offsets[]`, `automaticOffset`, `globalOffset`, `includeChapters` |
+| `POST /jobs/moveFiles` | `sourcePath`, `destinationPath` | — |
+| `POST /jobs/nameAnimeEpisodes` | `sourcePath`, `searchTerm` | `seasonNumber` |
+| `POST /jobs/nameSpecialFeatures` | `sourcePath`, `url` | `fixedOffset`, `timecodePadding` |
+| `POST /jobs/nameTvShowEpisodes` | `sourcePath`, `searchTerm`, `seasonNumber` | — |
+| `POST /jobs/renameDemos` | `sourcePath` | `isRecursive` |
+| `POST /jobs/renameMovieClipDownloads` | `sourcePath` | — |
+| `POST /jobs/reorderTracks` | `sourcePath` | `audioTrackIndexes[]`, `subtitlesTrackIndexes[]`, `videoTrackIndexes[]`, `isRecursive` |
+| `POST /jobs/replaceAttachments` | `sourceFilesPath`, `destinationFilesPath` | — |
+| `POST /jobs/replaceFlacWithPcmAudio` | `sourcePath` | `isRecursive` |
+| `POST /jobs/replaceTracks` | `sourceFilesPath`, `destinationFilesPath` | `audioLanguages[]`, `subtitlesLanguages[]`, `videoLanguages[]`, `offsets[]`, `automaticOffset`, `globalOffset`, `includeChapters` |
+| `POST /jobs/setDisplayWidth` | `sourcePath` | `displayWidth` (default 853), `isRecursive`, `recursiveDepth` |
+| `POST /jobs/splitChapters` | `sourcePath`, `chapterSplits[]` | — |
+| `POST /jobs/storeAspectRatioData` | `sourcePath` | `folders[]`, `force`, `isRecursive`, `recursiveDepth`, `outputPath`, `rootPath`, `threads` |
+
+> **Not yet available via API:** `copyOutSubtitles`, `getAudioOffsets`, `inverseTelecineDiscRips`, `mergeOrderedChapters`.
+
+#### Example: start a job and stream its logs
 
 ```sh
-yarn nameDemoFiles 'G:\Movie-Demos'
+# Start the job
+curl -s -X POST http://localhost:3000/jobs/keepLanguages \
+  -H "Content-Type: application/json" \
+  -d '{"sourcePath":"/media/anime","audioLanguages":["jpn"],"subtitlesLanguages":["eng"],"isRecursive":true}' \
+| jq
+# → { "jobId": "abc-123", "logsUrl": "/jobs/abc-123/logs" }
+
+# Stream the output
+curl -s http://localhost:3000/jobs/abc-123/logs
+# data: {"line":"Processing file.mkv..."}
+# data: {"line":"Done."}
+# data: {"done":true,"status":"completed"}
 ```
 
-## Anime File Naming
+### Job object shape
 
-Rename anime media files ripped from discs.
+```json
+{
+  "id": "abc-123",
+  "command": "keepLanguages",
+  "params": { "sourcePath": "/media/anime", "..." : "..." },
+  "status": "pending | running | completed | failed",
+  "logs": ["line 1", "line 2"],
+  "startedAt": "2026-01-01T00:00:00.000Z",
+  "completedAt": "2026-01-01T00:01:00.000Z",
+  "error": null
+}
+```
 
-### Usage
+---
 
-> Many anime come on multiple disc, so it requires a bit of manual work to get this setup.
-
-Make sure you only put episodes in this directory and that, when ordered alphabetically, they're in episode-order. Then the tool can take over the rest of the work.
+## Development
 
 ```sh
-yarn start FOLDER_LOCATION SEASON_NUMBER SEARCH_TERM
+yarn test          # run all tests (vitest)
+yarn typecheck     # TypeScript type check without emitting
+yarn build         # bundle CLI to build/media-tools.cjs (used by `yarn sea`)
 ```
 
-- `FOLDER_LOCATION`: The absolute path of the directory with your demo media.
-- `SEASON_NUMBER` (optional & default `1`): If you do use Seasons, this should be set to the correct season number. With Absolute Series Scanner and HamaTV, they usually want `1` because they uses Collections rather than actual Seasons.
-- `SEARCH_TERM` (optional): Optional helper text if the filename can't be matched. This is useful when the list of 10 anime doesn't include the one you're renaming.
-
-#### EXAMPLE
-
-```sh
-yarn start 'G:\Disc-Rips\One Punch Man- Season 2 Disc 1'
-```
+Tests live next to their source files (`foo.ts` → `foo.test.ts`). The filesystem is globally mocked with `memfs` in tests — see `vitest.setup.ts`.
