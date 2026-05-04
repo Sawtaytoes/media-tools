@@ -12,10 +12,11 @@ import {
 } from "rxjs";
 
 import { addFolderNameBeforeFilename } from "./addFolderNameBeforeFilename.js";
+import { REORDERED_TRACKS_FOLDER_NAME } from "./outputFolderNames.js"
 import { runFfmpeg } from "./runFfmpeg.js";
 import { makeDirectory } from "./makeDirectory.js";
 
-export const reorderedTracksPath = "REORDERED-TRACKS" as const
+export const reorderedTracksPath = REORDERED_TRACKS_FOLDER_NAME
 
 export type AudioTrackInfo = {
   audioTrackIndex: number
@@ -25,11 +26,13 @@ export type AudioTrackInfo = {
 export const reorderTracksFfmpeg = ({
   audioTrackIndexes,
   filePath,
+  outputFolderName = reorderedTracksPath,
   subtitlesTrackIndexes,
   videoTrackIndexes,
 }: {
   audioTrackIndexes: number[]
   filePath: string
+  outputFolderName?: string
   subtitlesTrackIndexes: number[]
   videoTrackIndexes: number[]
 }) => {
@@ -61,7 +64,7 @@ export const reorderTracksFfmpeg = ({
     of(
       addFolderNameBeforeFilename({
         filePath,
-        folderName: reorderedTracksPath,
+        folderName: outputFolderName,
       })
     )
     .pipe(

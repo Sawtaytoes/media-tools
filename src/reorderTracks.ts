@@ -9,22 +9,36 @@ import {
 import { catchNamedError } from "./catchNamedError.js"
 import { filterIsVideoFile } from "./filterIsVideoFile.js"
 import { getFilesAtDepth } from "./getFilesAtDepth.js"
+import { REORDERED_TRACKS_FOLDER_NAME } from "./outputFolderNames.js"
 import { reorderTracksFfmpeg } from "./reorderTracksFfmpeg.js"
 import { setOnlyFirstTracksAsDefault } from "./setOnlyFirstTracksAsDefault.js"
 
-export const reorderTracks = ({
-  audioTrackIndexes,
-  isRecursive,
-  sourcePath,
-  subtitlesTrackIndexes,
-  videoTrackIndexes,
-}: {
+type ReorderTracksRequiredProps = {
   audioTrackIndexes: number[]
   isRecursive: boolean
   sourcePath: string
   subtitlesTrackIndexes: number[]
   videoTrackIndexes: number[]
-}) => (
+}
+
+type ReorderTracksOptionalProps = {
+  outputFolderName?: string
+}
+
+export type ReorderTracksProps = ReorderTracksRequiredProps & ReorderTracksOptionalProps
+
+const reorderTracksDefaultProps = {
+  outputFolderName: REORDERED_TRACKS_FOLDER_NAME,
+} satisfies ReorderTracksOptionalProps
+
+export const reorderTracks = ({
+  audioTrackIndexes,
+  isRecursive,
+  outputFolderName = reorderTracksDefaultProps.outputFolderName,
+  sourcePath,
+  subtitlesTrackIndexes,
+  videoTrackIndexes,
+}: ReorderTracksProps) => (
   getFilesAtDepth({
     depth: (
       isRecursive
@@ -45,6 +59,7 @@ export const reorderTracks = ({
             fileInfo
             .fullPath
           ),
+          outputFolderName,
           subtitlesTrackIndexes,
           videoTrackIndexes,
         })
@@ -73,10 +88,6 @@ export const reorderTracks = ({
     )),
     concatAll(),
     toArray(),
-    tap(() => {
-      process
-      .exit()
-    }),
     catchNamedError(
       reorderTracks
     ),

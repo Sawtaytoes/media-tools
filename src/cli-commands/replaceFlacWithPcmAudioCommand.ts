@@ -1,6 +1,7 @@
-import type { Argv, CommandBuilder, CommandModule } from "yargs"
+﻿import type { Argv, CommandBuilder, CommandModule } from "yargs"
 
 import { replaceFlacWithPcmAudio } from "../replaceFlacWithPcmAudio.js"
+import { subscribeCli } from "../subscribeCli.js"
 
 type InferArgvOptions<T> = T extends Argv<infer U> ? U : never
 
@@ -54,11 +55,6 @@ export const replaceFlacWithPcmAudioCommand: CommandModule<{}, Args> = {
         .sourcePath
       ),
     })
-    .subscribe(() => {
-      console
-      .timeEnd(
-        "Command Runtime"
-      )
-    })
+    .subscribe(subscribeCli())
   },
 }

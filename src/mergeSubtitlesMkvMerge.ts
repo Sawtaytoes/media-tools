@@ -8,18 +8,20 @@ import {
 } from "rxjs";
 
 import { type Iso6392LanguageCode } from "./iso6392LanguageCodes.js"
+import { SUBTITLED_FOLDER_NAME } from "./outputFolderNames.js"
 import { runMkvMerge } from "./runMkvMerge.js";
 import {
   defineLanguageForUndefinedTracks,
 } from "./defineLanguageForUndefinedTracks.js";
 
-export const subtitledFolderName = "SUBTITLED" as const
+export const subtitledFolderName = SUBTITLED_FOLDER_NAME
 
 export const mergeSubtitlesMkvMerge = ({
   attachmentFilePaths,
   destinationFilePath,
   chaptersFilePath,
   offsetInMilliseconds,
+  outputFolderName = subtitledFolderName,
   subtitlesFilesPaths,
   subtitlesLanguage,
 }: {
@@ -27,6 +29,7 @@ export const mergeSubtitlesMkvMerge = ({
   destinationFilePath: string,
   chaptersFilePath?: string,
   offsetInMilliseconds?: number,
+  outputFolderName?: string,
   subtitlesFilesPaths: string[],
   subtitlesLanguage: Iso6392LanguageCode,
 }) => (
@@ -90,7 +93,7 @@ export const mergeSubtitlesMkvMerge = ({
                 destinationFilePath
               )
             ),
-            subtitledFolderName,
+            outputFolderName,
           )
         ),
       )
@@ -114,7 +117,7 @@ export const mergeSubtitlesMkvMerge = ({
                     destinationFilePath
                   )
                 ),
-                subtitledFolderName,
+                outputFolderName,
               )
             ),
           )

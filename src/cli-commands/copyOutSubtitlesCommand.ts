@@ -1,6 +1,7 @@
-import type { Argv, CommandBuilder, CommandModule } from "yargs"
+﻿import type { Argv, CommandBuilder, CommandModule } from "yargs"
 
 import { copyOutSubtitles } from "../copyOutSubtitles.js"
+import { subscribeCli } from "../subscribeCli.js"
 import {
   iso6392LanguageCodes,
   type Iso6392LanguageCode,
@@ -68,11 +69,6 @@ export const copyOutSubtitlesCommand: CommandModule<{}, Args> = {
         .subtitlesLanguage as Iso6392LanguageCode
       ),
     })
-    .subscribe(() => {
-      console
-      .timeEnd(
-        "Command Runtime"
-      )
-    })
+    .subscribe(subscribeCli())
   },
 }

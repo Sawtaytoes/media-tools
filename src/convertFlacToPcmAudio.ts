@@ -12,9 +12,10 @@ import {
 } from "rxjs";
 
 import { addFolderNameBeforeFilename } from "./addFolderNameBeforeFilename.js";
+import { AUDIO_CONVERTED_FOLDER_NAME } from "./outputFolderNames.js"
 import { runFfmpeg } from "./runFfmpeg.js";
 
-export const convertedPath = "AUDIO-CONVERTED" as const
+export const convertedPath = AUDIO_CONVERTED_FOLDER_NAME
 
 export type AudioTrackInfo = {
   audioTrackIndex: number
@@ -24,14 +25,16 @@ export type AudioTrackInfo = {
 export const convertFlacToPcmAudio = ({
   audioTrackInfos,
   filePath,
+  outputFolderName = convertedPath,
 }: {
   audioTrackInfos: AudioTrackInfo[],
   filePath: string
+  outputFolderName?: string
 }) => (
   of(
     addFolderNameBeforeFilename({
       filePath,
-      folderName: convertedPath,
+      folderName: outputFolderName,
     })
   )
   .pipe(

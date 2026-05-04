@@ -1,8 +1,9 @@
-import { cpus } from "node:os"
+﻿import { cpus } from "node:os"
 
 import type { Argv, CommandBuilder, CommandModule } from "yargs"
 
 import { storeAspectRatioData } from "../storeAspectRatioData.js"
+import { subscribeCli } from "../subscribeCli.js"
 
 type InferArgvOptions<T> = T extends Argv<infer U> ? U : never
 
@@ -156,11 +157,6 @@ export const storeAspectRatioDataCommand: CommandModule<{}, Args> = {
         .threads
       ),
     })
-    .subscribe(() => {
-      console
-      .timeEnd(
-        "Command Runtime"
-      )
-    })
+    .subscribe(subscribeCli())
   },
 }

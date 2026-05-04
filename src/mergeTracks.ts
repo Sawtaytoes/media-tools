@@ -32,6 +32,7 @@ import { getFolder } from "./getFolder.js"
 import { getMediaInfo } from "./getMediaInfo.js"
 import { logInfo } from "./logMessage.js"
 import { mergeSubtitlesMkvMerge } from "./mergeSubtitlesMkvMerge.js"
+import { SUBTITLED_FOLDER_NAME } from "./outputFolderNames.js"
 import {
   parseMediaFileChapterTimestamp,
   convertTimecodeToMilliseconds,
@@ -41,21 +42,37 @@ const xmlParser = (
   new XMLParser()
 )
 
+type MergeTracksRequiredProps = {
+  mediaFilesPath: string
+  offsetsInMilliseconds: number[]
+  subtitlesPath: string
+}
+
+type MergeTracksOptionalProps = {
+  globalOffsetInMilliseconds?: number
+  hasAutomaticOffset?: boolean
+  hasChapters?: boolean
+  outputFolderName?: string
+}
+
+export type MergeTracksProps = MergeTracksRequiredProps & MergeTracksOptionalProps
+
+const mergeTracksDefaultProps = {
+  globalOffsetInMilliseconds: 0,
+  hasAutomaticOffset: false,
+  hasChapters: false,
+  outputFolderName: SUBTITLED_FOLDER_NAME,
+} satisfies MergeTracksOptionalProps
+
 export const mergeTracks = ({
-  globalOffsetInMilliseconds = 0,
-  hasAutomaticOffset = false,
-  hasChapters = false,
+  globalOffsetInMilliseconds = mergeTracksDefaultProps.globalOffsetInMilliseconds,
+  hasAutomaticOffset = mergeTracksDefaultProps.hasAutomaticOffset,
+  hasChapters = mergeTracksDefaultProps.hasChapters,
   mediaFilesPath,
   offsetsInMilliseconds,
+  outputFolderName = mergeTracksDefaultProps.outputFolderName,
   subtitlesPath,
-}: {
-  globalOffsetInMilliseconds?: number
-  hasAutomaticOffset?: boolean,
-  hasChapters?: boolean,
-  mediaFilesPath: string
-  offsetsInMilliseconds: number[],
-  subtitlesPath: string
-}) => (
+}: MergeTracksProps) => (
   combineLatest([
     (
       getFolder({
@@ -386,6 +403,7 @@ export const mergeTracks = ({
                       )
                       : offsetInMilliseconds
                     ),
+                    outputFolderName,
                     subtitlesFilesPaths,
                     subtitlesLanguage: "eng",
                   })
@@ -410,10 +428,6 @@ export const mergeTracks = ({
     )),
     concatAll(),
     toArray(),
-    tap(() => {
-      process
-      .exit()
-    }),
     catchNamedError(
       mergeTracks
     )

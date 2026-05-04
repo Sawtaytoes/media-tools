@@ -3,16 +3,19 @@ import {
   join,
 } from "node:path"
 
+import { SPLITS_FOLDER_NAME } from "./outputFolderNames.js"
 import { runMkvMerge } from "./runMkvMerge.js";
 
-export const splitsFolderName = "SPLITS" as const
+export const splitsFolderName = SPLITS_FOLDER_NAME
 
 export const splitChaptersMkvMerge = ({
   chapterSplits,
   filePath,
+  outputFolderName = splitsFolderName,
 }: {
   chapterSplits: string,
   filePath: string,
+  outputFolderName?: string,
 }) => (
   runMkvMerge({
     args: [
@@ -36,7 +39,7 @@ export const splitChaptersMkvMerge = ({
                 filePath
               )
             ),
-            splitsFolderName,
+            outputFolderName,
           )
         ),
       )

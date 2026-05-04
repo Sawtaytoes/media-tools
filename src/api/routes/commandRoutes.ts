@@ -43,14 +43,14 @@ import { createJob } from "../jobStore.js"
 import { runJob } from "../jobRunner.js"
 import * as schemas from "../schemas.js"
 
-const startJob = <OutputPath extends string | null = null>(
+const startJob = (
   context: Context,
   command: string,
   params: unknown,
   observable: Observable<unknown>,
-  outputPath: OutputPath = null as OutputPath,
+  outputFolderName: string | null = null,
 ) => {
-  const job = createJob(command, params, outputPath)
+  const job = createJob(command, params, outputFolderName)
 
   runJob(job.id, observable)
 
@@ -58,7 +58,7 @@ const startJob = <OutputPath extends string | null = null>(
     {
       jobId: job.id,
       logsUrl: `/jobs/${job.id}/logs`,
-      outputPath,
+      outputFolderName,
     },
     202,
   )
@@ -152,7 +152,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.createJobResponseSchema<typeof extractedSubtitlesFolderName>(),
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -186,7 +186,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.createJobResponseSchema<typeof audioOffsetsFolderName>(),
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -550,7 +550,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.createJobResponseSchema<typeof languageTrimmedFolderName>(),
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -584,7 +584,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.createJobResponseSchema<typeof subtitledFolderName>(),
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -783,7 +783,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.createJobResponseSchema<typeof reorderTracksFolderName>(),
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -817,7 +817,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.createJobResponseSchema<typeof replacedAttachmentsFolderName>(),
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -851,7 +851,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.createJobResponseSchema<typeof audioConvertedFolderName>(),
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -885,7 +885,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.createJobResponseSchema<typeof replacedTracksFolderName>(),
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -962,7 +962,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.createJobResponseSchema<typeof splitsFolderName>(),
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },

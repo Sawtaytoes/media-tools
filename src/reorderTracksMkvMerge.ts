@@ -14,7 +14,9 @@ import {
 import { runMkvMerge } from "./runMkvMerge.js";
 import { addFolderNameBeforeFilename } from "./addFolderNameBeforeFilename.js";
 
-export const reorderTracksFolderName = "REORDERED-TRACKS"
+import { REORDERED_TRACKS_FOLDER_NAME } from "./outputFolderNames.js"
+
+export const reorderTracksFolderName = REORDERED_TRACKS_FOLDER_NAME
 
 export const reorderTracksMkvMerge = ({
   audioTrackIndexes,

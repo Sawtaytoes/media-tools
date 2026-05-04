@@ -1,10 +1,11 @@
-import type { Argv, CommandBuilder, CommandModule } from "yargs"
+﻿import type { Argv, CommandBuilder, CommandModule } from "yargs"
 
 import {
   iso6392LanguageCodes,
   type Iso6392LanguageCode,
 } from "../iso6392LanguageCodes.js"
 import { keepLanguages } from "../keepLanguages.js"
+import { subscribeCli } from "../subscribeCli.js"
 
 type InferArgvOptions<T> = T extends Argv<infer U> ? U : never
 
@@ -122,11 +123,6 @@ export const keepLanguagesCommand: CommandModule<{}, Args> = {
         .subtitlesLanguages as Iso6392LanguageCode[]
       ),
     })
-    .subscribe(() => {
-      console
-      .timeEnd(
-        "Command Runtime"
-      )
-    })
+    .subscribe(subscribeCli())
   },
 }

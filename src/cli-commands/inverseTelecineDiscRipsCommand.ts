@@ -1,6 +1,7 @@
-import type { Argv, CommandBuilder, CommandModule } from "yargs"
+﻿import type { Argv, CommandBuilder, CommandModule } from "yargs"
 
 import { inverseTelecineDiscRips } from "../inverseTelecineDiscRips.js"
+import { subscribeCli } from "../subscribeCli.js"
 import {
   videoEncoderType,
   videoFilterPulldown,
@@ -117,11 +118,6 @@ export const inverseTelecineDiscRipsCommand: CommandModule<{}, Args> = {
         .videoEncoder as VideoEncoder
       ),
     })
-    .subscribe(() => {
-      console
-      .timeEnd(
-        "Command Runtime"
-      )
-    })
+    .subscribe(subscribeCli())
   },
 }

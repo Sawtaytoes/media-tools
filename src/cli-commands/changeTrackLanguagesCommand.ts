@@ -1,6 +1,7 @@
-import type { Argv, CommandBuilder, CommandModule } from "yargs"
+﻿import type { Argv, CommandBuilder, CommandModule } from "yargs"
 
 import { changeTrackLanguages } from "../changeTrackLanguages.js"
+import { subscribeCli } from "../subscribeCli.js"
 import {
   iso6392LanguageCodes,
   type Iso6392LanguageCode,
@@ -101,11 +102,6 @@ export const changeTrackLanguagesCommand: CommandModule<{}, Args> = {
         .videoLanguage as Iso6392LanguageCode | undefined
       ),
     })
-    .subscribe(() => {
-      console
-      .timeEnd(
-        "Command Runtime"
-      )
-    })
+    .subscribe(subscribeCli())
   },
 }

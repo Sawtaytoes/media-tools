@@ -4,18 +4,21 @@ import {
 
 import { catchNamedError } from "./catchNamedError.js"
 import { type Iso6392LanguageCode } from "./iso6392LanguageCodes.js"
+import { LANGUAGE_TRIMMED_FOLDER_NAME } from "./outputFolderNames.js"
 import { runMkvMerge } from "./runMkvMerge.js";
 import { dirname, join } from "node:path";
 
-export const languageTrimmedFolderName = "LANGUAGE-TRIMMED" as const
+export const languageTrimmedFolderName = LANGUAGE_TRIMMED_FOLDER_NAME
 
 export const keepSpecifiedLanguageTracks = ({
   audioLanguages,
   filePath,
+  outputFolderName = languageTrimmedFolderName,
   subtitlesLanguages,
 }: {
   audioLanguages: Iso6392LanguageCode[],
   filePath: string,
+  outputFolderName?: string,
   subtitlesLanguages: Iso6392LanguageCode[],
 }): (
   Observable<
@@ -82,7 +85,7 @@ export const keepSpecifiedLanguageTracks = ({
                   filePath
                 )
               ),
-              languageTrimmedFolderName,
+              outputFolderName,
             )
           ),
         )

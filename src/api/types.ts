@@ -6,7 +6,7 @@ export type Job = {
   error: string | null
   id: string
   logs: string[]
-  outputPath: string | null
+  outputFolderName: string | null
   params: unknown
   results: unknown[]
   startedAt: Date | null

@@ -13,17 +13,31 @@ import { extractSubtitles } from "./extractSubtitles.js"
 import { filterIsVideoFile } from "./filterIsVideoFile.js"
 import { getMkvInfo } from "./getMkvInfo.js"
 import { type Iso6392LanguageCode } from "./iso6392LanguageCodes.js"
+import { EXTRACTED_SUBTITLES_FOLDER_NAME } from "./outputFolderNames.js"
 import { getFilesAtDepth } from "./getFilesAtDepth.js"
 
-export const copyOutSubtitles = ({
-  isRecursive,
-  sourcePath,
-  subtitlesLanguage,
-}: {
+type CopyOutSubtitlesRequiredProps = {
   isRecursive: boolean
   sourcePath: string
   subtitlesLanguage?: Iso6392LanguageCode
-}) => (
+}
+
+type CopyOutSubtitlesOptionalProps = {
+  outputFolderName?: string
+}
+
+export type CopyOutSubtitlesProps = CopyOutSubtitlesRequiredProps & CopyOutSubtitlesOptionalProps
+
+const copyOutSubtitlesDefaultProps = {
+  outputFolderName: EXTRACTED_SUBTITLES_FOLDER_NAME,
+} satisfies CopyOutSubtitlesOptionalProps
+
+export const copyOutSubtitles = ({
+  isRecursive,
+  outputFolderName = copyOutSubtitlesDefaultProps.outputFolderName,
+  sourcePath,
+  subtitlesLanguage,
+}: CopyOutSubtitlesProps) => (
   getFilesAtDepth({
     depth: (
       isRecursive
@@ -96,6 +110,7 @@ export const copyOutSubtitles = ({
                   .properties
                   .language
                 ),
+                outputFolderName,
                 trackId: (
                   (
                     track

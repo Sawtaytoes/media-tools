@@ -12,24 +12,38 @@ import { filterIsVideoFile } from "./filterIsVideoFile.js"
 import { getTrackLanguages } from "./getTrackLanguages.js"
 import { type Iso6392LanguageCode } from "./iso6392LanguageCodes.js"
 import { keepSpecifiedLanguageTracks } from "./keepSpecifiedLanguageTracks.js"
+import { LANGUAGE_TRIMMED_FOLDER_NAME } from "./outputFolderNames.js"
 import { logInfo } from "./logMessage.js"
 import { getFilesAtDepth } from "./getFilesAtDepth.js"
 
-export const keepLanguages = ({
-  audioLanguages: selectedAudioLanguages,
-  isRecursive,
-  hasFirstAudioLanguage,
-  hasFirstSubtitlesLanguage,
-  sourcePath,
-  subtitlesLanguages: selectedSubtitlesLanguages,
-}: {
+type KeepLanguagesRequiredProps = {
   audioLanguages: Iso6392LanguageCode[]
   hasFirstAudioLanguage: boolean
   hasFirstSubtitlesLanguage: boolean
   isRecursive: boolean
   sourcePath: string
   subtitlesLanguages: Iso6392LanguageCode[]
-}) => (
+}
+
+type KeepLanguagesOptionalProps = {
+  outputFolderName?: string
+}
+
+export type KeepLanguagesProps = KeepLanguagesRequiredProps & KeepLanguagesOptionalProps
+
+const keepLanguagesDefaultProps = {
+  outputFolderName: LANGUAGE_TRIMMED_FOLDER_NAME,
+} satisfies KeepLanguagesOptionalProps
+
+export const keepLanguages = ({
+  audioLanguages: selectedAudioLanguages,
+  isRecursive,
+  hasFirstAudioLanguage,
+  hasFirstSubtitlesLanguage,
+  outputFolderName = keepLanguagesDefaultProps.outputFolderName,
+  sourcePath,
+  subtitlesLanguages: selectedSubtitlesLanguages,
+}: KeepLanguagesProps) => (
   getFilesAtDepth({
     depth: (
       isRecursive
@@ -167,6 +181,7 @@ export const keepLanguages = ({
               fileInfo
               .fullPath
             ),
+            outputFolderName,
             subtitlesLanguages: (
               subtitlesLanguagesToKeep
               .filter(
@@ -193,10 +208,6 @@ export const keepLanguages = ({
     )),
     concatAll(),
     toArray(),
-    tap(() => {
-      process
-      .exit()
-    }),
     catchNamedError(
       keepLanguages
     ),

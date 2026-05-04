@@ -11,15 +11,17 @@ import {
 import { defineLanguageForUndefinedTracks } from "./defineLanguageForUndefinedTracks.js";
 import { getIsVideoFile } from "./filterIsVideoFile.js";
 import { type Iso6392LanguageCode } from "./iso6392LanguageCodes.js"
+import { REPLACED_TRACKS_FOLDER_NAME } from "./outputFolderNames.js"
 import { runMkvMerge } from "./runMkvMerge.js";
 
-export const replacedTracksFolderName = "REPLACED-TRACKS" as const
+export const replacedTracksFolderName = REPLACED_TRACKS_FOLDER_NAME
 
 export const replaceTracksMkvMerge = ({
   audioLanguages,
   destinationFilePath,
   hasChapters,
   offsetInMilliseconds,
+  outputFolderName = replacedTracksFolderName,
   sourceFilePath,
   subtitlesLanguages,
   videoLanguages,
@@ -28,6 +30,7 @@ export const replaceTracksMkvMerge = ({
   destinationFilePath: string
   hasChapters: boolean
   offsetInMilliseconds?: number
+  outputFolderName?: string
   sourceFilePath: string
   subtitlesLanguages: Iso6392LanguageCode[]
   videoLanguages: Iso6392LanguageCode[]
@@ -184,7 +187,7 @@ export const replaceTracksMkvMerge = ({
                         destinationFilePath
                       )
                     ),
-                    replacedTracksFolderName,
+                    outputFolderName,
                   )
                 ),
               )

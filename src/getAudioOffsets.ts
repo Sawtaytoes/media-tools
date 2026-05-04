@@ -11,14 +11,28 @@ import { catchNamedError } from "./catchNamedError.js"
 import { getAudioOffset } from "./getAudioOffset.js"
 import { getFiles } from "./getFiles.js"
 import { logInfo } from "./logMessage.js"
+import { AUDIO_OFFSETS_FOLDER_NAME } from "./outputFolderNames.js"
+
+type GetAudioOffsetsRequiredProps = {
+  destinationFilesPath: string
+  sourceFilesPath: string
+}
+
+type GetAudioOffsetsOptionalProps = {
+  outputFolderName?: string
+}
+
+export type GetAudioOffsetsProps = GetAudioOffsetsRequiredProps & GetAudioOffsetsOptionalProps
+
+const getAudioOffsetsDefaultProps = {
+  outputFolderName: AUDIO_OFFSETS_FOLDER_NAME,
+} satisfies GetAudioOffsetsOptionalProps
 
 export const getAudioOffsets = ({
   destinationFilesPath,
+  outputFolderName = getAudioOffsetsDefaultProps.outputFolderName,
   sourceFilesPath,
-}: {
-  destinationFilesPath: string
-  sourceFilesPath: string
-}) => (
+}: GetAudioOffsetsProps) => (
   getFiles({
     sourcePath: (
       sourceFilesPath
@@ -77,6 +91,7 @@ export const getAudioOffsets = ({
         ) => (
           getAudioOffset({
             destinationFilePath,
+            outputFolderName,
             sourceFilePath,
           })
           .pipe(

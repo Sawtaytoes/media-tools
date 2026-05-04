@@ -9,16 +9,30 @@ import {
 
 import { catchNamedError } from "./catchNamedError.js"
 import { getFiles } from "./getFiles.js"
-import { replaceAttachmentsMkvMerge } from "./replaceAttachmentsMkvMerge.js"
 import { logInfo } from "./logMessage.js"
+import { REPLACED_ATTACHMENTS_FOLDER_NAME } from "./outputFolderNames.js"
+import { replaceAttachmentsMkvMerge } from "./replaceAttachmentsMkvMerge.js"
+
+type ReplaceAttachmentsRequiredProps = {
+  destinationFilesPath: string
+  sourceFilesPath: string
+}
+
+type ReplaceAttachmentsOptionalProps = {
+  outputFolderName?: string
+}
+
+export type ReplaceAttachmentsProps = ReplaceAttachmentsRequiredProps & ReplaceAttachmentsOptionalProps
+
+const replaceAttachmentsDefaultProps = {
+  outputFolderName: REPLACED_ATTACHMENTS_FOLDER_NAME,
+} satisfies ReplaceAttachmentsOptionalProps
 
 export const replaceAttachments = ({
   destinationFilesPath,
+  outputFolderName = replaceAttachmentsDefaultProps.outputFolderName,
   sourceFilesPath,
-}: {
-  destinationFilesPath: string
-  sourceFilesPath: string
-}) => (
+}: ReplaceAttachmentsProps) => (
   getFiles({
     sourcePath: (
       sourceFilesPath
@@ -77,6 +91,7 @@ export const replaceAttachments = ({
         }) => (
           replaceAttachmentsMkvMerge({
             destinationFilePath,
+            outputFolderName,
             sourceFilePath: mediaFilePath,
           })
           .pipe(
@@ -96,10 +111,6 @@ export const replaceAttachments = ({
         )),
         concatAll(),
         toArray(),
-        tap(() => {
-          process
-          .exit()
-        })
       )
     )),
     catchNamedError(

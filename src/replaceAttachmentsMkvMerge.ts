@@ -10,15 +10,18 @@ import {
 } from "rxjs";
 
 import { getIsVideoFile } from "./filterIsVideoFile.js";
+import { REPLACED_ATTACHMENTS_FOLDER_NAME } from "./outputFolderNames.js"
 import { runMkvMerge } from "./runMkvMerge.js";
 
-export const replacedAttachmentsFolderName = "REPLACED-ATTACHMENTS" as const
+export const replacedAttachmentsFolderName = REPLACED_ATTACHMENTS_FOLDER_NAME
 
 export const replaceAttachmentsMkvMerge = ({
   destinationFilePath,
+  outputFolderName = replacedAttachmentsFolderName,
   sourceFilePath,
 }: {
   destinationFilePath: string
+  outputFolderName?: string
   sourceFilePath: string
 }) => (
   of(
@@ -64,7 +67,7 @@ export const replaceAttachmentsMkvMerge = ({
                     destinationFilePath
                   )
                 ),
-                replacedAttachmentsFolderName,
+                outputFolderName,
               )
             ),
           )

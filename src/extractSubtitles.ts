@@ -7,11 +7,12 @@ import {
 
 import { addFolderNameBeforeFilename } from "./addFolderNameBeforeFilename.js";
 import { type Iso6392LanguageCode } from "./iso6392LanguageCodes.js";
+import { EXTRACTED_SUBTITLES_FOLDER_NAME } from "./outputFolderNames.js";
 import { replaceFileExtension } from "./replaceFileExtension.js";
 import { runMkvExtract } from "./runMkvExtract.js";
 import { subtitlesFileExtensions } from "./filterIsSubtitlesFile.js";
 
-export const extractedSubtitlesPath = "EXTRACTED-SUBTITLES" as const
+export const extractedSubtitlesPath = EXTRACTED_SUBTITLES_FOLDER_NAME
 
 export const subtitleCodecExtension = {
   "S_HDMV/PGS": ".sup",
@@ -23,17 +24,19 @@ export const extractSubtitles = ({
   codec_id,
   filePath,
   languageCode,
+  outputFolderName = extractedSubtitlesPath,
   trackId,
 }: {
   codec_id: keyof typeof subtitleCodecExtension
   filePath: string
   languageCode: Iso6392LanguageCode | "und",
+  outputFolderName?: string,
   trackId: number,
 }) => (
   of(
     addFolderNameBeforeFilename({
       filePath,
-      folderName: extractedSubtitlesPath,
+      folderName: outputFolderName,
     })
   )
   .pipe(

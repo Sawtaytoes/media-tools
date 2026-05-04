@@ -18,14 +18,28 @@ import {
 } from "./getMediaInfo.js"
 import { getFilesAtDepth } from "./getFilesAtDepth.js"
 import { logInfo } from "./logMessage.js"
+import { AUDIO_CONVERTED_FOLDER_NAME } from "./outputFolderNames.js"
+
+type ReplaceFlacWithPcmAudioRequiredProps = {
+  isRecursive: boolean
+  sourcePath: string
+}
+
+type ReplaceFlacWithPcmAudioOptionalProps = {
+  outputFolderName?: string
+}
+
+export type ReplaceFlacWithPcmAudioProps = ReplaceFlacWithPcmAudioRequiredProps & ReplaceFlacWithPcmAudioOptionalProps
+
+const replaceFlacWithPcmAudioDefaultProps = {
+  outputFolderName: AUDIO_CONVERTED_FOLDER_NAME,
+} satisfies ReplaceFlacWithPcmAudioOptionalProps
 
 export const replaceFlacWithPcmAudio = ({
   isRecursive,
+  outputFolderName = replaceFlacWithPcmAudioDefaultProps.outputFolderName,
   sourcePath,
-}: {
-  isRecursive: boolean
-  sourcePath: string
-}) => (
+}: ReplaceFlacWithPcmAudioProps) => (
   getFilesAtDepth({
     depth: (
       isRecursive
@@ -104,6 +118,7 @@ export const replaceFlacWithPcmAudio = ({
               fileInfo
               .fullPath
             ),
+            outputFolderName,
           })
         )),
       )
@@ -124,10 +139,6 @@ export const replaceFlacWithPcmAudio = ({
     )),
     concatAll(),
     toArray(),
-    tap(() => {
-      process
-      .exit()
-    }),
     catchNamedError(
       replaceFlacWithPcmAudio
     ),

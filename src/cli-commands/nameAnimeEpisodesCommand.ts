@@ -1,7 +1,8 @@
-import { toArray } from "rxjs"
+﻿import { toArray } from "rxjs"
 import type { Argv, CommandBuilder, CommandModule } from "yargs"
 
 import { nameAnimeEpisodes } from "../nameAnimeEpisodes.js"
+import { subscribeCli } from "../subscribeCli.js"
 
 type InferArgvOptions<T> = T extends Argv<infer U> ? U : never
 
@@ -66,11 +67,6 @@ export const nameAnimeEpisodesCommand: CommandModule<{}, Args> = {
     .pipe(
       toArray(),
     )
-    .subscribe(() => {
-      console
-      .timeEnd(
-        "Command Runtime"
-      )
-    })
+    .subscribe(subscribeCli())
   },
 }

@@ -1,6 +1,7 @@
 import type { Argv, CommandBuilder, CommandModule } from "yargs"
 
 import { hasSurroundSound } from "../hasSurroundSound.js"
+import { subscribeCli } from "../subscribeCli.js"
 
 type InferArgvOptions<T> = T extends Argv<infer U> ? U : never
 
@@ -69,13 +70,6 @@ export const hasSurroundSoundCommand: CommandModule<{}, Args> = {
         .sourcePath
       ),
     })
-    .subscribe({
-      complete: () => {
-        console
-        .timeEnd(
-          "Command Runtime"
-        )
-      },
-    })
+    .subscribe(subscribeCli())
   },
 }

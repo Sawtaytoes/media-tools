@@ -13,16 +13,30 @@ import { catchNamedError } from "./catchNamedError.js"
 import { filterIsVideoFile } from "./filterIsVideoFile.js"
 import { naturalSort } from "./naturalSort.js"
 import { getFiles } from "./getFiles.js"
-import { splitChaptersMkvMerge } from "./splitChaptersMkvMerge.js"
 import { logInfo } from "./logMessage.js"
+import { SPLITS_FOLDER_NAME } from "./outputFolderNames.js"
+import { splitChaptersMkvMerge } from "./splitChaptersMkvMerge.js"
+
+type SplitChaptersRequiredProps = {
+  chapterSplitsList: string[]
+  sourcePath: string
+}
+
+type SplitChaptersOptionalProps = {
+  outputFolderName?: string
+}
+
+export type SplitChaptersProps = SplitChaptersRequiredProps & SplitChaptersOptionalProps
+
+const splitChaptersDefaultProps = {
+  outputFolderName: SPLITS_FOLDER_NAME,
+} satisfies SplitChaptersOptionalProps
 
 export const splitChapters = ({
   chapterSplitsList,
+  outputFolderName = splitChaptersDefaultProps.outputFolderName,
   sourcePath,
-}: {
-  chapterSplitsList: string[]
-  sourcePath: string
-}) => (
+}: SplitChaptersProps) => (
   getFiles({
     sourcePath,
   })
@@ -65,6 +79,7 @@ export const splitChapters = ({
               fileInfo
               .fullPath
             ),
+            outputFolderName,
           })
           .pipe(
             tap(() => {
@@ -83,10 +98,6 @@ export const splitChapters = ({
         )),
         concatAll(),
         toArray(),
-        tap(() => {
-          process
-          .exit()
-        })
       )
     )),
     catchNamedError(

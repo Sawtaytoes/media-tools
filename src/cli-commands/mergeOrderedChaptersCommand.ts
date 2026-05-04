@@ -1,4 +1,4 @@
-import type { Argv, CommandBuilder, CommandModule } from "yargs"
+﻿import type { Argv, CommandBuilder, CommandModule } from "yargs"
 
 import {
   FALLBACK_INTRO_FILENAME,
@@ -91,11 +91,6 @@ export const mergeOrderedChaptersCommand: CommandModule<{}, Args> = {
         .sourcePath
       ),
     })
-    .subscribe(() => {
-      console
-      .timeEnd(
-        "Command Runtime"
-      )
-    })
+    .subscribe(subscribeCli())
   },
 }

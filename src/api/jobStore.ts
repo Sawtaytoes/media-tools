@@ -20,7 +20,7 @@ export const jobEvents$ = jobSubject.asObservable()
 export const createJob = (
   command: string,
   params: unknown,
-  outputPath: string | null = null,
+  outputFolderName: string | null = null,
 ): Job => {
   const job: Job = {
     command,
@@ -28,7 +28,7 @@ export const createJob = (
     error: null,
     id: randomUUID(),
     logs: [],
-    outputPath,
+    outputFolderName,
     params,
     results: [],
     startedAt: null,
