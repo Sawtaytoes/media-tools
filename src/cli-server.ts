@@ -18,7 +18,7 @@ const server = serve({ fetch: app.fetch, port: CLI_SERVER_PORT })
 const io = new Server(server)
 
 logInfo(
-  "CLI Server listening on port:",
+  "CLI SERVER LISTENING PORT",
   CLI_SERVER_PORT,
 )
 

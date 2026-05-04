@@ -12,7 +12,7 @@ import {
 import { getIsVideoFile } from "./filterIsVideoFile.js";
 import { runMkvMerge } from "./runMkvMerge.js";
 
-export const replacedAttachmentsFolderName = "REPLACED-ATTACHMENTS"
+export const replacedAttachmentsFolderName = "REPLACED-ATTACHMENTS" as const
 
 export const replaceAttachmentsMkvMerge = ({
   destinationFilePath,

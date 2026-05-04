@@ -13,7 +13,7 @@ import { getIsVideoFile } from "./filterIsVideoFile.js";
 import { type Iso6392LanguageCode } from "./iso6392LanguageCodes.js"
 import { runMkvMerge } from "./runMkvMerge.js";
 
-export const replacedTracksFolderName = "REPLACED-TRACKS"
+export const replacedTracksFolderName = "REPLACED-TRACKS" as const
 
 export const replaceTracksMkvMerge = ({
   audioLanguages,

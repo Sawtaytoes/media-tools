@@ -14,7 +14,7 @@ import {
 import { addFolderNameBeforeFilename } from "./addFolderNameBeforeFilename.js";
 import { runFfmpeg } from "./runFfmpeg.js";
 
-export const convertedPath = "AUDIO-CONVERTED"
+export const convertedPath = "AUDIO-CONVERTED" as const
 
 export type AudioTrackInfo = {
   audioTrackIndex: number

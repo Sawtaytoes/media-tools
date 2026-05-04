@@ -13,7 +13,7 @@ import {
   defineLanguageForUndefinedTracks,
 } from "./defineLanguageForUndefinedTracks.js";
 
-export const subtitledFolderName = "SUBTITLED"
+export const subtitledFolderName = "SUBTITLED" as const
 
 export const mergeSubtitlesMkvMerge = ({
   attachmentFilePaths,

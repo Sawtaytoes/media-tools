@@ -11,7 +11,7 @@ import { replaceFileExtension } from "./replaceFileExtension.js";
 import { runMkvExtract } from "./runMkvExtract.js";
 import { subtitlesFileExtensions } from "./filterIsSubtitlesFile.js";
 
-export const extractedSubtitlesPath = "EXTRACTED-SUBTITLES"
+export const extractedSubtitlesPath = "EXTRACTED-SUBTITLES" as const
 
 export const subtitleCodecExtension = {
   "S_HDMV/PGS": ".sup",

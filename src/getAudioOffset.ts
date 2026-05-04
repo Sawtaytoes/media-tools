@@ -9,7 +9,7 @@ import { runFfmpeg } from "./runFfmpeg.js"
 import { getOutputPath } from "./getOutputPath.js"
 import { makeDirectory } from "./makeDirectory.js"
 
-export const audioOffsetsFolderName = "AUDIO-OFFSETS"
+export const audioOffsetsFolderName = "AUDIO-OFFSETS" as const
 
 export const getAudioOffset = ({
   destinationFilePath,

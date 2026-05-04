@@ -7,7 +7,7 @@ import { type Iso6392LanguageCode } from "./iso6392LanguageCodes.js"
 import { runMkvMerge } from "./runMkvMerge.js";
 import { dirname, join } from "node:path";
 
-export const languageTrimmedFolderName = "LANGUAGE-TRIMMED"
+export const languageTrimmedFolderName = "LANGUAGE-TRIMMED" as const
 
 export const keepSpecifiedLanguageTracks = ({
   audioLanguages,

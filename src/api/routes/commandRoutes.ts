@@ -1,6 +1,5 @@
 import { OpenAPIHono, createRoute } from "@hono/zod-openapi"
 import { type Context } from "hono"
-import { join } from "node:path"
 import { type Observable } from "rxjs"
 
 import { changeTrackLanguages } from "../../changeTrackLanguages.js"
@@ -44,12 +43,12 @@ import { createJob } from "../jobStore.js"
 import { runJob } from "../jobRunner.js"
 import * as schemas from "../schemas.js"
 
-const startJob = (
+const startJob = <OutputPath extends string | null = null>(
   context: Context,
   command: string,
   params: unknown,
   observable: Observable<unknown>,
-  outputPath: string | null = null,
+  outputPath: OutputPath = null as OutputPath,
 ) => {
   const job = createJob(command, params, outputPath)
 
@@ -87,7 +86,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -120,7 +119,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -153,7 +152,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema<typeof extractedSubtitlesFolderName>(),
           },
         },
       },
@@ -163,7 +162,7 @@ commandRoutes.openapi(
     const body = context.req.valid("json")
     return startJob(context, "copyOutSubtitles", body,
       copyOutSubtitles({ isRecursive: body.isRecursive, sourcePath: body.sourcePath, subtitlesLanguage: body.subtitlesLanguage }),
-      join(body.sourcePath, extractedSubtitlesFolderName))
+      extractedSubtitlesFolderName)
   },
 )
 
@@ -187,7 +186,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema<typeof audioOffsetsFolderName>(),
           },
         },
       },
@@ -197,7 +196,7 @@ commandRoutes.openapi(
     const body = context.req.valid("json")
     return startJob(context, "getAudioOffsets", body,
       getAudioOffsets({ destinationFilesPath: body.destinationFilesPath, sourceFilesPath: body.sourceFilesPath }),
-      join(body.sourceFilesPath, audioOffsetsFolderName))
+      audioOffsetsFolderName)
   },
 )
 
@@ -221,7 +220,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -254,7 +253,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -287,7 +286,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -320,7 +319,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -353,7 +352,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -386,7 +385,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -419,7 +418,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -452,7 +451,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -485,7 +484,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -518,7 +517,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -551,7 +550,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema<typeof languageTrimmedFolderName>(),
           },
         },
       },
@@ -561,7 +560,7 @@ commandRoutes.openapi(
     const body = context.req.valid("json")
     return startJob(context, "keepLanguages", body,
       keepLanguages({ audioLanguages: body.audioLanguages, hasFirstAudioLanguage: body.useFirstAudioLanguage, hasFirstSubtitlesLanguage: body.useFirstSubtitlesLanguage, isRecursive: body.isRecursive, sourcePath: body.sourcePath, subtitlesLanguages: body.subtitlesLanguages }),
-      join(body.sourcePath, languageTrimmedFolderName))
+      languageTrimmedFolderName)
   },
 )
 
@@ -585,7 +584,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema<typeof subtitledFolderName>(),
           },
         },
       },
@@ -595,7 +594,7 @@ commandRoutes.openapi(
     const body = context.req.valid("json")
     return startJob(context, "mergeTracks", body,
       mergeTracks({ globalOffsetInMilliseconds: body.globalOffset, hasAutomaticOffset: body.automaticOffset, hasChapters: body.includeChapters, mediaFilesPath: body.mediaFilesPath, offsetsInMilliseconds: body.offsets, subtitlesPath: body.subtitlesPath }),
-      join(body.mediaFilesPath, subtitledFolderName))
+      subtitledFolderName)
   },
 )
 
@@ -619,7 +618,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -652,7 +651,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -685,7 +684,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -718,7 +717,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -751,7 +750,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -784,7 +783,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema<typeof reorderTracksFolderName>(),
           },
         },
       },
@@ -794,7 +793,7 @@ commandRoutes.openapi(
     const body = context.req.valid("json")
     return startJob(context, "reorderTracks", body,
       reorderTracks({ audioTrackIndexes: body.audioTrackIndexes, isRecursive: body.isRecursive, sourcePath: body.sourcePath, subtitlesTrackIndexes: body.subtitlesTrackIndexes, videoTrackIndexes: body.videoTrackIndexes }),
-      join(body.sourcePath, reorderTracksFolderName))
+      reorderTracksFolderName)
   },
 )
 
@@ -818,7 +817,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema<typeof replacedAttachmentsFolderName>(),
           },
         },
       },
@@ -828,7 +827,7 @@ commandRoutes.openapi(
     const body = context.req.valid("json")
     return startJob(context, "replaceAttachments", body,
       replaceAttachments({ destinationFilesPath: body.destinationFilesPath, sourceFilesPath: body.sourceFilesPath }),
-      join(body.destinationFilesPath, replacedAttachmentsFolderName))
+      replacedAttachmentsFolderName)
   },
 )
 
@@ -852,7 +851,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema<typeof audioConvertedFolderName>(),
           },
         },
       },
@@ -862,7 +861,7 @@ commandRoutes.openapi(
     const body = context.req.valid("json")
     return startJob(context, "replaceFlacWithPcmAudio", body,
       replaceFlacWithPcmAudio({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }),
-      join(body.sourcePath, audioConvertedFolderName))
+      audioConvertedFolderName)
   },
 )
 
@@ -886,7 +885,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema<typeof replacedTracksFolderName>(),
           },
         },
       },
@@ -906,7 +905,7 @@ commandRoutes.openapi(
         subtitlesLanguages: body.subtitlesLanguages,
         videoLanguages: body.videoLanguages,
       }),
-      join(body.destinationFilesPath, replacedTracksFolderName))
+      replacedTracksFolderName)
   },
 )
 
@@ -930,7 +929,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },
@@ -963,7 +962,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema<typeof splitsFolderName>(),
           },
         },
       },
@@ -973,7 +972,7 @@ commandRoutes.openapi(
     const body = context.req.valid("json")
     return startJob(context, "splitChapters", body,
       splitChapters({ chapterSplitsList: body.chapterSplits, sourcePath: body.sourcePath }),
-      join(body.sourcePath, splitsFolderName))
+      splitsFolderName)
   },
 )
 
@@ -997,7 +996,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.jobResponseSchema,
+            schema: schemas.createJobResponseSchema(),
           },
         },
       },

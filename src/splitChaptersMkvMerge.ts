@@ -5,7 +5,7 @@ import {
 
 import { runMkvMerge } from "./runMkvMerge.js";
 
-export const splitsFolderName = "SPLITS"
+export const splitsFolderName = "SPLITS" as const
 
 export const splitChaptersMkvMerge = ({
   chapterSplits,
