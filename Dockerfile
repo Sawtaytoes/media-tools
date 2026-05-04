@@ -50,4 +50,4 @@ RUN \
 
 EXPOSE $PORT
 
-CMD ["yarn", "tsx", "src/server.ts"]
+CMD ["yarn", "server"]

@@ -1,7 +1,8 @@
 import { serve } from "@hono/node-server"
 
 import { app } from "./api/index.js"
-import { installLogCapture, originalConsole } from "./api/logCapture.js"
+import { installLogCapture } from "./api/logCapture.js"
+import { logInfo } from "./logMessage.js"
 
 installLogCapture()
 
@@ -13,6 +14,9 @@ serve(
     port: PORT,
   },
   () => {
-    originalConsole.log(`Media tools API listening on :${PORT}`)
+    logInfo(
+      "API Server listening on port:",
+      PORT,
+    )
   },
 )
