@@ -1,14 +1,17 @@
+import { serveStatic } from "@hono/node-server/serve-static"
 import { OpenAPIHono } from "@hono/zod-openapi"
 
-import { commandRoutes } from "./routes/commands.js"
-import { addDocRoutes } from "./routes/docs.js"
-import { jobRoutes } from "./routes/jobs.js"
-import { logsRoutes } from "./routes/logs.js"
+import { commandRoutes } from "./routes/commandRoutes.js"
+import { addDocRoutes } from "./routes/docRoutes.js"
+import { jobRoutes } from "./routes/jobRoutes.js"
+import { logsRoutes } from "./routes/logRoutes.js"
 
-export const hono = new OpenAPIHono()
+export const app = new OpenAPIHono()
 
-hono.route("/", jobRoutes)
-hono.route("/", logsRoutes)
-hono.route("/", commandRoutes)
+app.use("/*", serveStatic({ root: "./public/api" }))
 
-addDocRoutes(hono)
+app.route("/", jobRoutes)
+app.route("/", logsRoutes)
+app.route("/", commandRoutes)
+
+addDocRoutes(app)

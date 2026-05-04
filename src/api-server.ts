@@ -1,6 +1,6 @@
 import { serve } from "@hono/node-server"
 
-import { hono } from "./api/hono-routes.js"
+import { app } from "./api/hono-routes.js"
 import { installLogCapture } from "./api/logCapture.js"
 import { logInfo } from "./logMessage.js"
 import { PORT } from "./port.js"
@@ -9,7 +9,7 @@ installLogCapture()
 
 serve(
   {
-    fetch: hono.fetch,
+    fetch: app.fetch,
     port: PORT,
   },
   () => {
