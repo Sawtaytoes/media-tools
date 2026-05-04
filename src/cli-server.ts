@@ -28,7 +28,7 @@ io.on("connection", (socket) => {
 
   const shell = os.platform() === "win32" ? "powershell.exe" : "bash"
 
-  const ptyProcess = pty.spawn(shell, [], {
+  const terminal = pty.spawn(shell, [], {
     cols: 80,
     cwd: process.env.HOME,
     env: process.env as Record<string, string>,
@@ -36,16 +36,21 @@ io.on("connection", (socket) => {
     rows: 30,
   })
 
-  ptyProcess.onData((data) => {
+  // For Docker. TODO: Make this use an env var to trigger the Docker directory change.
+  if (os.platform() !== "win32") {
+    terminal.write("cd /app\r")
+  }
+
+  terminal.onData((data) => {
     socket.emit("output", data)
   })
 
   socket.on("input", (input) => {
-    ptyProcess.write(input)
+    terminal.write(input)
   })
 
   socket.on("disconnect", () => {
-    ptyProcess.kill()
+    terminal.kill()
     logInfo("User disconnected")
   })
 })
