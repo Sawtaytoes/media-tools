@@ -1,19 +1,3 @@
-/**
- * Example: extracting a yargs command into its own file.
- *
- * The key is `InferArgvOptions<T>` which extracts the plain options type from
- * `Argv<T>` directly, avoiding the `[key: string]: unknown` index signature
- * that `Awaited<ReturnType<typeof builder>>["argv"]` would produce.
- *
- * In cli.ts, replace the inline .command(...) block with:
- *
- *   import { keepLanguagesCommand } from "./cli-commands/keepLanguages.js"
- *   yargs(...).command(keepLanguagesCommand).command(...).strict().argv
- *
- * The chaining still type-checks because CommandModule is covariant —
- * adding commands does not change the inferred type of the chain.
- */
-
 import type { Argv, CommandBuilder, CommandModule } from "yargs"
 
 import {
@@ -22,25 +6,27 @@ import {
 } from "../iso6392LanguageCodes.js"
 import { keepLanguages } from "../keepLanguages.js"
 
-// ---- utility type ----------------------------------------------------------
-
 type InferArgvOptions<T> = T extends Argv<infer U> ? U : never
 
-// ---- builder (typed separately so the handler can derive argv's type) ------
-
-const builder = (
-  yargs: Argv,
-) => (
+const builder = (yargs: Argv) => (
   yargs
   .example(
-    "$0 keepLanguages \"~/anime\" -r --audio-lang jpn --subs-lang eng",
-    "Keeps Japanese audio and English subtitles, removing all other tracks.",
+    "$0 keepLanguages \"~/movies\" -r --firstAudio --firstSubtitles",
+    "Recursively looks through media files and only keeps the audio tracks matching the first audio track's language and only subtitles tracks matching the first subtitles track's language.",
+  )
+  .example(
+    "$0 keepLanguages \"~/movies\" -r --firstAudio --audio-lang eng --firstSubtitles",
+    "Recursively looks through media files and only keeps the audio tracks matching the first audio track's language as well as the specified audio language and only subtitles tracks matching the first subtitles track's language. This is useful when movies are in another language, but have english commentary.",
+  )
+  .example(
+    "$0 keepLanguages \"~/anime\" -r --audio-lang jpn --audio-lang eng --subs-lang eng",
+    "Recursively looks through media files and only keeps Japanese and English audio and English subtitles tracks.",
   )
   .positional(
     "sourcePath",
     {
       demandOption: true,
-      describe: "Directory containing media files.",
+      describe: "Directory where demo files are located.",
       type: "string",
     },
   )
@@ -50,8 +36,8 @@ const builder = (
       alias: "audio-lang",
       array: true,
       choices: iso6392LanguageCodes,
-      default: [] as Iso6392LanguageCode[],
-      describe: "Audio languages to keep (ISO 639-2 codes).",
+      default: [] satisfies Iso6392LanguageCode[],
+      describe: "A 3-letter ISO-6392 language code for audio tracks to keep. All others will be removed",
       type: "array",
     },
   )
@@ -61,7 +47,7 @@ const builder = (
       alias: "r",
       boolean: true,
       default: false,
-      describe: "Recursively search subdirectories.",
+      describe: "Recursively looks in folders for media files.",
       nargs: 0,
       type: "boolean",
     },
@@ -72,8 +58,8 @@ const builder = (
       alias: "subs-lang",
       array: true,
       choices: iso6392LanguageCodes,
-      default: [] as Iso6392LanguageCode[],
-      describe: "Subtitle languages to keep (ISO 639-2 codes).",
+      default: [] satisfies Iso6392LanguageCode[],
+      describe: "A 3-letter ISO-6392 language code for subtitles tracks to keep. All others will be removed",
       type: "array",
     },
   )
@@ -83,7 +69,7 @@ const builder = (
       alias: "firstAudio",
       boolean: true,
       default: false,
-      describe: "Also keep the language of the first audio track.",
+      describe: "The language of the first audio track is the only language kept for audio tracks.",
       nargs: 0,
       type: "boolean",
     },
@@ -94,7 +80,7 @@ const builder = (
       alias: "firstSubtitles",
       boolean: true,
       default: false,
-      describe: "Also keep the language of the first subtitles track.",
+      describe: "The language of the first subtitles track is the only language kept for subtitles tracks.",
       nargs: 0,
       type: "boolean",
     },
@@ -103,21 +89,17 @@ const builder = (
 
 type Args = InferArgvOptions<ReturnType<typeof builder>>
 
-// ---- command module ---------------------------------------------------------
-
 export const keepLanguagesCommand: CommandModule<{}, Args> = {
   command: "keepLanguages <sourcePath>",
   describe: "Keeps only the specified audio and subtitle languages.",
 
   builder: builder as CommandBuilder<{}, Args>,
 
-  handler: (
-    argv,
-  ) => {
+  handler: (argv) => {
     keepLanguages({
       audioLanguages: (
         argv
-        .audioLanguages
+        .audioLanguages as Iso6392LanguageCode[]
       ),
       hasFirstAudioLanguage: (
         argv
@@ -137,7 +119,7 @@ export const keepLanguagesCommand: CommandModule<{}, Args> = {
       ),
       subtitlesLanguages: (
         argv
-        .subtitlesLanguages
+        .subtitlesLanguages as Iso6392LanguageCode[]
       ),
     })
     .subscribe(() => {

@@ -1,0 +1,87 @@
+import type { Argv, CommandBuilder, CommandModule } from "yargs"
+
+import { nameSpecialFeatures } from "../nameSpecialFeatures.js"
+
+type InferArgvOptions<T> = T extends Argv<infer U> ? U : never
+
+const builder = (yargs: Argv) => (
+  yargs
+  .example(
+    "$0 nameSpecialFeatures \"~/disc-rips/movieName\" \"https://dvdcompare.net/comparisons/film.php?fid=55539#1\"",
+    "Names all special features in the movie folder using the DVDCompare.net release at `#1`.",
+  )
+  .positional(
+    "sourcePath",
+    {
+      demandOption: true,
+      describe: "Directory where speical features are located.",
+      type: "string",
+    },
+  )
+  .positional(
+    "url",
+    {
+      demandOption: true,
+      describe: "DVDCompare.net URL including the chosen release's hash tag.",
+      type: "string",
+    },
+  )
+  .option(
+    "fixedOffset",
+    {
+      alias: "o",
+      default: 0,
+      describe: "Timecodes are pushed positively or negatively by this amount.",
+      nargs: 1,
+      number: true,
+      type: "number",
+    },
+  )
+  .option(
+    "timecodePadding",
+    {
+      alias: "p",
+      default: 0,
+      describe: "A range an amount that timecodes may be off. Typically, it's safe to have this be `1` second, but it can be `2+` depending on someone's wrong metadata.",
+      nargs: 1,
+      number: true,
+      type: "number",
+    },
+  )
+)
+
+type Args = InferArgvOptions<ReturnType<typeof builder>>
+
+export const nameSpecialFeaturesCommand: CommandModule<{}, Args> = {
+  command: "nameSpecialFeatures <sourcePath> <url>",
+  describe: "Name all special features in a directory according to a DVDCompare.net URL.",
+
+  builder: builder as CommandBuilder<{}, Args>,
+
+  handler: (argv) => {
+    nameSpecialFeatures({
+      fixedOffset: (
+        argv
+        .fixedOffset
+      ),
+      sourcePath: (
+        argv
+        .sourcePath
+      ),
+      timecodePaddingAmount: (
+        argv
+        .timecodePadding
+      ),
+      url: (
+        argv
+        .url
+      ),
+    })
+    .subscribe(() => {
+      console
+      .timeEnd(
+        "Command Runtime"
+      )
+    })
+  },
+}
