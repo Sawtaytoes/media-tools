@@ -95,7 +95,9 @@ commandRoutes.post(
     const body = await context.req.json()
     const { audioLanguage, isRecursive = false, sourcePath, subtitlesLanguage, videoLanguage } = body
 
-    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) {
+      return context.json({ error: "sourcePath is required" }, 400)
+    }
 
     return startJob(context, "changeTrackLanguages", body,
       changeTrackLanguages({ audioLanguage, isRecursive, sourcePath, subtitlesLanguage, videoLanguage }))
@@ -108,7 +110,9 @@ commandRoutes.post(
     const body = await context.req.json()
     const { isRecursive = false, sourcePath } = body
 
-    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) {
+      return context.json({ error: "sourcePath is required" }, 400)
+    }
 
     return startJob(context, "fixIncorrectDefaultTracks", body,
       fixIncorrectDefaultTracks({ isRecursive, sourcePath }))
@@ -121,7 +125,9 @@ commandRoutes.post(
     const body = await context.req.json()
     const { isRecursive = false, recursiveDepth = 0, sourcePath } = body
 
-    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) {
+      return context.json({ error: "sourcePath is required" }, 400)
+    }
 
     return startJob(context, "hasBetterAudio", body,
       hasBetterAudio({ isRecursive, recursiveDepth, sourcePath }))
@@ -134,7 +140,9 @@ commandRoutes.post(
     const body = await context.req.json()
     const { isRecursive = false, recursiveDepth = 0, sourcePath } = body
 
-    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) {
+      return context.json({ error: "sourcePath is required" }, 400)
+    }
 
     return startJob(context, "hasBetterVersion", body,
       hasBetterVersion({ isRecursive, recursiveDepth, sourcePath }))
@@ -147,7 +155,9 @@ commandRoutes.post(
     const body = await context.req.json()
     const { isRecursive = false, recursiveDepth = 0, sourcePath } = body
 
-    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) {
+      return context.json({ error: "sourcePath is required" }, 400)
+    }
 
     return startJob(context, "hasDuplicateMusicFiles", body,
       hasDuplicateMusicFiles({ isRecursive, recursiveDepth, sourcePath }))
@@ -160,7 +170,9 @@ commandRoutes.post(
     const body = await context.req.json()
     const { isRecursive = false, sourcePath } = body
 
-    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) {
+      return context.json({ error: "sourcePath is required" }, 400)
+    }
 
     return startJob(context, "hasImaxEnhancedAudio", body,
       hasImaxEnhancedAudio({ isRecursive, sourcePath }))
@@ -173,7 +185,9 @@ commandRoutes.post(
     const body = await context.req.json()
     const { isRecursive = false, sourcePath } = body
 
-    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) {
+      return context.json({ error: "sourcePath is required" }, 400)
+    }
 
     return startJob(context, "hasManyAudioTracks", body,
       hasManyAudioTracks({ isRecursive, sourcePath }))
@@ -186,7 +200,9 @@ commandRoutes.post(
     const body = await context.req.json()
     const { isRecursive = false, recursiveDepth = 0, sourcePath } = body
 
-    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) {
+      return context.json({ error: "sourcePath is required" }, 400)
+    }
 
     return startJob(context, "hasSurroundSound", body,
       hasSurroundSound({ isRecursive, recursiveDepth, sourcePath }))
@@ -199,7 +215,9 @@ commandRoutes.post(
     const body = await context.req.json()
     const { isRecursive = false, sourcePath } = body
 
-    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) {
+      return context.json({ error: "sourcePath is required" }, 400)
+    }
 
     return startJob(context, "hasWrongDefaultTrack", body,
       hasWrongDefaultTrack({ isRecursive, sourcePath }))
@@ -212,7 +230,9 @@ commandRoutes.post(
     const body = await context.req.json()
     const { isRecursive = false, sourcePath } = body
 
-    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) {
+      return context.json({ error: "sourcePath is required" }, 400)
+    }
 
     return startJob(context, "isMissingSubtitles", body,
       isMissingSubtitles({ isRecursive, sourcePath }))
@@ -232,7 +252,9 @@ commandRoutes.post(
       useFirstSubtitlesLanguage: hasFirstSubtitlesLanguage = false,
     } = body
 
-    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) {
+      return context.json({ error: "sourcePath is required" }, 400)
+    }
 
     return startJob(context, "keepLanguages", body,
       keepLanguages({ audioLanguages, hasFirstAudioLanguage, hasFirstSubtitlesLanguage, isRecursive, sourcePath, subtitlesLanguages }))
@@ -312,7 +334,9 @@ commandRoutes.post(
     const body = await context.req.json()
     const { isRecursive = false, sourcePath } = body
 
-    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) {
+      return context.json({ error: "sourcePath is required" }, 400)
+    }
 
     return startJob(context, "renameDemos", body,
       renameDemos({ isRecursive, sourcePath }))
@@ -325,7 +349,9 @@ commandRoutes.post(
     const body = await context.req.json()
     const { sourcePath } = body
 
-    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) {
+      return context.json({ error: "sourcePath is required" }, 400)
+    }
 
     return startJob(context, "renameMovieClipDownloads", body,
       renameMovieClipDownloads({ sourcePath }))
@@ -346,7 +372,9 @@ commandRoutes.post(
       videoTrackIndexes = [],
     } = body
 
-    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) {
+      return context.json({ error: "sourcePath is required" }, 400)
+    }
 
     return startJob(context, "reorderTracks", body,
       reorderTracks({ audioTrackIndexes, isRecursive, sourcePath, subtitlesTrackIndexes, videoTrackIndexes }))
@@ -374,7 +402,9 @@ commandRoutes.post(
     const body = await context.req.json()
     const { isRecursive = false, sourcePath } = body
 
-    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) {
+      return context.json({ error: "sourcePath is required" }, 400)
+    }
 
     return startJob(context, "replaceFlacWithPcmAudio", body,
       replaceFlacWithPcmAudio({ isRecursive, sourcePath }))
@@ -422,7 +452,9 @@ commandRoutes.post(
     const body = await context.req.json()
     const { displayWidth = 853, isRecursive = false, recursiveDepth = 0, sourcePath } = body
 
-    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) {
+      return context.json({ error: "sourcePath is required" }, 400)
+    }
 
     return startJob(context, "setDisplayWidth", body,
       setDisplayWidth({ displayWidth, isRecursive, recursiveDepth, sourcePath }))
@@ -459,7 +491,9 @@ commandRoutes.post(
       threads: threadCount,
     } = body
 
-    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) {
+      return context.json({ error: "sourcePath is required" }, 400)
+    }
 
     return startJob(context, "storeAspectRatioData", body,
       storeAspectRatioData({
