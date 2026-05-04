@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { Subject } from "rxjs"
 
-import type { Job, JobStatus } from "./types.js"
+import type { Job } from "./types.js"
 
 // ---------------------------------------------------------------------------
 // Module-level state — only mutated through the exported functions below.
@@ -20,6 +20,7 @@ export const jobEvents$ = jobSubject.asObservable()
 export const createJob = (
   command: string,
   params: unknown,
+  outputPath: string | null = null,
 ): Job => {
   const job: Job = {
     command,
@@ -27,6 +28,7 @@ export const createJob = (
     error: null,
     id: randomUUID(),
     logs: [],
+    outputPath,
     params,
     results: [],
     startedAt: null,
