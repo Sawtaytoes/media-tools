@@ -12,8 +12,9 @@ export const validationErrorSchema = z.object({
   error: z.string().describe("Error message"),
 }).openapi("ValidationError")
 
+export const JOB_NOT_FOUND = "Job not found" as const
 export const jobNotFoundSchema = z.object({
-  error: z.literal("Job not found").describe("Job not found error"),
+  error: z.literal(JOB_NOT_FOUND).describe("Job not found error"),
 }).openapi("JobNotFound")
 
 // Command request schemas

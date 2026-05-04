@@ -45,7 +45,9 @@ jobRoutes.openapi(
       .map(({
         logs: _logs,
         ...rest
-      }) => rest)
+      }) => (
+        rest
+      ))
     )
 
     return context.json(list)
@@ -77,7 +79,7 @@ jobRoutes.openapi(
         },
       },
       404: {
-        description: "Job not found",
+        description: schemas.JOB_NOT_FOUND,
         content: {
           "application/json": {
             schema: schemas.jobNotFoundSchema,
@@ -89,8 +91,10 @@ jobRoutes.openapi(
   (context) => {
     const job = getJob(context.req.param("id"))
 
-    if (!job) return context.json({ error: "Job not found" }, 404)
+    if (!job) {
+      return context.json({ error: schemas.JOB_NOT_FOUND }, 404)
+    }
 
-    return context.json(job)
+    return context.json(job, 200)
   },
 )
