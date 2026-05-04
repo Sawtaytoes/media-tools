@@ -10,12 +10,12 @@ export const logsRoutes = new Hono()
 // Replays buffered logs first, then streams live lines until the job finishes.
 logsRoutes.get(
   "/jobs/:id/logs",
-  (c) => {
-    const job = getJob(c.req.param("id"))
+  (context) => {
+    const job = getJob(context.req.param("id"))
 
-    if (!job) return c.json({ error: "Job not found" }, 404)
+    if (!job) return context.json({ error: "Job not found" }, 404)
 
-    return streamSSE(c, async (stream) => {
+    return streamSSE(context, async (stream) => {
       const send = (
         payload: object,
       ) => (

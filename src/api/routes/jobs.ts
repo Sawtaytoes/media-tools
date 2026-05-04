@@ -6,7 +6,7 @@ export const jobRoutes = new Hono()
 
 jobRoutes.get(
   "/jobs",
-  (c) => {
+  (context) => {
     const list = (
       getAllJobs()
       .map(({
@@ -15,17 +15,17 @@ jobRoutes.get(
       }) => rest)
     )
 
-    return c.json(list)
+    return context.json(list)
   },
 )
 
 jobRoutes.get(
   "/jobs/:id",
-  (c) => {
-    const job = getJob(c.req.param("id"))
+  (context) => {
+    const job = getJob(context.req.param("id"))
 
-    if (!job) return c.json({ error: "Job not found" }, 404)
+    if (!job) return context.json({ error: "Job not found" }, 404)
 
-    return c.json(job)
+    return context.json(job)
   },
 )

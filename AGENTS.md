@@ -23,6 +23,11 @@ use `updateJob(id, { status: "x" })` instead).
 `process.exit()` belongs only in `src/cli.ts` handlers. Any `tap(() => process.exit())`
 in module files must be removed before those modules can be used in the API.
 
+### Variable naming
+- No single-letter variable names. Always use descriptive names that convey purpose.
+- Hono route handler context: use `context` (not `c`). Example: `app.get("/", (context) => context.json({}))`.
+- Spell out all abbreviations in variable names (e.g. `destination` not `dest`, `source` not `src`, `options` not `opts`).
+
 ### Coding style
 - Functional style; prefer `concatMap` / `mergeMap` over imperative loops
 - Imports sorted alphabetically within each group
@@ -57,11 +62,39 @@ and calls `serve()`.
 ## Adding a new command
 
 1. Create `src/<commandName>.ts` returning `Observable<unknown>`
-2. Add a `.command(...)` block to `src/cli.ts`
-3. Add a `app.post("/jobs/<commandName>", ...)` handler to `src/api/routes/commands.ts`
+2. Create `src/cli-commands/<commandName>.ts` using the `CommandModule` pattern (see below)
+3. Import and `.command(...)` the module in `src/cli.ts`
+4. Add a `app.post("/jobs/<commandName>", ...)` handler to `src/api/routes/commands.ts`
 
-## CLI command separation (future)
+## CLI command modules (`src/cli-commands/`)
 
-Each yargs command can be extracted to `src/cli-commands/<commandName>.ts` using
-the `CommandModule` pattern — see `src/cli-commands/keepLanguages.example.ts` for
-a reference implementation.
+Each yargs command lives in its own file. The pattern uses `InferArgvOptions<T>` to
+extract the plain options type from the builder, avoiding the `[key: string]: unknown`
+index signature that `Awaited<ReturnType<typeof builder>>["argv"]` would produce:
+
+```typescript
+import type { Argv, CommandBuilder, CommandModule } from "yargs"
+import { someCommand } from "../someCommand.js"
+
+type InferArgvOptions<T> = T extends Argv<infer U> ? U : never
+
+const builder = (yargs: Argv) => (
+  yargs
+  .positional("sourcePath", { demandOption: true, type: "string", describe: "..." })
+  .option("isRecursive", { alias: "r", boolean: true, default: false, nargs: 0, type: "boolean", describe: "..." })
+)
+
+type Args = InferArgvOptions<ReturnType<typeof builder>>
+
+export const someCommandCommand: CommandModule<{}, Args> = {
+  command: "someCommand <sourcePath>",
+  describe: "...",
+  builder: builder as CommandBuilder<{}, Args>,
+  handler: (argv) => {
+    someCommand({ isRecursive: argv.isRecursive, sourcePath: argv.sourcePath })
+    .subscribe(() => { console.timeEnd("Command Runtime") })
+  },
+}
+```
+
+In `cli.ts`, register it with `.command(someCommandCommand)`.

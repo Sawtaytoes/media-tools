@@ -35,7 +35,7 @@ import { runJob } from "../jobRunner.js"
 // ---------------------------------------------------------------------------
 
 const startJob = (
-  c: Context,
+  context: Context,
   command: string,
   params: unknown,
   observable: Observable<unknown>,
@@ -44,7 +44,7 @@ const startJob = (
 
   runJob(job.id, observable)
 
-  return c.json(
+  return context.json(
     {
       jobId: job.id,
       logsUrl: `/jobs/${job.id}/logs`,
@@ -61,168 +61,168 @@ export const commandRoutes = new Hono()
 
 commandRoutes.post(
   "/jobs/copyFiles",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const { destinationPath, sourcePath } = body
 
     if (!sourcePath || !destinationPath) {
-      return c.json({ error: "sourcePath and destinationPath are required" }, 400)
+      return context.json({ error: "sourcePath and destinationPath are required" }, 400)
     }
 
-    return startJob(c, "copyFiles", body,
+    return startJob(context, "copyFiles", body,
       copyFiles({ destinationPath, sourcePath }))
   },
 )
 
 commandRoutes.post(
   "/jobs/moveFiles",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const { destinationPath, sourcePath } = body
 
     if (!sourcePath || !destinationPath) {
-      return c.json({ error: "sourcePath and destinationPath are required" }, 400)
+      return context.json({ error: "sourcePath and destinationPath are required" }, 400)
     }
 
-    return startJob(c, "moveFiles", body,
+    return startJob(context, "moveFiles", body,
       moveFiles({ destinationPath, sourcePath }))
   },
 )
 
 commandRoutes.post(
   "/jobs/changeTrackLanguages",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const { audioLanguage, isRecursive = false, sourcePath, subtitlesLanguage, videoLanguage } = body
 
-    if (!sourcePath) return c.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
 
-    return startJob(c, "changeTrackLanguages", body,
+    return startJob(context, "changeTrackLanguages", body,
       changeTrackLanguages({ audioLanguage, isRecursive, sourcePath, subtitlesLanguage, videoLanguage }))
   },
 )
 
 commandRoutes.post(
   "/jobs/fixIncorrectDefaultTracks",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const { isRecursive = false, sourcePath } = body
 
-    if (!sourcePath) return c.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
 
-    return startJob(c, "fixIncorrectDefaultTracks", body,
+    return startJob(context, "fixIncorrectDefaultTracks", body,
       fixIncorrectDefaultTracks({ isRecursive, sourcePath }))
   },
 )
 
 commandRoutes.post(
   "/jobs/hasBetterAudio",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const { isRecursive = false, recursiveDepth = 0, sourcePath } = body
 
-    if (!sourcePath) return c.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
 
-    return startJob(c, "hasBetterAudio", body,
+    return startJob(context, "hasBetterAudio", body,
       hasBetterAudio({ isRecursive, recursiveDepth, sourcePath }))
   },
 )
 
 commandRoutes.post(
   "/jobs/hasBetterVersion",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const { isRecursive = false, recursiveDepth = 0, sourcePath } = body
 
-    if (!sourcePath) return c.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
 
-    return startJob(c, "hasBetterVersion", body,
+    return startJob(context, "hasBetterVersion", body,
       hasBetterVersion({ isRecursive, recursiveDepth, sourcePath }))
   },
 )
 
 commandRoutes.post(
   "/jobs/hasDuplicateMusicFiles",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const { isRecursive = false, recursiveDepth = 0, sourcePath } = body
 
-    if (!sourcePath) return c.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
 
-    return startJob(c, "hasDuplicateMusicFiles", body,
+    return startJob(context, "hasDuplicateMusicFiles", body,
       hasDuplicateMusicFiles({ isRecursive, recursiveDepth, sourcePath }))
   },
 )
 
 commandRoutes.post(
   "/jobs/hasImaxEnhancedAudio",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const { isRecursive = false, sourcePath } = body
 
-    if (!sourcePath) return c.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
 
-    return startJob(c, "hasImaxEnhancedAudio", body,
+    return startJob(context, "hasImaxEnhancedAudio", body,
       hasImaxEnhancedAudio({ isRecursive, sourcePath }))
   },
 )
 
 commandRoutes.post(
   "/jobs/hasManyAudioTracks",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const { isRecursive = false, sourcePath } = body
 
-    if (!sourcePath) return c.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
 
-    return startJob(c, "hasManyAudioTracks", body,
+    return startJob(context, "hasManyAudioTracks", body,
       hasManyAudioTracks({ isRecursive, sourcePath }))
   },
 )
 
 commandRoutes.post(
   "/jobs/hasSurroundSound",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const { isRecursive = false, recursiveDepth = 0, sourcePath } = body
 
-    if (!sourcePath) return c.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
 
-    return startJob(c, "hasSurroundSound", body,
+    return startJob(context, "hasSurroundSound", body,
       hasSurroundSound({ isRecursive, recursiveDepth, sourcePath }))
   },
 )
 
 commandRoutes.post(
   "/jobs/hasWrongDefaultTrack",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const { isRecursive = false, sourcePath } = body
 
-    if (!sourcePath) return c.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
 
-    return startJob(c, "hasWrongDefaultTrack", body,
+    return startJob(context, "hasWrongDefaultTrack", body,
       hasWrongDefaultTrack({ isRecursive, sourcePath }))
   },
 )
 
 commandRoutes.post(
   "/jobs/isMissingSubtitles",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const { isRecursive = false, sourcePath } = body
 
-    if (!sourcePath) return c.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
 
-    return startJob(c, "isMissingSubtitles", body,
+    return startJob(context, "isMissingSubtitles", body,
       isMissingSubtitles({ isRecursive, sourcePath }))
   },
 )
 
 commandRoutes.post(
   "/jobs/keepLanguages",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const {
       audioLanguages = [],
       isRecursive = false,
@@ -232,17 +232,17 @@ commandRoutes.post(
       useFirstSubtitlesLanguage: hasFirstSubtitlesLanguage = false,
     } = body
 
-    if (!sourcePath) return c.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
 
-    return startJob(c, "keepLanguages", body,
+    return startJob(context, "keepLanguages", body,
       keepLanguages({ audioLanguages, hasFirstAudioLanguage, hasFirstSubtitlesLanguage, isRecursive, sourcePath, subtitlesLanguages }))
   },
 )
 
 commandRoutes.post(
   "/jobs/mergeTracks",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const {
       automaticOffset: hasAutomaticOffset = false,
       globalOffset: globalOffsetInMilliseconds = 0,
@@ -253,91 +253,91 @@ commandRoutes.post(
     } = body
 
     if (!subtitlesPath || !mediaFilesPath) {
-      return c.json({ error: "subtitlesPath and mediaFilesPath are required" }, 400)
+      return context.json({ error: "subtitlesPath and mediaFilesPath are required" }, 400)
     }
 
-    return startJob(c, "mergeTracks", body,
+    return startJob(context, "mergeTracks", body,
       mergeTracks({ globalOffsetInMilliseconds, hasAutomaticOffset, hasChapters, mediaFilesPath, offsetsInMilliseconds, subtitlesPath }))
   },
 )
 
 commandRoutes.post(
   "/jobs/nameAnimeEpisodes",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const { searchTerm, seasonNumber = 1, sourcePath } = body
 
     if (!sourcePath || !searchTerm) {
-      return c.json({ error: "sourcePath and searchTerm are required" }, 400)
+      return context.json({ error: "sourcePath and searchTerm are required" }, 400)
     }
 
-    return startJob(c, "nameAnimeEpisodes", body,
+    return startJob(context, "nameAnimeEpisodes", body,
       nameAnimeEpisodes({ searchTerm, seasonNumber, sourcePath }))
   },
 )
 
 commandRoutes.post(
   "/jobs/nameSpecialFeatures",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const { fixedOffset = 0, sourcePath, timecodePadding: timecodePaddingAmount = 0, url } = body
 
     if (!sourcePath || !url) {
-      return c.json({ error: "sourcePath and url are required" }, 400)
+      return context.json({ error: "sourcePath and url are required" }, 400)
     }
 
-    return startJob(c, "nameSpecialFeatures", body,
+    return startJob(context, "nameSpecialFeatures", body,
       nameSpecialFeatures({ fixedOffset, sourcePath, timecodePaddingAmount, url }))
   },
 )
 
 commandRoutes.post(
   "/jobs/nameTvShowEpisodes",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const { searchTerm, seasonNumber, sourcePath } = body
 
     if (!sourcePath || !searchTerm || seasonNumber == null) {
-      return c.json({ error: "sourcePath, searchTerm, and seasonNumber are required" }, 400)
+      return context.json({ error: "sourcePath, searchTerm, and seasonNumber are required" }, 400)
     }
 
-    return startJob(c, "nameTvShowEpisodes", body,
+    return startJob(context, "nameTvShowEpisodes", body,
       nameTvShowEpisodes({ searchTerm, seasonNumber, sourcePath }))
   },
 )
 
 commandRoutes.post(
   "/jobs/renameDemos",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const { isRecursive = false, sourcePath } = body
 
-    if (!sourcePath) return c.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
 
-    return startJob(c, "renameDemos", body,
+    return startJob(context, "renameDemos", body,
       renameDemos({ isRecursive, sourcePath }))
   },
 )
 
 commandRoutes.post(
   "/jobs/renameMovieClipDownloads",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const { sourcePath } = body
 
-    if (!sourcePath) return c.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
 
-    return startJob(c, "renameMovieClipDownloads", body,
+    return startJob(context, "renameMovieClipDownloads", body,
       renameMovieClipDownloads({ sourcePath }))
   },
 )
 
 commandRoutes.post(
   "/jobs/reorderTracks",
-  async (c) => {
+  async (context) => {
     // NOTE: reorderTracks.ts has tap(() => process.exit()) after toArray().
     // Remove it before this endpoint can be used safely.
-    const body = await c.req.json()
+    const body = await context.req.json()
     const {
       audioTrackIndexes = [],
       isRecursive = false,
@@ -346,45 +346,45 @@ commandRoutes.post(
       videoTrackIndexes = [],
     } = body
 
-    if (!sourcePath) return c.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
 
-    return startJob(c, "reorderTracks", body,
+    return startJob(context, "reorderTracks", body,
       reorderTracks({ audioTrackIndexes, isRecursive, sourcePath, subtitlesTrackIndexes, videoTrackIndexes }))
   },
 )
 
 commandRoutes.post(
   "/jobs/replaceAttachments",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const { destinationFilesPath, sourceFilesPath } = body
 
     if (!sourceFilesPath || !destinationFilesPath) {
-      return c.json({ error: "sourceFilesPath and destinationFilesPath are required" }, 400)
+      return context.json({ error: "sourceFilesPath and destinationFilesPath are required" }, 400)
     }
 
-    return startJob(c, "replaceAttachments", body,
+    return startJob(context, "replaceAttachments", body,
       replaceAttachments({ destinationFilesPath, sourceFilesPath }))
   },
 )
 
 commandRoutes.post(
   "/jobs/replaceFlacWithPcmAudio",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const { isRecursive = false, sourcePath } = body
 
-    if (!sourcePath) return c.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
 
-    return startJob(c, "replaceFlacWithPcmAudio", body,
+    return startJob(context, "replaceFlacWithPcmAudio", body,
       replaceFlacWithPcmAudio({ isRecursive, sourcePath }))
   },
 )
 
 commandRoutes.post(
   "/jobs/replaceTracks",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const {
       audioLanguages = [],
       automaticOffset: hasAutomaticOffset = false,
@@ -398,10 +398,10 @@ commandRoutes.post(
     } = body
 
     if (!sourceFilesPath || !destinationFilesPath) {
-      return c.json({ error: "sourceFilesPath and destinationFilesPath are required" }, 400)
+      return context.json({ error: "sourceFilesPath and destinationFilesPath are required" }, 400)
     }
 
-    return startJob(c, "replaceTracks", body,
+    return startJob(context, "replaceTracks", body,
       replaceTracks({
         audioLanguages,
         destinationFilesPath,
@@ -418,36 +418,36 @@ commandRoutes.post(
 
 commandRoutes.post(
   "/jobs/setDisplayWidth",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const { displayWidth = 853, isRecursive = false, recursiveDepth = 0, sourcePath } = body
 
-    if (!sourcePath) return c.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
 
-    return startJob(c, "setDisplayWidth", body,
+    return startJob(context, "setDisplayWidth", body,
       setDisplayWidth({ displayWidth, isRecursive, recursiveDepth, sourcePath }))
   },
 )
 
 commandRoutes.post(
   "/jobs/splitChapters",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const { chapterSplits: chapterSplitsList, sourcePath } = body
 
     if (!sourcePath || !chapterSplitsList?.length) {
-      return c.json({ error: "sourcePath and chapterSplits are required" }, 400)
+      return context.json({ error: "sourcePath and chapterSplits are required" }, 400)
     }
 
-    return startJob(c, "splitChapters", body,
+    return startJob(context, "splitChapters", body,
       splitChapters({ chapterSplitsList, sourcePath }))
   },
 )
 
 commandRoutes.post(
   "/jobs/storeAspectRatioData",
-  async (c) => {
-    const body = await c.req.json()
+  async (context) => {
+    const body = await context.req.json()
     const {
       folders: folderNames = [],
       force = false,
@@ -459,9 +459,9 @@ commandRoutes.post(
       threads: threadCount,
     } = body
 
-    if (!sourcePath) return c.json({ error: "sourcePath is required" }, 400)
+    if (!sourcePath) return context.json({ error: "sourcePath is required" }, 400)
 
-    return startJob(c, "storeAspectRatioData", body,
+    return startJob(context, "storeAspectRatioData", body,
       storeAspectRatioData({
         folderNames,
         isRecursive,
