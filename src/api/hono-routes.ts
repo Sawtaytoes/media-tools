@@ -4,8 +4,8 @@ import { commandRoutes } from "./routes/commands.js"
 import { jobRoutes } from "./routes/jobs.js"
 import { logsRoutes } from "./routes/logs.js"
 
-export const app = new Hono()
+export const hono = new Hono()
 
-app.route("/", jobRoutes)
-app.route("/", logsRoutes)
-app.route("/", commandRoutes)
+hono.route("/", jobRoutes)
+hono.route("/", logsRoutes)
+hono.route("/", commandRoutes)

@@ -52,7 +52,9 @@ const capture = (
 ): void => {
   const jobId = jobContext.getStore()
 
-  if (!jobId) return
+  if (!jobId) {
+    return
+  }
 
   const line = (
     stripAnsi(
@@ -67,7 +69,9 @@ const capture = (
     .trim()
   )
 
-  if (!line) return
+  if (!line) {
+    return
+  }
 
   appendJobLog(jobId, line)
 }

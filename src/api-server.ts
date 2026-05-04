@@ -1,6 +1,6 @@
 import { serve } from "@hono/node-server"
 
-import { app } from "./api/index.js"
+import { hono } from "./api/hono-routes.js"
 import { installLogCapture } from "./api/logCapture.js"
 import { logInfo } from "./logMessage.js"
 
@@ -10,7 +10,7 @@ const PORT = Number(process.env.PORT ?? 3000)
 
 serve(
   {
-    fetch: app.fetch,
+    fetch: hono.fetch,
     port: PORT,
   },
   () => {
