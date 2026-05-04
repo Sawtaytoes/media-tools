@@ -1,5 +1,7 @@
 import { z } from "@hono/zod-openapi"
 
+import { iso6392LanguageCodes } from "../iso6392LanguageCodes.js"
+
 // Shared response schemas
 export const jobResponseSchema = z.object({
   jobId: z.string().openapi({ example: "123e4567-e89b-12d3-a456-426614174000" }).describe("Unique job identifier"),
@@ -28,7 +30,7 @@ export const moveFilesRequestSchema = z.object({
 export const copyOutSubtitlesRequestSchema = z.object({
   sourcePath: z.string().describe("Source directory path"),
   isRecursive: z.boolean().default(false).describe("Search recursively in subdirectories"),
-  subtitlesLanguage: z.string().optional().describe("Filter subtitles by language"),
+  subtitlesLanguage: z.enum(iso6392LanguageCodes).optional().describe("Filter subtitles by language"),
 })
 
 export const getAudioOffsetsRequestSchema = z.object({
@@ -39,9 +41,9 @@ export const getAudioOffsetsRequestSchema = z.object({
 export const changeTrackLanguagesRequestSchema = z.object({
   sourcePath: z.string().describe("Source directory path"),
   isRecursive: z.boolean().default(false).describe("Search recursively in subdirectories"),
-  audioLanguage: z.string().optional().describe("Audio track language code"),
-  subtitlesLanguage: z.string().optional().describe("Subtitle track language code"),
-  videoLanguage: z.string().optional().describe("Video track language code"),
+  audioLanguage: z.enum(iso6392LanguageCodes).optional().describe("Audio track language code"),
+  subtitlesLanguage: z.enum(iso6392LanguageCodes).optional().describe("Subtitle track language code"),
+  videoLanguage: z.enum(iso6392LanguageCodes).optional().describe("Video track language code"),
 })
 
 export const fixIncorrectDefaultTracksRequestSchema = z.object({
@@ -96,8 +98,8 @@ export const isMissingSubtitlesRequestSchema = z.object({
 export const keepLanguagesRequestSchema = z.object({
   sourcePath: z.string().describe("Source directory path"),
   isRecursive: z.boolean().default(false).describe("Search recursively in subdirectories"),
-  audioLanguages: z.array(z.string()).default([]).describe("Audio languages to keep"),
-  subtitlesLanguages: z.array(z.string()).default([]).describe("Subtitle languages to keep"),
+  audioLanguages: z.array(z.enum(iso6392LanguageCodes)).default([]).describe("Audio languages to keep"),
+  subtitlesLanguages: z.array(z.enum(iso6392LanguageCodes)).default([]).describe("Subtitle languages to keep"),
   useFirstAudioLanguage: z.boolean().default(false).describe("Keep first audio language only"),
   useFirstSubtitlesLanguage: z.boolean().default(false).describe("Keep first subtitle language only"),
 })
@@ -163,9 +165,9 @@ export const replaceTracksRequestSchema = z.object({
   automaticOffset: z.boolean().default(false).describe("Automatically detect synchronization offset"),
   globalOffset: z.number().default(0).describe("Global audio offset in milliseconds"),
   includeChapters: z.boolean().default(false).describe("Include chapter markers"),
-  audioLanguages: z.array(z.string()).default([]).describe("Audio languages to include"),
-  subtitlesLanguages: z.array(z.string()).default([]).describe("Subtitle languages to include"),
-  videoLanguages: z.array(z.string()).default([]).describe("Video languages to include"),
+  audioLanguages: z.array(z.enum(iso6392LanguageCodes)).default([]).describe("Audio languages to include"),
+  subtitlesLanguages: z.array(z.enum(iso6392LanguageCodes)).default([]).describe("Subtitle languages to include"),
+  videoLanguages: z.array(z.enum(iso6392LanguageCodes)).default([]).describe("Video languages to include"),
   offsets: z.array(z.number()).default([]).describe("Per-file audio offsets in milliseconds"),
 })
 
@@ -178,7 +180,7 @@ export const setDisplayWidthRequestSchema = z.object({
 
 export const splitChaptersRequestSchema = z.object({
   sourcePath: z.string().describe("Source directory path"),
-  chapterSplits: z.array(z.unknown()).describe("Chapter split definitions"),
+  chapterSplits: z.array(z.string()).describe("Chapter split definitions"),
 })
 
 export const storeAspectRatioDataRequestSchema = z.object({
@@ -191,4 +193,3 @@ export const storeAspectRatioDataRequestSchema = z.object({
   force: z.boolean().default(false).describe("Force overwrite existing data"),
   threads: z.number().optional().describe("Number of threads to use"),
 })
-
