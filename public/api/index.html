@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Jobs</title>
+<style>
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: system-ui, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    margin: 0;
+    padding: 20px;
+  }
+
+  h1 {
+    max-width: 900px;
+    margin: 0 auto 20px;
+    font-size: 1.25rem;
+    color: #94a3b8;
+    font-weight: 500;
+  }
+
+  .jobs {
+    display: grid;
+    gap: 16px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .job {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  }
+
+  .job-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .command {
+    font-weight: 600;
+    font-size: 1.1rem;
+    word-break: break-all;
+  }
+
+  .status {
+    flex-shrink: 0;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  .status.pending  { background: #1e3a5f; color: #93c5fd; }
+  .status.running  { background: #1e3a5f; color: #60a5fa; animation: pulse 2s infinite; }
+  .status.completed { background: #064e3b; color: #34d399; }
+  .status.failed   { background: #7f1d1d; color: #f87171; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .meta {
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: #94a3b8;
+    line-height: 1.6;
+  }
+
+  .path {
+    margin-top: 8px;
+    font-family: monospace;
+    font-size: 0.85rem;
+    background: #020617;
+    padding: 6px 8px;
+    border-radius: 6px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .error {
+    margin-top: 8px;
+    background: #450a0a;
+    color: #fca5a5;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-family: monospace;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  details {
+    margin-top: 10px;
+  }
+
+  summary {
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #60a5fa;
+    user-select: none;
+  }
+
+  .result {
+    margin-top: 8px;
+    background: #020617;
+    padding: 10px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 0.8rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-x: auto;
+  }
+
+  #status-bar {
+    max-width: 900px;
+    margin: 0 auto 12px;
+    font-size: 0.8rem;
+    color: #475569;
+  }
+
+  #status-bar.error { color: #f87171; }
+</style>
+</head>
+<body>
+
+<h1>Jobs</h1>
+<div id="status-bar">Connecting…</div>
+<div class="jobs" id="jobs"></div>
+
+<script>
+const statusBar = document.getElementById("status-bar");
+const jobsEl = document.getElementById("jobs");
+
+function makeEl(tag, className) {
+  const el = document.createElement(tag);
+  if (className) el.className = className;
+  return el;
+}
+
+function renderJob(job) {
+  const card = makeEl("div", "job");
+  card.dataset.id = job.id;
+
+  const header = makeEl("div", "job-header");
+  const cmd = makeEl("div", "command");
+  cmd.textContent = job.command;
+  const badge = makeEl("div", `status ${job.status}`);
+  badge.textContent = job.status;
+  header.append(cmd, badge);
+
+  const meta = makeEl("div", "meta");
+  const started = job.startedAt ? new Date(job.startedAt).toLocaleString() : "—";
+  meta.textContent = `ID: ${job.id}`;
+  meta.append(document.createElement("br"), document.createTextNode(`Started: ${started}`));
+  if (job.completedAt) {
+    meta.append(document.createElement("br"), document.createTextNode(`Completed: ${new Date(job.completedAt).toLocaleString()}`));
+  }
+
+  card.append(header, meta);
+
+  const sourcePath = job.params?.sourcePath;
+  if (sourcePath) {
+    const path = makeEl("div", "path");
+    path.textContent = sourcePath;
+    card.append(path);
+  }
+
+  if (job.error) {
+    const err = makeEl("div", "error");
+    err.textContent = job.error;
+    card.append(err);
+  }
+
+  if (job.results?.length) {
+    const details = makeEl("details");
+    const summary = makeEl("summary");
+    summary.textContent = `Results (${job.results.length})`;
+    details.append(summary);
+    for (const r of job.results) {
+      const result = makeEl("div", "result");
+      result.textContent = JSON.stringify(r, null, 2);
+      details.append(result);
+    }
+    card.append(details);
+  }
+
+  return card;
+}
+
+function upsertJob(job) {
+  const existing = jobsEl.querySelector(`[data-id="${job.id}"]`);
+  const card = renderJob(job);
+  if (existing) {
+    existing.replaceWith(card);
+  } else {
+    jobsEl.prepend(card);
+  }
+}
+
+function connect() {
+  const es = new EventSource("/jobs/stream");
+
+  es.onopen = () => {
+    statusBar.textContent = "Connected";
+    statusBar.className = "";
+  };
+
+  es.onmessage = (event) => {
+    upsertJob(JSON.parse(event.data));
+  };
+
+  es.onerror = () => {
+    statusBar.textContent = "Connection lost — retrying…";
+    statusBar.className = "error";
+  };
+}
+
+connect();
+</script>
+
+</body>
+</html>

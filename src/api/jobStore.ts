@@ -9,6 +9,9 @@ import type { Job, JobStatus } from "./types.js"
 
 const jobs = new Map<string, Job>()
 const subjects = new Map<string, Subject<string>>()
+const jobSubject = new Subject<Omit<Job, "logs">>()
+
+export const jobEvents$ = jobSubject.asObservable()
 
 // ---------------------------------------------------------------------------
 // Job CRUD
@@ -31,6 +34,9 @@ export const createJob = (
   }
 
   jobs.set(job.id, job)
+
+  const { logs: _logs, ...rest } = job
+  jobSubject.next(rest)
 
   return job
 }
@@ -62,6 +68,9 @@ export const updateJob = (
   }
 
   jobs.set(id, updated)
+
+  const { logs: _logs, ...rest } = updated
+  jobSubject.next(rest)
 
   return updated
 }

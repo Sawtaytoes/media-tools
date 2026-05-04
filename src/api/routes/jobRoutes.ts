@@ -1,7 +1,8 @@
 import { OpenAPIHono, createRoute } from "@hono/zod-openapi"
+import { streamSSE } from "hono/streaming"
 import { z } from "zod"
 
-import { getAllJobs, getJob } from "../jobStore.js"
+import { getAllJobs, getJob, jobEvents$ } from "../jobStore.js"
 import * as schemas from "../schemas.js"
 
 const jobDetailSchema = z.object({
@@ -21,6 +22,46 @@ const jobListSchema = z.array(
 )
 
 export const jobRoutes = new OpenAPIHono()
+
+jobRoutes.openapi(
+  createRoute({
+    method: "get",
+    path: "/jobs/stream",
+    summary: "Stream all job updates via Server-Sent Events",
+    tags: ["Job Management"],
+    responses: {
+      200: {
+        description: "Server-Sent Events stream of job updates. Each event is a JSON job object (without logs). Replays all existing jobs on connect, then streams new creates and status changes.",
+        content: {
+          "text/event-stream": {
+            schema: { type: "string" },
+          },
+        },
+      },
+    },
+  }),
+  (context) =>
+    streamSSE(context, async (stream) => {
+      const send = (job: object) =>
+        stream.writeSSE({ data: JSON.stringify(job) })
+
+      for (const { logs: _logs, ...job } of getAllJobs()) {
+        await send(job)
+      }
+
+      await new Promise<void>((resolve) => {
+        const sub = jobEvents$.subscribe({
+          error: () => resolve(),
+          next: (job) => { stream.writeSSE({ data: JSON.stringify(job) }) },
+        })
+
+        stream.onAbort(() => {
+          sub.unsubscribe()
+          resolve()
+        })
+      })
+    }),
+)
 
 jobRoutes.openapi(
   createRoute({
