@@ -133,6 +133,14 @@ export const specialFeatureMatchRenames = [
     searchTerm: /(.*stills?.*)$/i,
     replacement: "$1 -other",
   },
+  {
+    searchTerm: /(.*image gallery?.*)$/i,
+    replacement: "$1 -other",
+  },
+  {
+    searchTerm: /(.*art gallery?.*)$/i,
+    replacement: "$1 -other",
+  },
 ] as const
 
 export const getTimecodeAtOffset = (
