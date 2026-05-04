@@ -1,15 +1,51 @@
-import { Hono } from "hono"
+import { OpenAPIHono, createRoute } from "@hono/zod-openapi"
 import { streamSSE } from "hono/streaming"
 
 import { getJob, getSubject } from "../jobStore.js"
+import * as schemas from "../schemas.js"
 
-export const logsRoutes = new Hono()
+export const logsRoutes = new OpenAPIHono()
 
 // SSE log stream.
 // Each event data is JSON: { line: string } | { done: true, status: JobStatus }
 // Replays buffered logs first, then streams live lines until the job finishes.
-logsRoutes.get(
-  "/jobs/:id/logs",
+logsRoutes.openapi(
+  createRoute({
+    method: "get",
+    path: "/jobs/:id/logs",
+    summary: "Stream job logs via Server-Sent Events",
+    tags: ["Job Management"],
+    parameters: [
+      {
+        name: "id",
+        in: "path",
+        required: true,
+        description: "Job ID",
+        schema: { type: "string" },
+      },
+    ],
+    responses: {
+      200: {
+        description: "Server-Sent Events stream of job logs",
+        content: {
+          "text/event-stream": {
+            schema: {
+              type: "string",
+              description: "SSE formatted log lines",
+            },
+          },
+        },
+      },
+      404: {
+        description: "Job not found",
+        content: {
+          "application/json": {
+            schema: schemas.jobNotFoundSchema,
+          },
+        },
+      },
+    },
+  }),
   (context) => {
     const job = getJob(context.req.param("id"))
 

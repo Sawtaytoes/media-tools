@@ -6,12 +6,11 @@ import os from "node:os"
 import { Server } from "socket.io"
 
 import { logInfo } from "./logMessage.js"
+import { CLI_SERVER_PORT } from "./port.js"
 
 const app = new Hono()
 
 app.use("/*", serveStatic({ root: "./public" }))
-
-const CLI_SERVER_PORT = Number(process.env.CLI_SERVER_PORT ?? 3002)
 
 // serve() returns an http.Server — Socket.IO attaches its WebSocket upgrade
 // handler after the fact, which works fine even on an already-listening server.

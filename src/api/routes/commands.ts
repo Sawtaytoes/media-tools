@@ -1,4 +1,5 @@
-import { Hono, type Context } from "hono"
+import { OpenAPIHono, createRoute } from "@hono/zod-openapi"
+import { type Context } from "hono"
 import { type Observable } from "rxjs"
 
 import { changeTrackLanguages } from "../../changeTrackLanguages.js"
@@ -31,10 +32,7 @@ import { splitChapters } from "../../splitChapters.js"
 import { storeAspectRatioData } from "../../storeAspectRatioData.js"
 import { createJob } from "../jobStore.js"
 import { runJob } from "../jobRunner.js"
-
-// ---------------------------------------------------------------------------
-// Helper
-// ---------------------------------------------------------------------------
+import * as schemas from "../schemas.js"
 
 const startJob = (
   context: Context,
@@ -55,492 +53,951 @@ const startJob = (
   )
 }
 
-// ---------------------------------------------------------------------------
-// Routes
-// ---------------------------------------------------------------------------
+export const commandRoutes = new OpenAPIHono()
 
-export const commandRoutes = new Hono()
-
-commandRoutes.post(
-  "/jobs/copyFiles",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/copyFiles",
+    summary: "Copy files from source to destination",
+    tags: ["File Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.copyFilesRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const { destinationPath, sourcePath } = body
-
-    if (!sourcePath || !destinationPath) {
-      return context.json({ error: "sourcePath and destinationPath are required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "copyFiles", body,
-      copyFiles({ destinationPath, sourcePath }))
+      copyFiles({ destinationPath: body.destinationPath, sourcePath: body.sourcePath }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/moveFiles",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/moveFiles",
+    summary: "Move files from source to destination",
+    tags: ["File Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.moveFilesRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const { destinationPath, sourcePath } = body
-
-    if (!sourcePath || !destinationPath) {
-      return context.json({ error: "sourcePath and destinationPath are required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "moveFiles", body,
-      moveFiles({ destinationPath, sourcePath }))
+      moveFiles({ destinationPath: body.destinationPath, sourcePath: body.sourcePath }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/copyOutSubtitles",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/copyOutSubtitles",
+    summary: "Extract subtitle files from media files",
+    tags: ["Subtitle Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.copyOutSubtitlesRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const { isRecursive = false, sourcePath, subtitlesLanguage } = body
-
-    if (!sourcePath) {
-      return context.json({ error: "sourcePath is required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "copyOutSubtitles", body,
-      copyOutSubtitles({ isRecursive, sourcePath, subtitlesLanguage }))
+      copyOutSubtitles({ isRecursive: body.isRecursive, sourcePath: body.sourcePath, subtitlesLanguage: body.subtitlesLanguage }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/getAudioOffsets",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/getAudioOffsets",
+    summary: "Calculate audio synchronization offsets between files",
+    tags: ["Audio Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.getAudioOffsetsRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const { destinationFilesPath, sourceFilesPath } = body
-
-    if (!sourceFilesPath || !destinationFilesPath) {
-      return context.json({ error: "sourceFilesPath and destinationFilesPath are required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "getAudioOffsets", body,
-      getAudioOffsets({ destinationFilesPath, sourceFilesPath }))
+      getAudioOffsets({ destinationFilesPath: body.destinationFilesPath, sourceFilesPath: body.sourceFilesPath }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/changeTrackLanguages",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/changeTrackLanguages",
+    summary: "Change language tags for media tracks",
+    tags: ["Track Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.changeTrackLanguagesRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const { audioLanguage, isRecursive = false, sourcePath, subtitlesLanguage, videoLanguage } = body
-
-    if (!sourcePath) {
-      return context.json({ error: "sourcePath is required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "changeTrackLanguages", body,
-      changeTrackLanguages({ audioLanguage, isRecursive, sourcePath, subtitlesLanguage, videoLanguage }))
+      changeTrackLanguages({ audioLanguage: body.audioLanguage, isRecursive: body.isRecursive, sourcePath: body.sourcePath, subtitlesLanguage: body.subtitlesLanguage, videoLanguage: body.videoLanguage }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/fixIncorrectDefaultTracks",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/fixIncorrectDefaultTracks",
+    summary: "Fix incorrect default track designations",
+    tags: ["Track Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.fixIncorrectDefaultTracksRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const { isRecursive = false, sourcePath } = body
-
-    if (!sourcePath) {
-      return context.json({ error: "sourcePath is required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "fixIncorrectDefaultTracks", body,
-      fixIncorrectDefaultTracks({ isRecursive, sourcePath }))
+      fixIncorrectDefaultTracks({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/hasBetterAudio",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/hasBetterAudio",
+    summary: "Analyze and compare audio quality across files",
+    tags: ["Analysis"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.hasBetterAudioRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const { isRecursive = false, recursiveDepth = 0, sourcePath } = body
-
-    if (!sourcePath) {
-      return context.json({ error: "sourcePath is required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "hasBetterAudio", body,
-      hasBetterAudio({ isRecursive, recursiveDepth, sourcePath }))
+      hasBetterAudio({ isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, sourcePath: body.sourcePath }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/hasBetterVersion",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/hasBetterVersion",
+    summary: "Check if better version of media exists",
+    tags: ["Analysis"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.hasBetterVersionRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const { isRecursive = false, recursiveDepth = 0, sourcePath } = body
-
-    if (!sourcePath) {
-      return context.json({ error: "sourcePath is required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "hasBetterVersion", body,
-      hasBetterVersion({ isRecursive, recursiveDepth, sourcePath }))
+      hasBetterVersion({ isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, sourcePath: body.sourcePath }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/hasDuplicateMusicFiles",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/hasDuplicateMusicFiles",
+    summary: "Identify duplicate music files",
+    tags: ["Analysis"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.hasDuplicateMusicFilesRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const { isRecursive = false, recursiveDepth = 0, sourcePath } = body
-
-    if (!sourcePath) {
-      return context.json({ error: "sourcePath is required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "hasDuplicateMusicFiles", body,
-      hasDuplicateMusicFiles({ isRecursive, recursiveDepth, sourcePath }))
+      hasDuplicateMusicFiles({ isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, sourcePath: body.sourcePath }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/hasImaxEnhancedAudio",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/hasImaxEnhancedAudio",
+    summary: "Check for IMAX enhanced audio tracks",
+    tags: ["Analysis"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.hasImaxEnhancedAudioRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const { isRecursive = false, sourcePath } = body
-
-    if (!sourcePath) {
-      return context.json({ error: "sourcePath is required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "hasImaxEnhancedAudio", body,
-      hasImaxEnhancedAudio({ isRecursive, sourcePath }))
+      hasImaxEnhancedAudio({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/hasManyAudioTracks",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/hasManyAudioTracks",
+    summary: "Identify files with many audio tracks",
+    tags: ["Analysis"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.hasManyAudioTracksRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const { isRecursive = false, sourcePath } = body
-
-    if (!sourcePath) {
-      return context.json({ error: "sourcePath is required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "hasManyAudioTracks", body,
-      hasManyAudioTracks({ isRecursive, sourcePath }))
+      hasManyAudioTracks({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/hasSurroundSound",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/hasSurroundSound",
+    summary: "Check for surround sound audio tracks",
+    tags: ["Analysis"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.hasSurroundSoundRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const { isRecursive = false, recursiveDepth = 0, sourcePath } = body
-
-    if (!sourcePath) {
-      return context.json({ error: "sourcePath is required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "hasSurroundSound", body,
-      hasSurroundSound({ isRecursive, recursiveDepth, sourcePath }))
+      hasSurroundSound({ isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, sourcePath: body.sourcePath }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/hasWrongDefaultTrack",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/hasWrongDefaultTrack",
+    summary: "Find files with incorrect default track selection",
+    tags: ["Analysis"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.hasWrongDefaultTrackRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const { isRecursive = false, sourcePath } = body
-
-    if (!sourcePath) {
-      return context.json({ error: "sourcePath is required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "hasWrongDefaultTrack", body,
-      hasWrongDefaultTrack({ isRecursive, sourcePath }))
+      hasWrongDefaultTrack({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/isMissingSubtitles",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/isMissingSubtitles",
+    summary: "Identify media files missing subtitle tracks",
+    tags: ["Subtitle Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.isMissingSubtitlesRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const { isRecursive = false, sourcePath } = body
-
-    if (!sourcePath) {
-      return context.json({ error: "sourcePath is required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "isMissingSubtitles", body,
-      isMissingSubtitles({ isRecursive, sourcePath }))
+      isMissingSubtitles({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/keepLanguages",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/keepLanguages",
+    summary: "Filter media tracks by language",
+    tags: ["Track Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.keepLanguagesRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const {
-      audioLanguages = [],
-      isRecursive = false,
-      sourcePath,
-      subtitlesLanguages = [],
-      useFirstAudioLanguage: hasFirstAudioLanguage = false,
-      useFirstSubtitlesLanguage: hasFirstSubtitlesLanguage = false,
-    } = body
-
-    if (!sourcePath) {
-      return context.json({ error: "sourcePath is required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "keepLanguages", body,
-      keepLanguages({ audioLanguages, hasFirstAudioLanguage, hasFirstSubtitlesLanguage, isRecursive, sourcePath, subtitlesLanguages }))
+      keepLanguages({ audioLanguages: body.audioLanguages, hasFirstAudioLanguage: body.useFirstAudioLanguage, hasFirstSubtitlesLanguage: body.useFirstSubtitlesLanguage, isRecursive: body.isRecursive, sourcePath: body.sourcePath, subtitlesLanguages: body.subtitlesLanguages }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/mergeTracks",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/mergeTracks",
+    summary: "Merge subtitle tracks into media files",
+    tags: ["Track Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.mergeTracksRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const {
-      automaticOffset: hasAutomaticOffset = false,
-      globalOffset: globalOffsetInMilliseconds = 0,
-      includeChapters: hasChapters = false,
-      mediaFilesPath,
-      offsets: offsetsInMilliseconds = [],
-      subtitlesPath,
-    } = body
-
-    if (!subtitlesPath || !mediaFilesPath) {
-      return context.json({ error: "subtitlesPath and mediaFilesPath are required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "mergeTracks", body,
-      mergeTracks({ globalOffsetInMilliseconds, hasAutomaticOffset, hasChapters, mediaFilesPath, offsetsInMilliseconds, subtitlesPath }))
+      mergeTracks({ globalOffsetInMilliseconds: body.globalOffset, hasAutomaticOffset: body.automaticOffset, hasChapters: body.includeChapters, mediaFilesPath: body.mediaFilesPath, offsetsInMilliseconds: body.offsets, subtitlesPath: body.subtitlesPath }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/nameAnimeEpisodes",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/nameAnimeEpisodes",
+    summary: "Rename anime episode files based on metadata",
+    tags: ["Naming Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.nameAnimeEpisodesRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const { searchTerm, seasonNumber = 1, sourcePath } = body
-
-    if (!sourcePath || !searchTerm) {
-      return context.json({ error: "sourcePath and searchTerm are required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "nameAnimeEpisodes", body,
-      nameAnimeEpisodes({ searchTerm, seasonNumber, sourcePath }))
+      nameAnimeEpisodes({ searchTerm: body.searchTerm, seasonNumber: body.seasonNumber, sourcePath: body.sourcePath }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/nameSpecialFeatures",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/nameSpecialFeatures",
+    summary: "Rename special features based on timecode data",
+    tags: ["Naming Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.nameSpecialFeaturesRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const { fixedOffset = 0, sourcePath, timecodePadding: timecodePaddingAmount = 0, url } = body
-
-    if (!sourcePath || !url) {
-      return context.json({ error: "sourcePath and url are required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "nameSpecialFeatures", body,
-      nameSpecialFeatures({ fixedOffset, sourcePath, timecodePaddingAmount, url }))
+      nameSpecialFeatures({ fixedOffset: body.fixedOffset, sourcePath: body.sourcePath, timecodePaddingAmount: body.timecodePadding, url: body.url }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/nameTvShowEpisodes",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/nameTvShowEpisodes",
+    summary: "Rename TV show episode files based on metadata",
+    tags: ["Naming Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.nameTvShowEpisodesRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const { searchTerm, seasonNumber, sourcePath } = body
-
-    if (!sourcePath || !searchTerm || seasonNumber == null) {
-      return context.json({ error: "sourcePath, searchTerm, and seasonNumber are required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "nameTvShowEpisodes", body,
-      nameTvShowEpisodes({ searchTerm, seasonNumber, sourcePath }))
+      nameTvShowEpisodes({ searchTerm: body.searchTerm, seasonNumber: body.seasonNumber, sourcePath: body.sourcePath }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/renameDemos",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/renameDemos",
+    summary: "Rename demo files based on content analysis",
+    tags: ["Naming Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.renameDemosRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const { isRecursive = false, sourcePath } = body
-
-    if (!sourcePath) {
-      return context.json({ error: "sourcePath is required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "renameDemos", body,
-      renameDemos({ isRecursive, sourcePath }))
+      renameDemos({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/renameMovieClipDownloads",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/renameMovieClipDownloads",
+    summary: "Rename downloaded movie clip files",
+    tags: ["Naming Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.renameMovieClipDownloadsRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const { sourcePath } = body
-
-    if (!sourcePath) {
-      return context.json({ error: "sourcePath is required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "renameMovieClipDownloads", body,
-      renameMovieClipDownloads({ sourcePath }))
+      renameMovieClipDownloads({ sourcePath: body.sourcePath }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/reorderTracks",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/reorderTracks",
+    summary: "Reorder media tracks",
+    tags: ["Track Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.reorderTracksRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    // NOTE: reorderTracks.ts has tap(() => process.exit()) after toArray().
-    // Remove it before this endpoint can be used safely.
-    const body = await context.req.json()
-    const {
-      audioTrackIndexes = [],
-      isRecursive = false,
-      sourcePath,
-      subtitlesTrackIndexes = [],
-      videoTrackIndexes = [],
-    } = body
-
-    if (!sourcePath) {
-      return context.json({ error: "sourcePath is required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "reorderTracks", body,
-      reorderTracks({ audioTrackIndexes, isRecursive, sourcePath, subtitlesTrackIndexes, videoTrackIndexes }))
+      reorderTracks({ audioTrackIndexes: body.audioTrackIndexes, isRecursive: body.isRecursive, sourcePath: body.sourcePath, subtitlesTrackIndexes: body.subtitlesTrackIndexes, videoTrackIndexes: body.videoTrackIndexes }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/replaceAttachments",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/replaceAttachments",
+    summary: "Replace attachments in media files",
+    tags: ["File Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.replaceAttachmentsRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const { destinationFilesPath, sourceFilesPath } = body
-
-    if (!sourceFilesPath || !destinationFilesPath) {
-      return context.json({ error: "sourceFilesPath and destinationFilesPath are required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "replaceAttachments", body,
-      replaceAttachments({ destinationFilesPath, sourceFilesPath }))
+      replaceAttachments({ destinationFilesPath: body.destinationFilesPath, sourceFilesPath: body.sourceFilesPath }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/replaceFlacWithPcmAudio",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/replaceFlacWithPcmAudio",
+    summary: "Replace FLAC audio with PCM audio",
+    tags: ["Audio Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.replaceFlacWithPcmAudioRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const { isRecursive = false, sourcePath } = body
-
-    if (!sourcePath) {
-      return context.json({ error: "sourcePath is required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "replaceFlacWithPcmAudio", body,
-      replaceFlacWithPcmAudio({ isRecursive, sourcePath }))
+      replaceFlacWithPcmAudio({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/replaceTracks",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/replaceTracks",
+    summary: "Replace media tracks in destination files",
+    tags: ["Track Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.replaceTracksRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const {
-      audioLanguages = [],
-      automaticOffset: hasAutomaticOffset = false,
-      destinationFilesPath,
-      globalOffset: globalOffsetInMilliseconds = 0,
-      includeChapters: hasChapters = false,
-      offsets = [],
-      sourceFilesPath,
-      subtitlesLanguages = [],
-      videoLanguages = [],
-    } = body
-
-    if (!sourceFilesPath || !destinationFilesPath) {
-      return context.json({ error: "sourceFilesPath and destinationFilesPath are required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "replaceTracks", body,
       replaceTracks({
-        audioLanguages,
-        destinationFilesPath,
-        globalOffsetInMilliseconds,
-        hasAutomaticOffset,
-        hasChapters,
-        offsets,
-        sourceFilesPath,
-        subtitlesLanguages,
-        videoLanguages,
+        audioLanguages: body.audioLanguages,
+        destinationFilesPath: body.destinationFilesPath,
+        globalOffsetInMilliseconds: body.globalOffset,
+        hasAutomaticOffset: body.automaticOffset,
+        hasChapters: body.includeChapters,
+        offsets: body.offsets,
+        sourceFilesPath: body.sourceFilesPath,
+        subtitlesLanguages: body.subtitlesLanguages,
+        videoLanguages: body.videoLanguages,
       }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/setDisplayWidth",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/setDisplayWidth",
+    summary: "Set display width for video tracks",
+    tags: ["Video Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.setDisplayWidthRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const { displayWidth = 853, isRecursive = false, recursiveDepth = 0, sourcePath } = body
-
-    if (!sourcePath) {
-      return context.json({ error: "sourcePath is required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "setDisplayWidth", body,
-      setDisplayWidth({ displayWidth, isRecursive, recursiveDepth, sourcePath }))
+      setDisplayWidth({ displayWidth: body.displayWidth, isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, sourcePath: body.sourcePath }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/splitChapters",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/splitChapters",
+    summary: "Split media files by chapter markers",
+    tags: ["File Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.splitChaptersRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const { chapterSplits: chapterSplitsList, sourcePath } = body
-
-    if (!sourcePath || !chapterSplitsList?.length) {
-      return context.json({ error: "sourcePath and chapterSplits are required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "splitChapters", body,
-      splitChapters({ chapterSplitsList, sourcePath }))
+      splitChapters({ chapterSplitsList: body.chapterSplits, sourcePath: body.sourcePath }))
   },
 )
 
-commandRoutes.post(
-  "/jobs/storeAspectRatioData",
+commandRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/jobs/storeAspectRatioData",
+    summary: "Analyze and store aspect ratio metadata",
+    tags: ["Metadata Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: schemas.storeAspectRatioDataRequestSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      202: {
+        description: "Job started successfully",
+        content: {
+          "application/json": {
+            schema: schemas.jobResponseSchema,
+          },
+        },
+      },
+    },
+  }),
   async (context) => {
-    const body = await context.req.json()
-    const {
-      folders: folderNames = [],
-      force = false,
-      isRecursive = false,
-      outputPath,
-      recursiveDepth = 0,
-      rootPath,
-      sourcePath,
-      threads: threadCount,
-    } = body
-
-    if (!sourcePath) {
-      return context.json({ error: "sourcePath is required" }, 400)
-    }
-
+    const body = context.req.valid("json")
     return startJob(context, "storeAspectRatioData", body,
       storeAspectRatioData({
-        folderNames,
-        isRecursive,
+        folderNames: body.folders,
+        isRecursive: body.isRecursive,
         mode: (
-          force
+          body.force
           ? "overwrite"
           : "append"
         ),
-        outputPath,
-        recursiveDepth,
-        rootPath,
-        sourcePath,
-        threadCount,
+        outputPath: body.outputPath,
+        recursiveDepth: body.recursiveDepth,
+        rootPath: body.rootPath,
+        sourcePath: body.sourcePath,
+        threadCount: body.threads,
       }))
   },
 )
