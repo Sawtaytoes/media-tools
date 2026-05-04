@@ -15,6 +15,8 @@ import { isMissingSubtitles } from "../../isMissingSubtitles.js"
 import { keepLanguages } from "../../keepLanguages.js"
 import { mergeTracks } from "../../mergeTracks.js"
 import { moveFiles } from "../../moveFiles.js"
+import { copyOutSubtitles } from "../../copyOutSubtitles.js"
+import { getAudioOffsets } from "../../getAudioOffsets.js"
 import { nameAnimeEpisodes } from "../../nameAnimeEpisodes.js"
 import { nameSpecialFeatures } from "../../nameSpecialFeatures.js"
 import { nameTvShowEpisodes } from "../../nameTvShowEpisodes.js"
@@ -86,6 +88,36 @@ commandRoutes.post(
 
     return startJob(context, "moveFiles", body,
       moveFiles({ destinationPath, sourcePath }))
+  },
+)
+
+commandRoutes.post(
+  "/jobs/copyOutSubtitles",
+  async (context) => {
+    const body = await context.req.json()
+    const { isRecursive = false, sourcePath, subtitlesLanguage } = body
+
+    if (!sourcePath) {
+      return context.json({ error: "sourcePath is required" }, 400)
+    }
+
+    return startJob(context, "copyOutSubtitles", body,
+      copyOutSubtitles({ isRecursive, sourcePath, subtitlesLanguage }))
+  },
+)
+
+commandRoutes.post(
+  "/jobs/getAudioOffsets",
+  async (context) => {
+    const body = await context.req.json()
+    const { destinationFilesPath, sourceFilesPath } = body
+
+    if (!sourceFilesPath || !destinationFilesPath) {
+      return context.json({ error: "sourceFilesPath and destinationFilesPath are required" }, 400)
+    }
+
+    return startJob(context, "getAudioOffsets", body,
+      getAudioOffsets({ destinationFilesPath, sourceFilesPath }))
   },
 )
 

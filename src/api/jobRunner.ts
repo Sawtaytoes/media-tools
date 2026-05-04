@@ -36,6 +36,19 @@ export const runJob = (
       }),
     )
     .subscribe({
+      next: (value) => {
+        const job = getJob(jobId)
+
+        if (!job) return
+
+        updateJob(jobId, {
+          results: (
+            job
+            .results
+            .concat(value)
+          ),
+        })
+      },
       complete: () => {
         const job = getJob(jobId)
 

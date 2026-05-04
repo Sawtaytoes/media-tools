@@ -7,6 +7,7 @@ export type Job = {
   id: string
   logs: string[]
   params: unknown
+  results: unknown[]
   startedAt: Date | null
   status: JobStatus
 }

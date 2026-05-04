@@ -25,6 +25,7 @@ export const createJob = (
     id: randomUUID(),
     logs: [],
     params,
+    results: [],
     startedAt: null,
     status: "pending",
   }

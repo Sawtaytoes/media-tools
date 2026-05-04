@@ -38,6 +38,17 @@ describe(runJob.name, () => {
 
     expect(getJob(job.id)?.status).toBe("completed")
     expect(getJob(job.id)?.completedAt).toBeInstanceOf(Date)
+    expect(getJob(job.id)?.results).toEqual(["result"])
+  })
+
+  test("captures emitted values into job.results", async () => {
+    const job = createJob("hasBetterAudio", {})
+
+    runJob(job.id, of("first", "second"))
+
+    await flushMicrotasks()
+
+    expect(getJob(job.id)?.results).toEqual(["first", "second"])
   })
 
   test("transitions job to failed when observable errors", async () => {

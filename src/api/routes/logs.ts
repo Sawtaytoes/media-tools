@@ -32,7 +32,7 @@ logsRoutes.get(
         job.status === "completed"
         || job.status === "failed"
       ) {
-        await send({ done: true, status: job.status })
+        await send({ done: true, status: job.status, results: job.results })
 
         return
       }
@@ -40,7 +40,7 @@ logsRoutes.get(
       const subject = getSubject(job.id)
 
       if (!subject) {
-        await send({ done: true, status: job.status })
+        await send({ done: true, status: job.status, results: job.results })
 
         return
       }
@@ -48,7 +48,7 @@ logsRoutes.get(
       await new Promise<void>((resolve) => {
         const sub = subject.subscribe({
           complete: async () => {
-            await send({ done: true, status: job.status })
+            await send({ done: true, status: job.status, results: job.results })
             resolve()
           },
           error: async () => {

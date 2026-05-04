@@ -112,10 +112,6 @@ export const copyOutSubtitles = ({
     )),
     concatAll(),
     toArray(),
-    tap(() => {
-      process
-      .exit()
-    }),
     catchNamedError(
       copyOutSubtitles
     ),

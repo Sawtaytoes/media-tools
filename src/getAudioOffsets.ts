@@ -104,10 +104,6 @@ export const getAudioOffsets = ({
           )
         }),
         toArray(),
-        tap(() => {
-          process
-          .exit()
-        })
       )
     )),
     catchNamedError(
