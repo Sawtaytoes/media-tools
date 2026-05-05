@@ -2,6 +2,7 @@ import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi"
 import { type Context } from "hono"
 import { type Observable } from "rxjs"
 
+import { makeDirectory } from "../../tools/makeDirectory.js"
 import { changeTrackLanguages } from "../../app-commands/changeTrackLanguages.js"
 import { copyFiles } from "../../app-commands/copyFiles.js"
 import { copyOutSubtitles, copyOutSubtitlesDefaultProps } from "../../app-commands/copyOutSubtitles.js"
@@ -68,6 +69,7 @@ const startCommandJob = ({
 }
 
 const commandNames = [
+  "makeDirectory",
   "changeTrackLanguages",
   "copyFiles",
   "copyOutSubtitles",
@@ -111,6 +113,12 @@ type CommandConfig = {
 }
 
 const commandConfigs: Record<CommandName, CommandConfig> = {
+  makeDirectory: {
+    getObservable: (body) => makeDirectory(body.filePath),
+    schema: schemas.makeDirectoryRequestSchema,
+    summary: "Create a directory (or the parent directory of a file path)",
+    tags: ["File Operations"],
+  },
   changeTrackLanguages: {
     getObservable: (body) => changeTrackLanguages({ audioLanguage: body.audioLanguage, isRecursive: body.isRecursive, sourcePath: body.sourcePath, subtitlesLanguage: body.subtitlesLanguage, videoLanguage: body.videoLanguage }),
     schema: schemas.changeTrackLanguagesRequestSchema,

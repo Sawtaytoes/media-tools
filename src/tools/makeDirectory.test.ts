@@ -1,6 +1,6 @@
 import { vol } from "memfs"
 import { firstValueFrom } from "rxjs"
-import { beforeEach, describe, expect, test, vitest } from "vitest"
+import { beforeEach, describe, expect, test } from "vitest"
 
 import { makeDirectory } from "./makeDirectory.js"
 
@@ -12,19 +12,10 @@ describe(makeDirectory.name, () => {
     })
   })
 
-  test("creates a directory given a file path", async () => {
-    const folderPath = "G:\\Movies\\Super Mario Bros (1993)"
-    const readdirCallback = vitest.fn()
+  test("creates the parent directory given a file path with an extension", async () => {
+    const filePath = "G:\\Movies\\Super Mario Bros (1993)\\Super Mario Bros (1993).mkv"
 
-    await expect(
-      firstValueFrom(
-        makeDirectory(
-          folderPath
-        )
-      )
-    )
-    .resolves
-    .toBe(undefined)
+    await firstValueFrom(makeDirectory(filePath))
 
     await expect(
       new Promise((
@@ -48,6 +39,38 @@ describe(makeDirectory.name, () => {
     .resolves
     .toEqual([
       "Star Wars (1977)",
+      "Super Mario Bros (1993)",
+    ])
+  })
+
+  test("creates the directory itself given a path with no file extension", async () => {
+    const folderPath = "G:\\Movies\\Super Mario Bros (1993)"
+
+    await firstValueFrom(makeDirectory(folderPath))
+
+    await expect(
+      new Promise((
+        resolve,
+        reject,
+      ) => {
+        vol
+        .readdir(
+          "G:\\Movies",
+          (error, data) => {
+            if (error) {
+              reject(error)
+            }
+            else {
+              resolve(data)
+            }
+          },
+        )
+      })
+    )
+    .resolves
+    .toEqual([
+      "Star Wars (1977)",
+      "Super Mario Bros (1993)",
     ])
   })
 })

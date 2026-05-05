@@ -23,6 +23,10 @@ export const jobNotFoundSchema = z.object({
 }).openapi("JobNotFound")
 
 // Command request schemas
+export const makeDirectoryRequestSchema = z.object({
+  filePath: z.string().describe("Directory path to create, or a file path whose parent directory should be created"),
+})
+
 export const copyFilesRequestSchema = z.object({
   sourcePath: z.string().describe("Source directory path"),
   destinationPath: z.string().describe("Destination directory path"),
@@ -155,7 +159,21 @@ export const modifySubtitleMetadataRequestSchema = z.object({
   sourcePath: z.string().describe("Source directory path containing .ass files"),
   isRecursive: z.boolean().default(false).describe("Search recursively in subdirectories"),
   recursiveDepth: z.number().default(0).describe("Maximum recursion depth (0 = default depth of 2)"),
-  rules: z.array(assModificationRuleSchema).describe("Ordered list of DSL modification rules to apply to each .ass file"),
+  rules: z.preprocess(
+    (value) => {
+      if (typeof value === "string") {
+        try {
+          return JSON.parse(value)
+        }
+        catch {
+          return value
+        }
+      }
+
+      return value
+    },
+    z.array(assModificationRuleSchema),
+  ).describe("Ordered list of DSL modification rules to apply to each .ass file"),
 })
 
 export const keepLanguagesRequestSchema = z.object({

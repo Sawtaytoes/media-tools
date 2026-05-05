@@ -76,7 +76,8 @@ logsRoutes.openapi(
       const subject = getSubject(job.id)
 
       if (!subject) {
-        await send({ done: true, status: job.status, results: job.results })
+        const finishedJob = getJob(job.id)
+        await send({ done: true, status: finishedJob?.status ?? job.status, results: finishedJob?.results ?? job.results })
 
         return
       }
@@ -84,11 +85,13 @@ logsRoutes.openapi(
       await new Promise<void>((resolve) => {
         const sub = subject.subscribe({
           complete: async () => {
-            await send({ done: true, status: job.status, results: job.results })
+            const completedJob = getJob(job.id)
+            await send({ done: true, status: completedJob?.status ?? job.status, results: completedJob?.results ?? job.results })
             resolve()
           },
           error: async () => {
-            await send({ done: true, status: job.status })
+            const failedJob = getJob(job.id)
+            await send({ done: true, status: failedJob?.status ?? job.status })
             resolve()
           },
           next: (line) => {

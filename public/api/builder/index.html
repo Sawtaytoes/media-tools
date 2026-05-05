@@ -68,6 +68,14 @@
 
 const COMMANDS = {
   // File Operations
+  makeDirectory: {
+    summary: "Create a directory (or the parent directory of a file path)",
+    tag: "File Operations",
+    outputFolderName: null,
+    fields: [
+      { name: "filePath", type: "path", label: "Directory Path", required: true },
+    ]
+  },
   copyFiles: {
     summary: "Copy files from source to destination",
     tag: "File Operations",
@@ -887,6 +895,8 @@ function updateStepUI(step) {
           `<p class="step-error text-xs text-red-400 bg-red-950/40 rounded px-2 py-1 mb-2 font-mono">${esc(step.error)}</p>`)
       }
     }
+  } else if (errEl) {
+    errEl.remove()
   }
 }
 
