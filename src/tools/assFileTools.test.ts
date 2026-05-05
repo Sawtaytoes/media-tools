@@ -340,7 +340,7 @@ describe("applyAssRules — setStyleFields", () => {
     const result = applyAssRules(parsed, [
       {
         type: "setStyleFields",
-        skipNamePattern: "signs?|op|ed|opening|ending",
+        ignoredStyleNamesRegexString: "signs?|op|ed|opening|ending",
         fields: { MarginL: "200", MarginR: "200", MarginV: "90" },
       },
     ])
@@ -361,7 +361,7 @@ describe("applyAssRules — setStyleFields", () => {
     const result = applyAssRules(parsed, [
       {
         type: "setStyleFields",
-        skipNamePattern: "signs?|op|ed|opening|ending",
+        ignoredStyleNamesRegexString: "signs?|op|ed|opening|ending",
         fields: { MarginL: "200", MarginR: "200", MarginV: "90" },
       },
     ])
@@ -382,7 +382,7 @@ describe("applyAssRules — setStyleFields", () => {
     const result = applyAssRules(parsed, [
       {
         type: "setStyleFields",
-        skipNamePattern: "signs?|op|ed|opening|ending",
+        ignoredStyleNamesRegexString: "signs?|op|ed|opening|ending",
         fields: { MarginL: "200", MarginR: "200", MarginV: "90" },
       },
     ])
@@ -403,7 +403,7 @@ describe("applyAssRules — setStyleFields", () => {
     const result = applyAssRules(parsed, [
       {
         type: "setStyleFields",
-        skipNamePattern: "signs?|op|ed|opening|ending",
+        ignoredStyleNamesRegexString: "signs?|op|ed|opening|ending",
         fields: { MarginL: "200", MarginR: "200", MarginV: "90" },
       },
     ])

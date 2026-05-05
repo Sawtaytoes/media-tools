@@ -102,7 +102,7 @@ const applyScaleResolution = (
   }
 
   return subRules.reduce(
-    (acc, r) => applySetScriptInfo(acc, r),
+    (subRules, setScriptInfoRule) => applySetScriptInfo(subRules, setScriptInfoRule),
     assFile,
   )
 }
@@ -111,8 +111,8 @@ const applySetStyleFields = (
   assFile: AssFile,
   rule: SetStyleFieldsRule,
 ): AssFile => {
-  const skipPattern = rule.skipNamePattern
-    ? new RegExp(rule.skipNamePattern, "i")
+  const skipPattern = rule.ignoredStyleNamesRegexString
+    ? new RegExp(rule.ignoredStyleNamesRegexString, "i")
     : null
 
   return {

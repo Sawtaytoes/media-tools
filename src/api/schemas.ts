@@ -105,7 +105,7 @@ export const deleteFilesByExtensionRequestSchema = z.object({
   sourcePath: z.string().describe("Directory path to search for files to delete"),
   isRecursive: z.boolean().default(false).describe("Search recursively in subdirectories"),
   recursiveDepth: z.number().default(0).describe("Maximum recursion depth (0 = default depth of 2)"),
-  extensions: z.array(z.string()).min(1).describe("List of file extensions to delete (with or without leading dot), e.g. ['.srt', 'idx']"),
+  extensions: z.array(z.string()).min(1).describe("List of file extensions to delete (with or without leading dot), e.g. ['.srt', 'idx']").openapi({ example: [".srt", "idx"] }),
 })
 
 const setScriptInfoRuleSchema = z.object({
@@ -123,24 +123,24 @@ const scaleResolutionRuleSchema = z.object({
   from: z.object({
     width: z.number().describe("Expected current PlayResX value in the file. The rule is skipped if the file does not match this width."),
     height: z.number().describe("Expected current PlayResY value in the file. The rule is skipped if the file does not match this height."),
-  }).optional().describe("Optional guard: if provided and the file's current PlayResX/Y do not match, the rule is skipped entirely. Omit to apply unconditionally regardless of current resolution."),
+  }).optional().describe("Optional guard: if provided and the file's current PlayResX/Y do not match, the rule is skipped entirely. Omit to apply unconditionally regardless of current resolution.").openapi({ example: { width: 640, height: 480 } }),
   to: z.object({
     width: z.number().describe("Target PlayResX value to write (e.g. 1920)."),
     height: z.number().describe("Target PlayResY value to write (e.g. 1080)."),
-  }).describe("The resolution to scale the file to."),
-  hasLayoutRes: z.boolean().default(false).describe("When true, creates LayoutResX and LayoutResY even if they are not already present. Only takes effect when syncLayoutRes is also true. Defaults to false."),
+  }).describe("The resolution to scale the file to.").openapi({ example: { width: 1920, height: 1080 } }),
+  hasLayoutRes: z.boolean().default(false).describe("When true, creates LayoutResX and LayoutResY even if they are not already present. Only takes effect when isLayoutResSynced is also true. Defaults to false."),
   hasScaledBorderAndShadow: z.boolean().default(true).describe("When true, sets 'ScaledBorderAndShadow: yes' in [Script Info] after scaling, which ensures borders and shadows scale proportionally at the new resolution. Defaults to true."),
-  isLayoutResSynced: z.boolean().default(true).describe("When true, updates LayoutResX and LayoutResY if they already exist in the file. Keys that are absent are left alone unless addLayoutRes is also true. Defaults to true."),
+  isLayoutResSynced: z.boolean().default(true).describe("When true, updates LayoutResX and LayoutResY if they already exist in the file. Keys that are absent are left alone unless hasLayoutRes is also true. Defaults to true."),
 }).openapi({
-  description: "Updates PlayResX/PlayResY in the [Script Info] section to rescale the subtitle canvas. 'from' is an optional guard — if provided and the file's current resolution does not match, the rule is skipped; omit it to apply unconditionally. syncLayoutRes updates LayoutResX/Y only if they already exist; pair it with addLayoutRes:true to also create them when absent.",
+  description: "Updates PlayResX/PlayResY in the [Script Info] section to rescale the subtitle canvas. 'from' is an optional guard — if provided and the file's current resolution does not match, the rule is skipped; omit to apply unconditionally. isLayoutResSynced updates LayoutResX/Y only if they already exist; pair it with hasLayoutRes:true to also create them when absent.",
 })
 
 const setStyleFieldsRuleSchema = z.object({
   type: z.literal("setStyleFields"),
-  skipNamePattern: z.string().optional()
-    .describe("Optional case-insensitive regular expression matched against each style's Name field. Styles whose name matches are left unchanged. Use this to protect sign/song styles from being overwritten — e.g. 'signs?|op|ed|opening|ending'."),
   fields: z.record(z.string(), z.string())
-    .describe("Map of ASS style field names to their new string values. Field names must use the exact ASS column names from the Format line (e.g. 'MarginL', 'MarginR', 'MarginV', 'Fontsize', 'PrimaryColour'). Only the listed fields are changed; all other style fields are left untouched."),
+  .describe("Map of ASS style field names to their new string values. Field names must use the exact ASS column names from the Format line (e.g. 'MarginL', 'MarginR', 'MarginV', 'Fontsize', 'PrimaryColour'). Only the listed fields are changed; all other style fields are left untouched."),
+  ignoredStyleNamesRegexString: z.string().optional()
+    .describe("Optional case-insensitive regular expression matched against each style's Name field. Styles whose name matches are left unchanged. Use this to protect sign/song styles from being overwritten — e.g. 'signs?|op|ed|opening|ending'."),
 }).openapi({
   description: "Overwrites specific fields on every style entry in the [V4+ Styles] section of an ASS file. Optionally skips styles whose Name matches a regex (e.g. sign or song styles). Use this to bulk-update margins, font sizes, or colors across all dialogue styles.",
 })

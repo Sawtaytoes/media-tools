@@ -1,4 +1,4 @@
-import { copyFile, mkdir } from "node:fs/promises"
+import { copyFile } from "node:fs/promises"
 import { join } from "node:path"
 import {
   concatMap,
@@ -10,6 +10,7 @@ import {
 import { catchNamedError } from "../tools/catchNamedError.js"
 import { getFiles } from "../tools/getFiles.js"
 import { logInfo } from "../tools/logMessage.js"
+import { makeDirectory } from "../tools/makeDirectory.js"
 
 export const copyFiles = ({
   destinationPath,
@@ -28,26 +29,27 @@ export const copyFiles = ({
       const targetPath = (
         join(
           destinationPath,
-          fileInfo
-          .filename,
+          (
+            fileInfo
+            .filename
+          ),
         )
       )
 
       return (
         defer(() => (
-          mkdir(
-            destinationPath,
-            { recursive: true },
+          makeDirectory(
+            destinationPath
           )
-          .then(() => (
+        ))
+        .pipe(
+          concatMap(() => (
             copyFile(
               fileInfo
               .fullPath,
               targetPath,
             )
-          ))
-        ))
-        .pipe(
+          )),
           tap(() => {
             logInfo(
               "COPIED",

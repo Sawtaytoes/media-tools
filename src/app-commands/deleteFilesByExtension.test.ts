@@ -8,11 +8,11 @@ import { deleteFilesByExtension } from "./deleteFilesByExtension.js"
 describe(deleteFilesByExtension.name, () => {
   beforeEach(() => {
     vol.fromJSON({
-      "G:\\Movies\\movie.srt": "",
-      "G:\\Movies\\movie.ass": "",
-      "G:\\Movies\\episode.SRT": "",
-      "G:\\Movies\\notes.txt": "",
-      "G:\\Movies\\subtitles\\extra.srt": "",
+      "G:\\AnimeSubtitles\\movie.srt": "",
+      "G:\\AnimeSubtitles\\movie.ass": "",
+      "G:\\AnimeSubtitles\\episode.SRT": "",
+      "G:\\AnimeSubtitles\\notes.txt": "",
+      "G:\\AnimeSubtitles\\subtitles\\extra.srt": "",
     })
   })
 
@@ -20,7 +20,7 @@ describe(deleteFilesByExtension.name, () => {
     await expect(
       firstValueFrom(
         deleteFilesByExtension({
-          sourcePath: "G:\\Movies",
+          sourcePath: "G:\\AnimeSubtitles",
           extensions: [".srt"],
           isRecursive: true,
           recursiveDepth: 2,
@@ -32,15 +32,15 @@ describe(deleteFilesByExtension.name, () => {
     )
     .resolves
     .toEqual([
-      "G:\\Movies\\movie.srt",
-      "G:\\Movies\\episode.SRT",
-      "G:\\Movies\\subtitles\\extra.srt",
+      "G:\\AnimeSubtitles\\movie.srt",
+      "G:\\AnimeSubtitles\\episode.SRT",
+      "G:\\AnimeSubtitles\\subtitles\\extra.srt",
     ])
 
-    await expect(stat("G:\\Movies\\movie.srt")).rejects.toThrow()
-    await expect(stat("G:\\Movies\\episode.SRT")).rejects.toThrow()
-    await expect(stat("G:\\Movies\\subtitles\\extra.srt")).rejects.toThrow()
-    await expect(stat("G:\\Movies\\movie.ass")).resolves.toBeDefined()
-    await expect(stat("G:\\Movies\\notes.txt")).resolves.toBeDefined()
+    await expect(stat("G:\\AnimeSubtitles\\movie.srt")).rejects.toThrow()
+    await expect(stat("G:\\AnimeSubtitles\\episode.SRT")).rejects.toThrow()
+    await expect(stat("G:\\AnimeSubtitles\\subtitles\\extra.srt")).rejects.toThrow()
+    await expect(stat("G:\\AnimeSubtitles\\movie.ass")).resolves.toBeDefined()
+    await expect(stat("G:\\AnimeSubtitles\\notes.txt")).resolves.toBeDefined()
   })
 })

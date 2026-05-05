@@ -154,7 +154,7 @@ function renderJob(job) {
 
   const header = makeEl("div", "job-header");
   const cmd = makeEl("div", "command");
-  cmd.textContent = job.command;
+  cmd.textContent = job.commandName ?? job.command ?? "unknown";
   const badge = makeEl("div", `status ${job.status}`);
   badge.textContent = job.status;
   header.append(cmd, badge);
@@ -174,6 +174,16 @@ function renderJob(job) {
     const path = makeEl("div", "path");
     path.textContent = sourcePath;
     card.append(path);
+  }
+
+  if (job.params && typeof job.params === "object" && Object.keys(job.params).length) {
+    const details = makeEl("details");
+    const summary = makeEl("summary");
+    summary.textContent = "Params";
+    const params = makeEl("div", "result");
+    params.textContent = JSON.stringify(job.params, null, 2);
+    details.append(summary, params);
+    card.append(details);
   }
 
   if (job.error) {

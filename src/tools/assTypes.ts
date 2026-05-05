@@ -58,7 +58,7 @@ export type ScaleResolutionRule = {
 
 export type SetStyleFieldsRule = {
   type: 'setStyleFields'
-  skipNamePattern?: string
+  ignoredStyleNamesRegexString?: string
   fields: Record<string, string>
 }
 
