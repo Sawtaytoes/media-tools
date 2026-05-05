@@ -232,7 +232,7 @@ const commandConfigs: Record<CommandName, CommandConfig> = {
     tags: ["File Operations"],
   },
   nameAnimeEpisodes: {
-    getObservable: (body) => nameAnimeEpisodes({ searchTerm: body.searchTerm, seasonNumber: body.seasonNumber, sourcePath: body.sourcePath }),
+    getObservable: (body) => nameAnimeEpisodes({ malId: body.malId, searchTerm: body.searchTerm, seasonNumber: body.seasonNumber, sourcePath: body.sourcePath }),
     schema: schemas.nameAnimeEpisodesRequestSchema,
     summary: "Rename anime episode files based on metadata",
     tags: ["Naming Operations"],
@@ -244,7 +244,7 @@ const commandConfigs: Record<CommandName, CommandConfig> = {
     tags: ["Naming Operations"],
   },
   nameTvShowEpisodes: {
-    getObservable: (body) => nameTvShowEpisodes({ searchTerm: body.searchTerm, seasonNumber: body.seasonNumber, sourcePath: body.sourcePath }),
+    getObservable: (body) => nameTvShowEpisodes({ searchTerm: body.searchTerm, seasonNumber: body.seasonNumber, sourcePath: body.sourcePath, tvdbId: body.tvdbId }),
     schema: schemas.nameTvShowEpisodesRequestSchema,
     summary: "Rename TV show episode files based on metadata",
     tags: ["Naming Operations"],

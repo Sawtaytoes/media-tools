@@ -333,7 +333,8 @@ const COMMANDS = {
     outputFolderName: null,
     fields: [
       { name: "sourcePath", type: "path", label: "Source Path", required: true },
-      { name: "searchTerm", type: "string", label: "Search Term", required: true },
+      { name: "malId", type: "number", label: "MAL ID (bypasses search)", placeholder: "12345" },
+      { name: "searchTerm", type: "string", label: "Search Term (used if no MAL ID)", required: true },
       { name: "seasonNumber", type: "number", label: "Season Number", default: 1 },
     ]
   },
@@ -356,6 +357,7 @@ const COMMANDS = {
       { name: "sourcePath", type: "path", label: "Source Path", required: true },
       { name: "searchTerm", type: "string", label: "Search Term", required: true },
       { name: "seasonNumber", type: "number", label: "Season Number", required: true },
+      { name: "tvdbId", type: "number", label: "TVDB ID (optional, bypasses search)" },
     ]
   },
   renameDemos: {

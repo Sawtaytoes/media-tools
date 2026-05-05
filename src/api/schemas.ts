@@ -198,6 +198,7 @@ export const nameAnimeEpisodesRequestSchema = z.object({
   sourcePath: z.string().describe("Source directory path"),
   searchTerm: z.string().describe("Anime title to search for"),
   seasonNumber: z.number().default(1).describe("Season number"),
+  malId: z.number().optional().describe("MyAnimeList ID — when provided, skips the interactive search and uses this ID directly"),
 })
 
 export const nameSpecialFeaturesRequestSchema = z.object({
@@ -211,6 +212,7 @@ export const nameTvShowEpisodesRequestSchema = z.object({
   sourcePath: z.string().describe("Source directory path"),
   searchTerm: z.string().describe("TV show title to search for"),
   seasonNumber: z.number().describe("Season number"),
+  tvdbId: z.number().optional().describe("TVDB ID — when provided, skips the interactive search and uses this ID directly"),
 })
 
 export const renameDemosRequestSchema = z.object({

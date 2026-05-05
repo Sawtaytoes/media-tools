@@ -7,7 +7,6 @@ import {
   mergeAll,
   mergeMap,
   Observable,
-  tap,
   toArray,
 } from "rxjs"
 
@@ -23,10 +22,12 @@ export const nameTvShowEpisodes = ({
   searchTerm,
   seasonNumber,
   sourcePath,
+  tvdbId,
 }: {
   searchTerm: string,
   seasonNumber: number,
   sourcePath: string,
+  tvdbId?: number,
 }) => (
   getFiles({
     sourcePath,
@@ -43,119 +44,15 @@ export const nameTvShowEpisodes = ({
         concatMap((
           tvdbFetchClient,
         ) => (
-          from(
-            tvdbFetchClient
-            .GET(
-              "/search",
-              {
-                params: {
-                  query: {
-                    query: searchTerm,
-                    type: "series",
-                  },
-                },
-              },
-            )
-          )
-          .pipe(
-            map(({
-              data,
-            }) => (
-              (
-                data
-                ?.data
-              )
-              || []
-            )),
-            concatMap((
-              searchResults,
-            ) => (
-              new Observable<
-                typeof searchResults[0]
-              >((
-                observer,
-              ) => {
-                console
-                .info(
-                  searchResults
-                  .filter(
-                    Boolean
-                  )
-                  .map((
-                    item,
-                    index,
-                  ) => ({
-                    index,
-                    title: (
-                      (
-                        item
-                        .name
-                      )
-                      || ""
-                    ),
-                  }))
-                )
-
-                const readlineInterface = (
-                  readline
-                  .createInterface({
-                    input: (
-                      process
-                      .stdin
-                    ),
-                    output: (
-                      process
-                      .stdout
-                    ),
-                    terminal: false,
-                  })
-                )
-
-                readlineInterface
-                .on(
-                  'line',
-                  (
-                    index,
-                  ) => {
-                    observer
-                    .next(
-                      searchResults
-                      .at(
-                        Number(
-                          index
-                        )
-                      )
-                    )
-
-                    readlineInterface
-                    .close()
-
-                    observer
-                    .complete()
-                  },
-                )
-              })
-            )),
-            filter(
-              Boolean
-            ),
-            concatMap((
-              selectedSearchResult,
-            ) => (
+          tvdbId != null
+            ? (
               tvdbFetchClient
               .GET(
                 "/series/{id}/episodes/{season-type}",
                 {
                   params: {
                     path: {
-                      id: (
-                        Number(
-                          (
-                            selectedSearchResult
-                            ?.tvdb_id
-                          )
-                        )
-                      ),
+                      id: tvdbId,
                       "season-type": "official",
                     },
                     query: {
@@ -163,12 +60,139 @@ export const nameTvShowEpisodes = ({
                       season: (
                         seasonNumber
                       ),
-                    }
+                    },
                   },
                 },
               )
-            )),
-          )
+            )
+            : (
+              from(
+                tvdbFetchClient
+                .GET(
+                  "/search",
+                  {
+                    params: {
+                      query: {
+                        query: searchTerm,
+                        type: "series",
+                      },
+                    },
+                  },
+                )
+              )
+              .pipe(
+                map(({
+                  data,
+                }) => (
+                  (
+                    data
+                    ?.data
+                  )
+                  || []
+                )),
+                concatMap((
+                  searchResults,
+                ) => (
+                  new Observable<
+                    typeof searchResults[0]
+                  >((
+                    observer,
+                  ) => {
+                    console
+                    .info(
+                      searchResults
+                      .filter(
+                        Boolean
+                      )
+                      .map((
+                        item,
+                        index,
+                      ) => ({
+                        index,
+                        title: (
+                          (
+                            item
+                            .name
+                          )
+                          || ""
+                        ),
+                      }))
+                    )
+
+                    const readlineInterface = (
+                      readline
+                      .createInterface({
+                        input: (
+                          process
+                          .stdin
+                        ),
+                        output: (
+                          process
+                          .stdout
+                        ),
+                        terminal: false,
+                      })
+                    )
+
+                    readlineInterface
+                    .on(
+                      'line',
+                      (
+                        index,
+                      ) => {
+                        observer
+                        .next(
+                          searchResults
+                          .at(
+                            Number(
+                              index
+                            )
+                          )
+                        )
+
+                        readlineInterface
+                        .close()
+
+                        observer
+                        .complete()
+                      },
+                    )
+                  })
+                )),
+                filter(
+                  Boolean
+                ),
+                concatMap((
+                  selectedSearchResult,
+                ) => (
+                  tvdbFetchClient
+                  .GET(
+                    "/series/{id}/episodes/{season-type}",
+                    {
+                      params: {
+                        path: {
+                          id: (
+                            Number(
+                              (
+                                selectedSearchResult
+                                ?.tvdb_id
+                              )
+                            )
+                          ),
+                          "season-type": "official",
+                        },
+                        query: {
+                          page: 0,
+                          season: (
+                            seasonNumber
+                          ),
+                        },
+                      },
+                    },
+                  )
+                )),
+              )
+            )
         )),
         concatMap(({
           data,

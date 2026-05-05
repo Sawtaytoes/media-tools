@@ -25,10 +25,12 @@ import { getFiles } from "../tools/getFiles.js"
 import { logInfo } from "../tools/logMessage.js"
 
 export const nameAnimeEpisodes = ({
+  malId,
   searchTerm,
   seasonNumber,
   sourcePath,
 }: {
+  malId?: number,
   searchTerm: string,
   seasonNumber: number,
   sourcePath: string,
@@ -41,97 +43,107 @@ export const nameAnimeEpisodes = ({
     map((
       fileInfos,
     ) => (
-      from(
-        malScraper
-        .getResultsFromSearch(
-          (
-            searchTerm
-            || (
-              basename(
-                sourcePath
-              )
-            )
-          ),
-          "anime",
-        )
-      )
-      .pipe(
-        concatMap((
-          animeList,
-        ) => (
-          new Observable<
-            typeof animeList[0]
-          >((
-            observer,
-          ) => {
-            console
-            .info(
-              animeList
-              .map((
-                anime,
-                index,
-              ) => ({
-                index,
-                title: (
-                  anime
-                  .name
-                ),
-                airDate: (
-                  anime
-                  .payload
-                  ?.aired
-                ),
-                type: (
-                  anime
-                  .payload
-                  ?.media_type
-                ),
-              }))
-            )
-
-            const readlineInterface = (
-              readline
-              .createInterface({
-                input: (
-                  process
-                  .stdin
-                ),
-                output: (
-                  process
-                  .stdout
-                ),
-                terminal: false,
-              })
-            )
-
-            readlineInterface
-            .on(
-              'line',
+      (
+        malId != null
+          ? of({
+            id: String(malId),
+            name: "",
+            url: `https://myanimelist.net/anime/${malId}`,
+          })
+          : from(
+            malScraper
+            .getResultsFromSearch(
               (
-                index,
-              ) => {
-                observer
-                .next(
-                  animeList
-                  .at(
-                    Number(
-                      index
-                    )
+                searchTerm
+                || (
+                  basename(
+                    sourcePath
                   )
+                )
+              ),
+              "anime",
+            )
+          )
+          .pipe(
+            concatMap((
+              animeList,
+            ) => (
+              new Observable<
+                typeof animeList[0]
+              >((
+                observer,
+              ) => {
+                console
+                .info(
+                  animeList
+                  .map((
+                    anime,
+                    index,
+                  ) => ({
+                    index,
+                    title: (
+                      anime
+                      .name
+                    ),
+                    airDate: (
+                      anime
+                      .payload
+                      ?.aired
+                    ),
+                    type: (
+                      anime
+                      .payload
+                      ?.media_type
+                    ),
+                  }))
+                )
+
+                const readlineInterface = (
+                  readline
+                  .createInterface({
+                    input: (
+                      process
+                      .stdin
+                    ),
+                    output: (
+                      process
+                      .stdout
+                    ),
+                    terminal: false,
+                  })
                 )
 
                 readlineInterface
-                .close()
+                .on(
+                  'line',
+                  (
+                    index,
+                  ) => {
+                    observer
+                    .next(
+                      animeList
+                      .at(
+                        Number(
+                          index
+                        )
+                      )
+                    )
 
-                observer
-                .complete()
-              },
-            )
-          })
-        )),
-        filter(
-          Boolean
-        ),
+                    readlineInterface
+                    .close()
+
+                    observer
+                    .complete()
+                  },
+                )
+              })
+            )),
+            filter(
+              Boolean
+            ),
+          )
+      )
+      .pipe(
         concatMap(({
           id,
           name,
