@@ -9,6 +9,7 @@ import { queryRoutes } from "./routes/queryRoutes.js"
 
 export const app = new OpenAPIHono()
 
+app.use("/vendor/*", serveStatic({ root: "./public" }))
 app.use("/*", serveStatic({ root: "./public/api" }))
 
 app.route("/", jobRoutes)
