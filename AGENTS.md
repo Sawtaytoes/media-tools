@@ -30,6 +30,7 @@ in module files must be removed before those modules can be used in the API.
 
 ### Coding style
 - Functional style; prefer `concatMap` / `mergeMap` over imperative loops
+- For iterating arrays, use functional methods (`forEach`, `map`, `filter`, `reduce`, etc.) instead of `for...of` loops
 - Imports sorted alphabetically within each group
 - Observable pipelines broken across lines (see existing modules for reference)
 
