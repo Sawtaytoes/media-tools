@@ -23,19 +23,30 @@ export type AudioTrackInfo = {
   bitDepth: string
 }
 
+type ReorderTracksFfmpegRequiredProps = {
+  audioTrackIndexes: number[]
+  filePath: string
+  subtitlesTrackIndexes: number[]
+  videoTrackIndexes: number[]
+}
+
+type ReorderTracksFfmpegOptionalProps = {
+  outputFolderName?: string
+}
+
+export type ReorderTracksFfmpegProps = ReorderTracksFfmpegRequiredProps & ReorderTracksFfmpegOptionalProps
+
+export const reorderTracksFfmpegDefaultProps = {
+  outputFolderName: REORDERED_TRACKS_FOLDER_NAME,
+} satisfies ReorderTracksFfmpegOptionalProps
+
 export const reorderTracksFfmpeg = ({
   audioTrackIndexes,
   filePath,
-  outputFolderName = reorderedTracksPath,
+  outputFolderName = reorderTracksFfmpegDefaultProps.outputFolderName,
   subtitlesTrackIndexes,
   videoTrackIndexes,
-}: {
-  audioTrackIndexes: number[]
-  filePath: string
-  outputFolderName?: string
-  subtitlesTrackIndexes: number[]
-  videoTrackIndexes: number[]
-}) => {
+}: ReorderTracksFfmpegProps) => {
   const hasAudioTrackIndexes = (
     (
       audioTrackIndexes

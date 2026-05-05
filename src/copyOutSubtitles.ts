@@ -9,11 +9,10 @@ import {
 } from "rxjs"
 
 import { catchNamedError } from "./catchNamedError.js"
-import { extractSubtitles } from "./extractSubtitles.js"
+import { extractSubtitles, extractSubtitlesDefaultProps } from "./extractSubtitles.js"
 import { filterIsVideoFile } from "./filterIsVideoFile.js"
 import { getMkvInfo } from "./getMkvInfo.js"
 import { type Iso6392LanguageCode } from "./iso6392LanguageCodes.js"
-import { EXTRACTED_SUBTITLES_FOLDER_NAME } from "./outputFolderNames.js"
 import { getFilesAtDepth } from "./getFilesAtDepth.js"
 
 type CopyOutSubtitlesRequiredProps = {
@@ -28,8 +27,8 @@ type CopyOutSubtitlesOptionalProps = {
 
 export type CopyOutSubtitlesProps = CopyOutSubtitlesRequiredProps & CopyOutSubtitlesOptionalProps
 
-const copyOutSubtitlesDefaultProps = {
-  outputFolderName: EXTRACTED_SUBTITLES_FOLDER_NAME,
+export const copyOutSubtitlesDefaultProps = {
+  outputFolderName: extractSubtitlesDefaultProps.outputFolderName,
 } satisfies CopyOutSubtitlesOptionalProps
 
 export const copyOutSubtitles = ({

@@ -22,15 +22,26 @@ export type AudioTrackInfo = {
   bitDepth: string
 }
 
+type ConvertFlacToPcmAudioRequiredProps = {
+  audioTrackInfos: AudioTrackInfo[]
+  filePath: string
+}
+
+type ConvertFlacToPcmAudioOptionalProps = {
+  outputFolderName?: string
+}
+
+export type ConvertFlacToPcmAudioProps = ConvertFlacToPcmAudioRequiredProps & ConvertFlacToPcmAudioOptionalProps
+
+export const convertFlacToPcmAudioDefaultProps = {
+  outputFolderName: AUDIO_CONVERTED_FOLDER_NAME,
+} satisfies ConvertFlacToPcmAudioOptionalProps
+
 export const convertFlacToPcmAudio = ({
   audioTrackInfos,
   filePath,
-  outputFolderName = convertedPath,
-}: {
-  audioTrackInfos: AudioTrackInfo[],
-  filePath: string
-  outputFolderName?: string
-}) => (
+  outputFolderName = convertFlacToPcmAudioDefaultProps.outputFolderName,
+}: ConvertFlacToPcmAudioProps) => (
   of(
     addFolderNameBeforeFilename({
       filePath,

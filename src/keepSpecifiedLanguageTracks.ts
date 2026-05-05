@@ -8,19 +8,28 @@ import { LANGUAGE_TRIMMED_FOLDER_NAME } from "./outputFolderNames.js"
 import { runMkvMerge } from "./runMkvMerge.js";
 import { dirname, join } from "node:path";
 
-export const languageTrimmedFolderName = LANGUAGE_TRIMMED_FOLDER_NAME
+type KeepSpecifiedLanguageTracksRequiredProps = {
+  audioLanguages: Iso6392LanguageCode[]
+  filePath: string
+  subtitlesLanguages: Iso6392LanguageCode[]
+}
+
+type KeepSpecifiedLanguageTracksOptionalProps = {
+  outputFolderName?: string
+}
+
+export type KeepSpecifiedLanguageTracksProps = KeepSpecifiedLanguageTracksRequiredProps & KeepSpecifiedLanguageTracksOptionalProps
+
+export const keepSpecifiedLanguageTracksDefaultProps = {
+  outputFolderName: LANGUAGE_TRIMMED_FOLDER_NAME,
+} satisfies KeepSpecifiedLanguageTracksOptionalProps
 
 export const keepSpecifiedLanguageTracks = ({
   audioLanguages,
   filePath,
-  outputFolderName = languageTrimmedFolderName,
+  outputFolderName = keepSpecifiedLanguageTracksDefaultProps.outputFolderName,
   subtitlesLanguages,
-}: {
-  audioLanguages: Iso6392LanguageCode[],
-  filePath: string,
-  outputFolderName?: string,
-  subtitlesLanguages: Iso6392LanguageCode[],
-}): (
+}: KeepSpecifiedLanguageTracksProps): (
   Observable<
     string
   >

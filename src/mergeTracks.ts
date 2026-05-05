@@ -31,8 +31,7 @@ import { getFiles } from "./getFiles.js"
 import { getFolder } from "./getFolder.js"
 import { getMediaInfo } from "./getMediaInfo.js"
 import { logInfo } from "./logMessage.js"
-import { mergeSubtitlesMkvMerge } from "./mergeSubtitlesMkvMerge.js"
-import { SUBTITLED_FOLDER_NAME } from "./outputFolderNames.js"
+import { mergeSubtitlesMkvMerge, mergeSubtitlesMkvMergeDefaultProps } from "./mergeSubtitlesMkvMerge.js"
 import {
   parseMediaFileChapterTimestamp,
   convertTimecodeToMilliseconds,
@@ -57,11 +56,11 @@ type MergeTracksOptionalProps = {
 
 export type MergeTracksProps = MergeTracksRequiredProps & MergeTracksOptionalProps
 
-const mergeTracksDefaultProps = {
+export const mergeTracksDefaultProps = {
   globalOffsetInMilliseconds: 0,
   hasAutomaticOffset: false,
   hasChapters: false,
-  outputFolderName: SUBTITLED_FOLDER_NAME,
+  outputFolderName: mergeSubtitlesMkvMergeDefaultProps.outputFolderName,
 } satisfies MergeTracksOptionalProps
 
 export const mergeTracks = ({

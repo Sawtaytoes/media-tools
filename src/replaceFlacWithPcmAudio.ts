@@ -10,7 +10,7 @@ import {
 } from "rxjs"
 
 import { catchNamedError } from "./catchNamedError.js"
-import { convertFlacToPcmAudio } from "./convertFlacToPcmAudio.js"
+import { convertFlacToPcmAudio, convertFlacToPcmAudioDefaultProps } from "./convertFlacToPcmAudio.js"
 import { filterIsVideoFile } from "./filterIsVideoFile.js"
 import {
   getMediaInfo,
@@ -18,7 +18,6 @@ import {
 } from "./getMediaInfo.js"
 import { getFilesAtDepth } from "./getFilesAtDepth.js"
 import { logInfo } from "./logMessage.js"
-import { AUDIO_CONVERTED_FOLDER_NAME } from "./outputFolderNames.js"
 
 type ReplaceFlacWithPcmAudioRequiredProps = {
   isRecursive: boolean
@@ -31,8 +30,8 @@ type ReplaceFlacWithPcmAudioOptionalProps = {
 
 export type ReplaceFlacWithPcmAudioProps = ReplaceFlacWithPcmAudioRequiredProps & ReplaceFlacWithPcmAudioOptionalProps
 
-const replaceFlacWithPcmAudioDefaultProps = {
-  outputFolderName: AUDIO_CONVERTED_FOLDER_NAME,
+export const replaceFlacWithPcmAudioDefaultProps = {
+  outputFolderName: convertFlacToPcmAudioDefaultProps.outputFolderName,
 } satisfies ReplaceFlacWithPcmAudioOptionalProps
 
 export const replaceFlacWithPcmAudio = ({

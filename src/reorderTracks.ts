@@ -9,8 +9,7 @@ import {
 import { catchNamedError } from "./catchNamedError.js"
 import { filterIsVideoFile } from "./filterIsVideoFile.js"
 import { getFilesAtDepth } from "./getFilesAtDepth.js"
-import { REORDERED_TRACKS_FOLDER_NAME } from "./outputFolderNames.js"
-import { reorderTracksFfmpeg } from "./reorderTracksFfmpeg.js"
+import { reorderTracksFfmpeg, reorderTracksFfmpegDefaultProps } from "./reorderTracksFfmpeg.js"
 import { setOnlyFirstTracksAsDefault } from "./setOnlyFirstTracksAsDefault.js"
 
 type ReorderTracksRequiredProps = {
@@ -27,8 +26,8 @@ type ReorderTracksOptionalProps = {
 
 export type ReorderTracksProps = ReorderTracksRequiredProps & ReorderTracksOptionalProps
 
-const reorderTracksDefaultProps = {
-  outputFolderName: REORDERED_TRACKS_FOLDER_NAME,
+export const reorderTracksDefaultProps = {
+  outputFolderName: reorderTracksFfmpegDefaultProps.outputFolderName,
 } satisfies ReorderTracksOptionalProps
 
 export const reorderTracks = ({

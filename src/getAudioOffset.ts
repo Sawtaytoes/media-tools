@@ -12,15 +12,26 @@ import { makeDirectory } from "./makeDirectory.js"
 
 export const audioOffsetsFolderName = AUDIO_OFFSETS_FOLDER_NAME
 
+type GetAudioOffsetRequiredProps = {
+  destinationFilePath: string
+  sourceFilePath: string
+}
+
+type GetAudioOffsetOptionalProps = {
+  outputFolderName?: string
+}
+
+export type GetAudioOffsetProps = GetAudioOffsetRequiredProps & GetAudioOffsetOptionalProps
+
+export const getAudioOffsetDefaultProps = {
+  outputFolderName: AUDIO_OFFSETS_FOLDER_NAME,
+} satisfies GetAudioOffsetOptionalProps
+
 export const getAudioOffset = ({
   destinationFilePath,
-  outputFolderName = audioOffsetsFolderName,
+  outputFolderName = getAudioOffsetDefaultProps.outputFolderName,
   sourceFilePath,
-}: {
-  destinationFilePath: string
-  outputFolderName?: string
-  sourceFilePath: string
-}): (
+}: GetAudioOffsetProps): (
   ReturnType<typeof runAudioOffsetFinder>
 ) => (
   of({

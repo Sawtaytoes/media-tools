@@ -1,13 +1,10 @@
-import { OpenAPIHono, createRoute } from "@hono/zod-openapi"
+import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi"
 import { type Context } from "hono"
 import { type Observable } from "rxjs"
 
 import { changeTrackLanguages } from "../../changeTrackLanguages.js"
-import { convertedPath as audioConvertedFolderName } from "../../convertFlacToPcmAudio.js"
 import { copyFiles } from "../../copyFiles.js"
-import { extractedSubtitlesPath as extractedSubtitlesFolderName } from "../../extractSubtitles.js"
 import { fixIncorrectDefaultTracks } from "../../fixIncorrectDefaultTracks.js"
-import { audioOffsetsFolderName } from "../../getAudioOffset.js"
 import { hasBetterAudio } from "../../hasBetterAudio.js"
 import { hasBetterVersion } from "../../hasBetterVersion.js"
 import { hasDuplicateMusicFiles } from "../../hasDuplicateMusicFiles.js"
@@ -16,28 +13,22 @@ import { hasManyAudioTracks } from "../../hasManyAudioTracks.js"
 import { hasSurroundSound } from "../../hasSurroundSound.js"
 import { hasWrongDefaultTrack } from "../../hasWrongDefaultTrack.js"
 import { isMissingSubtitles } from "../../isMissingSubtitles.js"
-import { keepLanguages } from "../../keepLanguages.js"
-import { languageTrimmedFolderName } from "../../keepSpecifiedLanguageTracks.js"
-import { mergeTracks } from "../../mergeTracks.js"
-import { subtitledFolderName } from "../../mergeSubtitlesMkvMerge.js"
+import { keepLanguages, keepLanguagesDefaultProps } from "../../keepLanguages.js"
+import { mergeTracks, mergeTracksDefaultProps } from "../../mergeTracks.js"
 import { moveFiles } from "../../moveFiles.js"
-import { copyOutSubtitles } from "../../copyOutSubtitles.js"
-import { getAudioOffsets } from "../../getAudioOffsets.js"
+import { copyOutSubtitles, copyOutSubtitlesDefaultProps } from "../../copyOutSubtitles.js"
+import { getAudioOffsets, getAudioOffsetsDefaultProps } from "../../getAudioOffsets.js"
 import { nameAnimeEpisodes } from "../../nameAnimeEpisodes.js"
 import { nameSpecialFeatures } from "../../nameSpecialFeatures.js"
 import { nameTvShowEpisodes } from "../../nameTvShowEpisodes.js"
 import { renameDemos } from "../../renameDemos.js"
 import { renameMovieClipDownloads } from "../../renameMovieClipDownloads.js"
-import { reorderTracks } from "../../reorderTracks.js"
-import { reorderTracksFolderName } from "../../reorderTracksMkvMerge.js"
-import { replaceAttachments } from "../../replaceAttachments.js"
-import { replacedAttachmentsFolderName } from "../../replaceAttachmentsMkvMerge.js"
-import { replaceFlacWithPcmAudio } from "../../replaceFlacWithPcmAudio.js"
-import { replaceTracks } from "../../replaceTracks.js"
-import { replacedTracksFolderName } from "../../replaceTracksMkvMerge.js"
+import { reorderTracks, reorderTracksDefaultProps } from "../../reorderTracks.js"
+import { replaceAttachments, replaceAttachmentsDefaultProps } from "../../replaceAttachments.js"
+import { replaceFlacWithPcmAudio, replaceFlacWithPcmAudioDefaultProps } from "../../replaceFlacWithPcmAudio.js"
+import { replaceTracks, replaceTracksDefaultProps } from "../../replaceTracks.js"
 import { setDisplayWidth } from "../../setDisplayWidth.js"
-import { splitChapters } from "../../splitChapters.js"
-import { splitsFolderName } from "../../splitChaptersMkvMerge.js"
+import { splitChapters, splitChaptersDefaultProps } from "../../splitChapters.js"
 import { storeAspectRatioData } from "../../storeAspectRatioData.js"
 import { createJob } from "../jobStore.js"
 import { runJob } from "../jobRunner.js"
@@ -94,7 +85,7 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "copyFiles", body,
+    return startJob(context, copyFiles.name, body,
       copyFiles({ destinationPath: body.destinationPath, sourcePath: body.sourcePath }))
   },
 )
@@ -127,7 +118,7 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "moveFiles", body,
+    return startJob(context, moveFiles.name, body,
       moveFiles({ destinationPath: body.destinationPath, sourcePath: body.sourcePath }))
   },
 )
@@ -152,7 +143,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.createJobResponseSchema(),
+            schema: schemas.createJobResponseSchema(z.literal(copyOutSubtitlesDefaultProps.outputFolderName)),
           },
         },
       },
@@ -160,9 +151,9 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "copyOutSubtitles", body,
+    return startJob(context, copyOutSubtitles.name, body,
       copyOutSubtitles({ isRecursive: body.isRecursive, sourcePath: body.sourcePath, subtitlesLanguage: body.subtitlesLanguage }),
-      extractedSubtitlesFolderName)
+      copyOutSubtitlesDefaultProps.outputFolderName)
   },
 )
 
@@ -186,7 +177,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.createJobResponseSchema(),
+            schema: schemas.createJobResponseSchema(z.literal(getAudioOffsetsDefaultProps.outputFolderName)),
           },
         },
       },
@@ -194,9 +185,9 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "getAudioOffsets", body,
+    return startJob(context, getAudioOffsets.name, body,
       getAudioOffsets({ destinationFilesPath: body.destinationFilesPath, sourceFilesPath: body.sourceFilesPath }),
-      audioOffsetsFolderName)
+      getAudioOffsetsDefaultProps.outputFolderName)
   },
 )
 
@@ -228,7 +219,7 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "changeTrackLanguages", body,
+    return startJob(context, changeTrackLanguages.name, body,
       changeTrackLanguages({ audioLanguage: body.audioLanguage, isRecursive: body.isRecursive, sourcePath: body.sourcePath, subtitlesLanguage: body.subtitlesLanguage, videoLanguage: body.videoLanguage }))
   },
 )
@@ -261,7 +252,7 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "fixIncorrectDefaultTracks", body,
+    return startJob(context, fixIncorrectDefaultTracks.name, body,
       fixIncorrectDefaultTracks({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }))
   },
 )
@@ -294,7 +285,7 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "hasBetterAudio", body,
+    return startJob(context, hasBetterAudio.name, body,
       hasBetterAudio({ isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, sourcePath: body.sourcePath }))
   },
 )
@@ -327,7 +318,7 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "hasBetterVersion", body,
+    return startJob(context, hasBetterVersion.name, body,
       hasBetterVersion({ isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, sourcePath: body.sourcePath }))
   },
 )
@@ -360,7 +351,7 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "hasDuplicateMusicFiles", body,
+    return startJob(context, hasDuplicateMusicFiles.name, body,
       hasDuplicateMusicFiles({ isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, sourcePath: body.sourcePath }))
   },
 )
@@ -393,7 +384,7 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "hasImaxEnhancedAudio", body,
+    return startJob(context, hasImaxEnhancedAudio.name, body,
       hasImaxEnhancedAudio({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }))
   },
 )
@@ -426,7 +417,7 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "hasManyAudioTracks", body,
+    return startJob(context, hasManyAudioTracks.name, body,
       hasManyAudioTracks({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }))
   },
 )
@@ -459,7 +450,7 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "hasSurroundSound", body,
+    return startJob(context, hasSurroundSound.name, body,
       hasSurroundSound({ isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, sourcePath: body.sourcePath }))
   },
 )
@@ -492,7 +483,7 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "hasWrongDefaultTrack", body,
+    return startJob(context, hasWrongDefaultTrack.name, body,
       hasWrongDefaultTrack({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }))
   },
 )
@@ -525,7 +516,7 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "isMissingSubtitles", body,
+    return startJob(context, isMissingSubtitles.name, body,
       isMissingSubtitles({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }))
   },
 )
@@ -550,7 +541,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.createJobResponseSchema(),
+            schema: schemas.createJobResponseSchema(z.literal(keepLanguagesDefaultProps.outputFolderName)),
           },
         },
       },
@@ -558,9 +549,9 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "keepLanguages", body,
+    return startJob(context, keepLanguages.name, body,
       keepLanguages({ audioLanguages: body.audioLanguages, hasFirstAudioLanguage: body.useFirstAudioLanguage, hasFirstSubtitlesLanguage: body.useFirstSubtitlesLanguage, isRecursive: body.isRecursive, sourcePath: body.sourcePath, subtitlesLanguages: body.subtitlesLanguages }),
-      languageTrimmedFolderName)
+      keepLanguagesDefaultProps.outputFolderName)
   },
 )
 
@@ -584,7 +575,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.createJobResponseSchema(),
+            schema: schemas.createJobResponseSchema(z.literal(mergeTracksDefaultProps.outputFolderName)),
           },
         },
       },
@@ -592,9 +583,9 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "mergeTracks", body,
+    return startJob(context, mergeTracks.name, body,
       mergeTracks({ globalOffsetInMilliseconds: body.globalOffset, hasAutomaticOffset: body.automaticOffset, hasChapters: body.includeChapters, mediaFilesPath: body.mediaFilesPath, offsetsInMilliseconds: body.offsets, subtitlesPath: body.subtitlesPath }),
-      subtitledFolderName)
+      mergeTracksDefaultProps.outputFolderName)
   },
 )
 
@@ -626,7 +617,7 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "nameAnimeEpisodes", body,
+    return startJob(context, nameAnimeEpisodes.name, body,
       nameAnimeEpisodes({ searchTerm: body.searchTerm, seasonNumber: body.seasonNumber, sourcePath: body.sourcePath }))
   },
 )
@@ -659,7 +650,7 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "nameSpecialFeatures", body,
+    return startJob(context, nameSpecialFeatures.name, body,
       nameSpecialFeatures({ fixedOffset: body.fixedOffset, sourcePath: body.sourcePath, timecodePaddingAmount: body.timecodePadding, url: body.url }))
   },
 )
@@ -692,7 +683,7 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "nameTvShowEpisodes", body,
+    return startJob(context, nameTvShowEpisodes.name, body,
       nameTvShowEpisodes({ searchTerm: body.searchTerm, seasonNumber: body.seasonNumber, sourcePath: body.sourcePath }))
   },
 )
@@ -725,7 +716,7 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "renameDemos", body,
+    return startJob(context, renameDemos.name, body,
       renameDemos({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }))
   },
 )
@@ -758,7 +749,7 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "renameMovieClipDownloads", body,
+    return startJob(context, renameMovieClipDownloads.name, body,
       renameMovieClipDownloads({ sourcePath: body.sourcePath }))
   },
 )
@@ -783,7 +774,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.createJobResponseSchema(),
+            schema: schemas.createJobResponseSchema(z.literal(reorderTracksDefaultProps.outputFolderName)),
           },
         },
       },
@@ -791,9 +782,9 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "reorderTracks", body,
+    return startJob(context, reorderTracks.name, body,
       reorderTracks({ audioTrackIndexes: body.audioTrackIndexes, isRecursive: body.isRecursive, sourcePath: body.sourcePath, subtitlesTrackIndexes: body.subtitlesTrackIndexes, videoTrackIndexes: body.videoTrackIndexes }),
-      reorderTracksFolderName)
+      reorderTracksDefaultProps.outputFolderName)
   },
 )
 
@@ -817,7 +808,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.createJobResponseSchema(),
+            schema: schemas.createJobResponseSchema(z.literal(replaceAttachmentsDefaultProps.outputFolderName)),
           },
         },
       },
@@ -825,9 +816,9 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "replaceAttachments", body,
+    return startJob(context, replaceAttachments.name, body,
       replaceAttachments({ destinationFilesPath: body.destinationFilesPath, sourceFilesPath: body.sourceFilesPath }),
-      replacedAttachmentsFolderName)
+      replaceAttachmentsDefaultProps.outputFolderName)
   },
 )
 
@@ -851,7 +842,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.createJobResponseSchema(),
+            schema: schemas.createJobResponseSchema(z.literal(replaceFlacWithPcmAudioDefaultProps.outputFolderName)),
           },
         },
       },
@@ -859,9 +850,9 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "replaceFlacWithPcmAudio", body,
+    return startJob(context, replaceFlacWithPcmAudio.name, body,
       replaceFlacWithPcmAudio({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }),
-      audioConvertedFolderName)
+      replaceFlacWithPcmAudioDefaultProps.outputFolderName)
   },
 )
 
@@ -885,7 +876,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.createJobResponseSchema(),
+            schema: schemas.createJobResponseSchema(z.literal(replaceTracksDefaultProps.outputFolderName)),
           },
         },
       },
@@ -893,7 +884,7 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "replaceTracks", body,
+    return startJob(context, replaceTracks.name, body,
       replaceTracks({
         audioLanguages: body.audioLanguages,
         destinationFilesPath: body.destinationFilesPath,
@@ -905,7 +896,7 @@ commandRoutes.openapi(
         subtitlesLanguages: body.subtitlesLanguages,
         videoLanguages: body.videoLanguages,
       }),
-      replacedTracksFolderName)
+      replaceTracksDefaultProps.outputFolderName)
   },
 )
 
@@ -937,7 +928,7 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "setDisplayWidth", body,
+    return startJob(context, setDisplayWidth.name, body,
       setDisplayWidth({ displayWidth: body.displayWidth, isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, sourcePath: body.sourcePath }))
   },
 )
@@ -962,7 +953,7 @@ commandRoutes.openapi(
         description: "Job started successfully",
         content: {
           "application/json": {
-            schema: schemas.createJobResponseSchema(),
+            schema: schemas.createJobResponseSchema(z.literal(splitChaptersDefaultProps.outputFolderName)),
           },
         },
       },
@@ -970,9 +961,9 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "splitChapters", body,
+    return startJob(context, splitChapters.name, body,
       splitChapters({ chapterSplitsList: body.chapterSplits, sourcePath: body.sourcePath }),
-      splitsFolderName)
+      splitChaptersDefaultProps.outputFolderName)
   },
 )
 
@@ -1004,7 +995,7 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, "storeAspectRatioData", body,
+    return startJob(context, storeAspectRatioData.name, body,
       storeAspectRatioData({
         folderNames: body.folders,
         isRecursive: body.isRecursive,

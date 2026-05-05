@@ -16,23 +16,34 @@ import {
 
 export const subtitledFolderName = SUBTITLED_FOLDER_NAME
 
+type MergeSubtitlesMkvMergeRequiredProps = {
+  attachmentFilePaths: string[]
+  destinationFilePath: string
+  subtitlesFilesPaths: string[]
+  subtitlesLanguage: Iso6392LanguageCode
+}
+
+type MergeSubtitlesMkvMergeOptionalProps = {
+  chaptersFilePath?: string
+  offsetInMilliseconds?: number
+  outputFolderName?: string
+}
+
+export type MergeSubtitlesMkvMergeProps = MergeSubtitlesMkvMergeRequiredProps & MergeSubtitlesMkvMergeOptionalProps
+
+export const mergeSubtitlesMkvMergeDefaultProps = {
+  outputFolderName: SUBTITLED_FOLDER_NAME,
+} satisfies MergeSubtitlesMkvMergeOptionalProps
+
 export const mergeSubtitlesMkvMerge = ({
   attachmentFilePaths,
   destinationFilePath,
   chaptersFilePath,
   offsetInMilliseconds,
-  outputFolderName = subtitledFolderName,
+  outputFolderName = mergeSubtitlesMkvMergeDefaultProps.outputFolderName,
   subtitlesFilesPaths,
   subtitlesLanguage,
-}: {
-  attachmentFilePaths: string[],
-  destinationFilePath: string,
-  chaptersFilePath?: string,
-  offsetInMilliseconds?: number,
-  outputFolderName?: string,
-  subtitlesFilesPaths: string[],
-  subtitlesLanguage: Iso6392LanguageCode,
-}) => (
+}: MergeSubtitlesMkvMergeProps) => (
   runMkvMerge({
     args: [
       "--no-subtitles",

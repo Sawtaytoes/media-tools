@@ -13,8 +13,7 @@ import { getAudioOffset } from "./getAudioOffset.js"
 import { type Iso6392LanguageCode } from "./iso6392LanguageCodes.js"
 import { getFilesAtDepth } from "./getFilesAtDepth.js"
 import { logInfo } from "./logMessage.js"
-import { REPLACED_TRACKS_FOLDER_NAME } from "./outputFolderNames.js"
-import { replaceTracksMkvMerge } from "./replaceTracksMkvMerge.js"
+import { replaceTracksMkvMerge, replaceTracksMkvMergeDefaultProps } from "./replaceTracksMkvMerge.js"
 
 type ReplaceTracksRequiredProps = {
   audioLanguages: Iso6392LanguageCode[]
@@ -34,8 +33,8 @@ type ReplaceTracksOptionalProps = {
 
 export type ReplaceTracksProps = ReplaceTracksRequiredProps & ReplaceTracksOptionalProps
 
-const replaceTracksDefaultProps = {
-  outputFolderName: REPLACED_TRACKS_FOLDER_NAME,
+export const replaceTracksDefaultProps = {
+  outputFolderName: replaceTracksMkvMergeDefaultProps.outputFolderName,
 } satisfies ReplaceTracksOptionalProps
 
 export const replaceTracks = ({

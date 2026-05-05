@@ -8,15 +8,26 @@ import { runMkvMerge } from "./runMkvMerge.js";
 
 export const splitsFolderName = SPLITS_FOLDER_NAME
 
+type SplitChaptersMkvMergeRequiredProps = {
+  chapterSplits: string
+  filePath: string
+}
+
+type SplitChaptersMkvMergeOptionalProps = {
+  outputFolderName?: string
+}
+
+export type SplitChaptersMkvMergeProps = SplitChaptersMkvMergeRequiredProps & SplitChaptersMkvMergeOptionalProps
+
+export const splitChaptersMkvMergeDefaultProps = {
+  outputFolderName: SPLITS_FOLDER_NAME,
+} satisfies SplitChaptersMkvMergeOptionalProps
+
 export const splitChaptersMkvMerge = ({
   chapterSplits,
   filePath,
-  outputFolderName = splitsFolderName,
-}: {
-  chapterSplits: string,
-  filePath: string,
-  outputFolderName?: string,
-}) => (
+  outputFolderName = splitChaptersMkvMergeDefaultProps.outputFolderName,
+}: SplitChaptersMkvMergeProps) => (
   runMkvMerge({
     args: [
       "--split",

@@ -16,25 +16,36 @@ import { runMkvMerge } from "./runMkvMerge.js";
 
 export const replacedTracksFolderName = REPLACED_TRACKS_FOLDER_NAME
 
+type ReplaceTracksMkvMergeRequiredProps = {
+  audioLanguages: Iso6392LanguageCode[]
+  destinationFilePath: string
+  hasChapters: boolean
+  sourceFilePath: string
+  subtitlesLanguages: Iso6392LanguageCode[]
+  videoLanguages: Iso6392LanguageCode[]
+}
+
+type ReplaceTracksMkvMergeOptionalProps = {
+  offsetInMilliseconds?: number
+  outputFolderName?: string
+}
+
+export type ReplaceTracksMkvMergeProps = ReplaceTracksMkvMergeRequiredProps & ReplaceTracksMkvMergeOptionalProps
+
+export const replaceTracksMkvMergeDefaultProps = {
+  outputFolderName: REPLACED_TRACKS_FOLDER_NAME,
+} satisfies ReplaceTracksMkvMergeOptionalProps
+
 export const replaceTracksMkvMerge = ({
   audioLanguages,
   destinationFilePath,
   hasChapters,
   offsetInMilliseconds,
-  outputFolderName = replacedTracksFolderName,
+  outputFolderName = replaceTracksMkvMergeDefaultProps.outputFolderName,
   sourceFilePath,
   subtitlesLanguages,
   videoLanguages,
-}: {
-  audioLanguages: Iso6392LanguageCode[]
-  destinationFilePath: string
-  hasChapters: boolean
-  offsetInMilliseconds?: number
-  outputFolderName?: string
-  sourceFilePath: string
-  subtitlesLanguages: Iso6392LanguageCode[]
-  videoLanguages: Iso6392LanguageCode[]
-}) => {
+}: ReplaceTracksMkvMergeProps) => {
   const hasAudioLanguages = (
     (
       audioLanguages

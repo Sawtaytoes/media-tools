@@ -8,10 +8,9 @@ import {
 } from "rxjs"
 
 import { catchNamedError } from "./catchNamedError.js"
-import { getAudioOffset } from "./getAudioOffset.js"
+import { getAudioOffset, getAudioOffsetDefaultProps } from "./getAudioOffset.js"
 import { getFiles } from "./getFiles.js"
 import { logInfo } from "./logMessage.js"
-import { AUDIO_OFFSETS_FOLDER_NAME } from "./outputFolderNames.js"
 
 type GetAudioOffsetsRequiredProps = {
   destinationFilesPath: string
@@ -24,8 +23,8 @@ type GetAudioOffsetsOptionalProps = {
 
 export type GetAudioOffsetsProps = GetAudioOffsetsRequiredProps & GetAudioOffsetsOptionalProps
 
-const getAudioOffsetsDefaultProps = {
-  outputFolderName: AUDIO_OFFSETS_FOLDER_NAME,
+export const getAudioOffsetsDefaultProps = {
+  outputFolderName: getAudioOffsetDefaultProps.outputFolderName,
 } satisfies GetAudioOffsetsOptionalProps
 
 export const getAudioOffsets = ({

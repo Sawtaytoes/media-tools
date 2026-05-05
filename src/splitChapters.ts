@@ -14,8 +14,7 @@ import { filterIsVideoFile } from "./filterIsVideoFile.js"
 import { naturalSort } from "./naturalSort.js"
 import { getFiles } from "./getFiles.js"
 import { logInfo } from "./logMessage.js"
-import { SPLITS_FOLDER_NAME } from "./outputFolderNames.js"
-import { splitChaptersMkvMerge } from "./splitChaptersMkvMerge.js"
+import { splitChaptersMkvMerge, splitChaptersMkvMergeDefaultProps } from "./splitChaptersMkvMerge.js"
 
 type SplitChaptersRequiredProps = {
   chapterSplitsList: string[]
@@ -28,8 +27,8 @@ type SplitChaptersOptionalProps = {
 
 export type SplitChaptersProps = SplitChaptersRequiredProps & SplitChaptersOptionalProps
 
-const splitChaptersDefaultProps = {
-  outputFolderName: SPLITS_FOLDER_NAME,
+export const splitChaptersDefaultProps = {
+  outputFolderName: splitChaptersMkvMergeDefaultProps.outputFolderName,
 } satisfies SplitChaptersOptionalProps
 
 export const splitChapters = ({

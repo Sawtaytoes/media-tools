@@ -12,27 +12,36 @@ import { replaceFileExtension } from "./replaceFileExtension.js";
 import { runMkvExtract } from "./runMkvExtract.js";
 import { subtitlesFileExtensions } from "./filterIsSubtitlesFile.js";
 
-export const extractedSubtitlesPath = EXTRACTED_SUBTITLES_FOLDER_NAME
-
 export const subtitleCodecExtension = {
   "S_HDMV/PGS": ".sup",
   "S_TEXT/ASS": ".ass",
   "S_TEXT/UTF8": ".srt",
 } as const satisfies Record<string, typeof subtitlesFileExtensions[number]>
 
+type ExtractSubtitlesRequiredProps = {
+  codec_id: keyof typeof subtitleCodecExtension
+  filePath: string
+  languageCode: Iso6392LanguageCode | "und"
+  trackId: number
+}
+
+type ExtractSubtitlesOptionalProps = {
+  outputFolderName?: string
+}
+
+export type ExtractSubtitlesProps = ExtractSubtitlesRequiredProps & ExtractSubtitlesOptionalProps
+
+export const extractSubtitlesDefaultProps = {
+  outputFolderName: EXTRACTED_SUBTITLES_FOLDER_NAME,
+} satisfies ExtractSubtitlesOptionalProps
+
 export const extractSubtitles = ({
   codec_id,
   filePath,
   languageCode,
-  outputFolderName = extractedSubtitlesPath,
+  outputFolderName = extractSubtitlesDefaultProps.outputFolderName,
   trackId,
-}: {
-  codec_id: keyof typeof subtitleCodecExtension
-  filePath: string
-  languageCode: Iso6392LanguageCode | "und",
-  outputFolderName?: string,
-  trackId: number,
-}) => (
+}: ExtractSubtitlesProps) => (
   of(
     addFolderNameBeforeFilename({
       filePath,

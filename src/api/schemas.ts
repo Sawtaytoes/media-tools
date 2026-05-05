@@ -3,12 +3,14 @@ import { z } from "@hono/zod-openapi"
 import { iso6392LanguageCodes } from "../iso6392LanguageCodes.js"
 
 // Shared response schemas
-export const createJobResponseSchema = () => (
+export const createJobResponseSchema = (
+  outputFolderNameSchema: z.ZodTypeAny = z.null(),
+) => (
   z.object({
     jobId: z.string().openapi({ example: "123e4567-e89b-12d3-a456-426614174000" }).describe("Unique job identifier"),
     logsUrl: z.string().openapi({ example: "/jobs/123e4567-e89b-12d3-a456-426614174000/logs" }).describe("URL to stream job logs via SSE"),
-    outputFolderName: z.string().nullable().describe("Output folder name where files are written, or null for in-place operations"),
-  }).openapi("JobResponse")
+    outputFolderName: outputFolderNameSchema.describe("Output folder name where files are written, or null for in-place operations"),
+  })
 )
 
 export const validationErrorSchema = z.object({

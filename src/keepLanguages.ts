@@ -11,8 +11,7 @@ import { catchNamedError } from "./catchNamedError.js"
 import { filterIsVideoFile } from "./filterIsVideoFile.js"
 import { getTrackLanguages } from "./getTrackLanguages.js"
 import { type Iso6392LanguageCode } from "./iso6392LanguageCodes.js"
-import { keepSpecifiedLanguageTracks } from "./keepSpecifiedLanguageTracks.js"
-import { LANGUAGE_TRIMMED_FOLDER_NAME } from "./outputFolderNames.js"
+import { keepSpecifiedLanguageTracks, keepSpecifiedLanguageTracksDefaultProps } from "./keepSpecifiedLanguageTracks.js"
 import { logInfo } from "./logMessage.js"
 import { getFilesAtDepth } from "./getFilesAtDepth.js"
 
@@ -31,8 +30,8 @@ type KeepLanguagesOptionalProps = {
 
 export type KeepLanguagesProps = KeepLanguagesRequiredProps & KeepLanguagesOptionalProps
 
-const keepLanguagesDefaultProps = {
-  outputFolderName: LANGUAGE_TRIMMED_FOLDER_NAME,
+export const keepLanguagesDefaultProps = {
+  outputFolderName: keepSpecifiedLanguageTracksDefaultProps.outputFolderName,
 } satisfies KeepLanguagesOptionalProps
 
 export const keepLanguages = ({

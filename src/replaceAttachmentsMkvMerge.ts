@@ -15,15 +15,26 @@ import { runMkvMerge } from "./runMkvMerge.js";
 
 export const replacedAttachmentsFolderName = REPLACED_ATTACHMENTS_FOLDER_NAME
 
+type ReplaceAttachmentsMkvMergeRequiredProps = {
+  destinationFilePath: string
+  sourceFilePath: string
+}
+
+type ReplaceAttachmentsMkvMergeOptionalProps = {
+  outputFolderName?: string
+}
+
+export type ReplaceAttachmentsMkvMergeProps = ReplaceAttachmentsMkvMergeRequiredProps & ReplaceAttachmentsMkvMergeOptionalProps
+
+export const replaceAttachmentsMkvMergeDefaultProps = {
+  outputFolderName: REPLACED_ATTACHMENTS_FOLDER_NAME,
+} satisfies ReplaceAttachmentsMkvMergeOptionalProps
+
 export const replaceAttachmentsMkvMerge = ({
   destinationFilePath,
-  outputFolderName = replacedAttachmentsFolderName,
+  outputFolderName = replaceAttachmentsMkvMergeDefaultProps.outputFolderName,
   sourceFilePath,
-}: {
-  destinationFilePath: string
-  outputFolderName?: string
-  sourceFilePath: string
-}) => (
+}: ReplaceAttachmentsMkvMergeProps) => (
   of(
     getIsVideoFile(
       sourceFilePath,
