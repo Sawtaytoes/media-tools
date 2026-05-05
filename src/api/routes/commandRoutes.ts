@@ -34,16 +34,22 @@ import { createJob } from "../jobStore.js"
 import { runJob } from "../jobRunner.js"
 import * as schemas from "../schemas.js"
 
-const startJob = (
-  context: Context,
+const startCommandJob = ({
+  command,
+  context,
+  jobObservable,
+  outputFolderName = null,
+  params,
+}: {
   command: string,
+  context: Context,
+  jobObservable: Observable<unknown>,
+  outputFolderName?: string | null,
   params: unknown,
-  observable: Observable<unknown>,
-  outputFolderName: string | null = null,
-) => {
+}) => {
   const job = createJob(command, params, outputFolderName)
 
-  runJob(job.id, observable)
+  runJob(job.id, jobObservable)
 
   return context.json(
     {
@@ -85,8 +91,12 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, copyFiles.name, body,
-      copyFiles({ destinationPath: body.destinationPath, sourcePath: body.sourcePath }))
+    return startCommandJob({
+      command: copyFiles.name,
+      context,
+      jobObservable: copyFiles({ destinationPath: body.destinationPath, sourcePath: body.sourcePath }),
+      params: body,
+    })
   },
 )
 
@@ -118,8 +128,12 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, moveFiles.name, body,
-      moveFiles({ destinationPath: body.destinationPath, sourcePath: body.sourcePath }))
+    return startCommandJob({
+      command: moveFiles.name,
+      context,
+      jobObservable: moveFiles({ destinationPath: body.destinationPath, sourcePath: body.sourcePath }),
+      params: body,
+    })
   },
 )
 
@@ -151,9 +165,13 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, copyOutSubtitles.name, body,
-      copyOutSubtitles({ isRecursive: body.isRecursive, sourcePath: body.sourcePath, subtitlesLanguage: body.subtitlesLanguage }),
-      copyOutSubtitlesDefaultProps.outputFolderName)
+    return startCommandJob({
+      command: copyOutSubtitles.name,
+      context,
+      jobObservable: copyOutSubtitles({ isRecursive: body.isRecursive, sourcePath: body.sourcePath, subtitlesLanguage: body.subtitlesLanguage }),
+      params: body,
+      outputFolderName: copyOutSubtitlesDefaultProps.outputFolderName
+    })
   },
 )
 
@@ -185,9 +203,13 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, getAudioOffsets.name, body,
-      getAudioOffsets({ destinationFilesPath: body.destinationFilesPath, sourceFilesPath: body.sourceFilesPath }),
-      getAudioOffsetsDefaultProps.outputFolderName)
+    return startCommandJob({
+      command: getAudioOffsets.name,
+      context,
+      jobObservable: getAudioOffsets({ destinationFilesPath: body.destinationFilesPath, sourceFilesPath: body.sourceFilesPath }),
+      params: body,
+      outputFolderName: getAudioOffsetsDefaultProps.outputFolderName
+    })
   },
 )
 
@@ -219,8 +241,12 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, changeTrackLanguages.name, body,
-      changeTrackLanguages({ audioLanguage: body.audioLanguage, isRecursive: body.isRecursive, sourcePath: body.sourcePath, subtitlesLanguage: body.subtitlesLanguage, videoLanguage: body.videoLanguage }))
+    return startCommandJob({
+      command: changeTrackLanguages.name,
+      context,
+      jobObservable: changeTrackLanguages({ audioLanguage: body.audioLanguage, isRecursive: body.isRecursive, sourcePath: body.sourcePath, subtitlesLanguage: body.subtitlesLanguage, videoLanguage: body.videoLanguage }),
+      params: body,
+    })
   },
 )
 
@@ -252,8 +278,12 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, fixIncorrectDefaultTracks.name, body,
-      fixIncorrectDefaultTracks({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }))
+    return startCommandJob({
+      command: fixIncorrectDefaultTracks.name,
+      context,
+      jobObservable: fixIncorrectDefaultTracks({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }),
+      params: body,
+    })
   },
 )
 
@@ -285,8 +315,12 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, hasBetterAudio.name, body,
-      hasBetterAudio({ isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, sourcePath: body.sourcePath }))
+    return startCommandJob({
+      command: hasBetterAudio.name,
+      context,
+      jobObservable: hasBetterAudio({ isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, sourcePath: body.sourcePath }),
+      params: body,
+    })
   },
 )
 
@@ -318,8 +352,12 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, hasBetterVersion.name, body,
-      hasBetterVersion({ isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, sourcePath: body.sourcePath }))
+    return startCommandJob({
+      command: hasBetterVersion.name,
+      context,
+      jobObservable: hasBetterVersion({ isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, sourcePath: body.sourcePath }),
+      params: body,
+    })
   },
 )
 
@@ -351,8 +389,12 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, hasDuplicateMusicFiles.name, body,
-      hasDuplicateMusicFiles({ isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, sourcePath: body.sourcePath }))
+    return startCommandJob({
+      command: hasDuplicateMusicFiles.name,
+      context,
+      jobObservable: hasDuplicateMusicFiles({ isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, sourcePath: body.sourcePath }),
+      params: body,
+    })
   },
 )
 
@@ -384,8 +426,12 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, hasImaxEnhancedAudio.name, body,
-      hasImaxEnhancedAudio({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }))
+    return startCommandJob({
+      command: hasImaxEnhancedAudio.name,
+      context,
+      jobObservable: hasImaxEnhancedAudio({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }),
+      params: body,
+    })
   },
 )
 
@@ -417,8 +463,12 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, hasManyAudioTracks.name, body,
-      hasManyAudioTracks({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }))
+    return startCommandJob({
+      command: hasManyAudioTracks.name,
+      context,
+      jobObservable: hasManyAudioTracks({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }),
+      params: body,
+    })
   },
 )
 
@@ -450,8 +500,12 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, hasSurroundSound.name, body,
-      hasSurroundSound({ isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, sourcePath: body.sourcePath }))
+    return startCommandJob({
+      command: hasSurroundSound.name,
+      context,
+      jobObservable: hasSurroundSound({ isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, sourcePath: body.sourcePath }),
+      params: body,
+    })
   },
 )
 
@@ -483,8 +537,12 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, hasWrongDefaultTrack.name, body,
-      hasWrongDefaultTrack({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }))
+    return startCommandJob({
+      command: hasWrongDefaultTrack.name,
+      context,
+      jobObservable: hasWrongDefaultTrack({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }),
+      params: body,
+    })
   },
 )
 
@@ -516,8 +574,12 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, isMissingSubtitles.name, body,
-      isMissingSubtitles({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }))
+    return startCommandJob({
+      command: isMissingSubtitles.name,
+      context,
+      jobObservable: isMissingSubtitles({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }),
+      params: body,
+    })
   },
 )
 
@@ -549,9 +611,13 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, keepLanguages.name, body,
-      keepLanguages({ audioLanguages: body.audioLanguages, hasFirstAudioLanguage: body.useFirstAudioLanguage, hasFirstSubtitlesLanguage: body.useFirstSubtitlesLanguage, isRecursive: body.isRecursive, sourcePath: body.sourcePath, subtitlesLanguages: body.subtitlesLanguages }),
-      keepLanguagesDefaultProps.outputFolderName)
+    return startCommandJob({
+      command: keepLanguages.name,
+      context,
+      jobObservable: keepLanguages({ audioLanguages: body.audioLanguages, hasFirstAudioLanguage: body.useFirstAudioLanguage, hasFirstSubtitlesLanguage: body.useFirstSubtitlesLanguage, isRecursive: body.isRecursive, sourcePath: body.sourcePath, subtitlesLanguages: body.subtitlesLanguages }),
+      params: body,
+      outputFolderName: keepLanguagesDefaultProps.outputFolderName
+      })
   },
 )
 
@@ -583,9 +649,13 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, mergeTracks.name, body,
-      mergeTracks({ globalOffsetInMilliseconds: body.globalOffset, hasAutomaticOffset: body.automaticOffset, hasChapters: body.includeChapters, mediaFilesPath: body.mediaFilesPath, offsetsInMilliseconds: body.offsets, subtitlesPath: body.subtitlesPath }),
-      mergeTracksDefaultProps.outputFolderName)
+    return startCommandJob({
+      command: mergeTracks.name,
+      context,
+      jobObservable: mergeTracks({ globalOffsetInMilliseconds: body.globalOffset, hasAutomaticOffset: body.automaticOffset, hasChapters: body.includeChapters, mediaFilesPath: body.mediaFilesPath, offsetsInMilliseconds: body.offsets, subtitlesPath: body.subtitlesPath }),
+      params: body,
+      outputFolderName: mergeTracksDefaultProps.outputFolderName
+      })
   },
 )
 
@@ -617,8 +687,12 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, nameAnimeEpisodes.name, body,
-      nameAnimeEpisodes({ searchTerm: body.searchTerm, seasonNumber: body.seasonNumber, sourcePath: body.sourcePath }))
+    return startCommandJob({
+      command: nameAnimeEpisodes.name,
+      context,
+      jobObservable: nameAnimeEpisodes({ searchTerm: body.searchTerm, seasonNumber: body.seasonNumber, sourcePath: body.sourcePath }),
+      params: body,
+    })
   },
 )
 
@@ -650,8 +724,12 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, nameSpecialFeatures.name, body,
-      nameSpecialFeatures({ fixedOffset: body.fixedOffset, sourcePath: body.sourcePath, timecodePaddingAmount: body.timecodePadding, url: body.url }))
+    return startCommandJob({
+      command: nameSpecialFeatures.name,
+      context,
+      jobObservable: nameSpecialFeatures({ fixedOffset: body.fixedOffset, sourcePath: body.sourcePath, timecodePaddingAmount: body.timecodePadding, url: body.url }),
+      params: body,
+    })
   },
 )
 
@@ -683,8 +761,12 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, nameTvShowEpisodes.name, body,
-      nameTvShowEpisodes({ searchTerm: body.searchTerm, seasonNumber: body.seasonNumber, sourcePath: body.sourcePath }))
+    return startCommandJob({
+      command: nameTvShowEpisodes.name,
+      context,
+      jobObservable: nameTvShowEpisodes({ searchTerm: body.searchTerm, seasonNumber: body.seasonNumber, sourcePath: body.sourcePath }),
+      params: body,
+    })
   },
 )
 
@@ -716,8 +798,12 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, renameDemos.name, body,
-      renameDemos({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }))
+    return startCommandJob({
+      command: renameDemos.name,
+      context,
+      jobObservable: renameDemos({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }),
+      params: body,
+    })
   },
 )
 
@@ -749,8 +835,12 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, renameMovieClipDownloads.name, body,
-      renameMovieClipDownloads({ sourcePath: body.sourcePath }))
+    return startCommandJob({
+      command: renameMovieClipDownloads.name,
+      context,
+      jobObservable: renameMovieClipDownloads({ sourcePath: body.sourcePath }),
+      params: body,
+    })
   },
 )
 
@@ -782,9 +872,13 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, reorderTracks.name, body,
-      reorderTracks({ audioTrackIndexes: body.audioTrackIndexes, isRecursive: body.isRecursive, sourcePath: body.sourcePath, subtitlesTrackIndexes: body.subtitlesTrackIndexes, videoTrackIndexes: body.videoTrackIndexes }),
-      reorderTracksDefaultProps.outputFolderName)
+    return startCommandJob({
+      command: reorderTracks.name,
+      context,
+      jobObservable: reorderTracks({ audioTrackIndexes: body.audioTrackIndexes, isRecursive: body.isRecursive, sourcePath: body.sourcePath, subtitlesTrackIndexes: body.subtitlesTrackIndexes, videoTrackIndexes: body.videoTrackIndexes }),
+      params: body,
+      outputFolderName: reorderTracksDefaultProps.outputFolderName
+      })
   },
 )
 
@@ -816,9 +910,13 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, replaceAttachments.name, body,
-      replaceAttachments({ destinationFilesPath: body.destinationFilesPath, sourceFilesPath: body.sourceFilesPath }),
-      replaceAttachmentsDefaultProps.outputFolderName)
+    return startCommandJob({
+      command: replaceAttachments.name,
+      context,
+      jobObservable: replaceAttachments({ destinationFilesPath: body.destinationFilesPath, sourceFilesPath: body.sourceFilesPath }),
+      params: body,
+      outputFolderName: replaceAttachmentsDefaultProps.outputFolderName
+      })
   },
 )
 
@@ -850,9 +948,13 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, replaceFlacWithPcmAudio.name, body,
-      replaceFlacWithPcmAudio({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }),
-      replaceFlacWithPcmAudioDefaultProps.outputFolderName)
+    return startCommandJob({
+      command: replaceFlacWithPcmAudio.name,
+      context,
+      jobObservable: replaceFlacWithPcmAudio({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }),
+      params: body,
+      outputFolderName: replaceFlacWithPcmAudioDefaultProps.outputFolderName
+      })
   },
 )
 
@@ -884,8 +986,10 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, replaceTracks.name, body,
-      replaceTracks({
+    return startCommandJob({
+      command: replaceTracks.name,
+      context,
+      jobObservable: replaceTracks({
         audioLanguages: body.audioLanguages,
         destinationFilesPath: body.destinationFilesPath,
         globalOffsetInMilliseconds: body.globalOffset,
@@ -896,7 +1000,9 @@ commandRoutes.openapi(
         subtitlesLanguages: body.subtitlesLanguages,
         videoLanguages: body.videoLanguages,
       }),
-      replaceTracksDefaultProps.outputFolderName)
+      params: body,
+      outputFolderName: replaceTracksDefaultProps.outputFolderName
+      })
   },
 )
 
@@ -928,8 +1034,12 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, setDisplayWidth.name, body,
-      setDisplayWidth({ displayWidth: body.displayWidth, isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, sourcePath: body.sourcePath }))
+    return startCommandJob({
+      command: setDisplayWidth.name,
+      context,
+      jobObservable: setDisplayWidth({ displayWidth: body.displayWidth, isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, sourcePath: body.sourcePath }),
+      params: body,
+    })
   },
 )
 
@@ -961,9 +1071,13 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, splitChapters.name, body,
-      splitChapters({ chapterSplitsList: body.chapterSplits, sourcePath: body.sourcePath }),
-      splitChaptersDefaultProps.outputFolderName)
+    return startCommandJob({
+      command: splitChapters.name,
+      context,
+      jobObservable: splitChapters({ chapterSplitsList: body.chapterSplits, sourcePath: body.sourcePath }),
+      params: body,
+      outputFolderName: splitChaptersDefaultProps.outputFolderName
+      })
   },
 )
 
@@ -995,8 +1109,10 @@ commandRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    return startJob(context, storeAspectRatioData.name, body,
-      storeAspectRatioData({
+    return startCommandJob({
+      command: storeAspectRatioData.name,
+      context,
+      jobObservable: storeAspectRatioData({
         folderNames: body.folders,
         isRecursive: body.isRecursive,
         mode: (
@@ -1009,6 +1125,8 @@ commandRoutes.openapi(
         rootPath: body.rootPath,
         sourcePath: body.sourcePath,
         threadCount: body.threads,
-      }))
+      }),
+      params: body,
+    })
   },
 )
