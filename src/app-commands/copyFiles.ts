@@ -44,11 +44,9 @@ export const copyFiles = ({
       )
 
       return (
-        defer(() => (
-          makeDirectory(
-            destinationPath
-          )
-        ))
+        makeDirectory(
+          destinationPath
+        )
         .pipe(
           concatMap(() => (
             copyFile(
