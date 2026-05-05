@@ -99,3 +99,15 @@ export const someCommandCommand: CommandModule<{}, Args> = {
 ```
 
 In `cli.ts`, register it with `.command(someCommandCommand)`.
+
+## Commit conventions
+
+Commit after each logical group of changes (one phase at a time). Do not push unless explicitly asked.
+
+## makeDirectory
+
+`makeDirectory(directoryPath)` always creates the exact path passed to it using `mkdir(..., { recursive: true })`. Callers that have a **file** path must pass `dirname(filePath)` themselves — `makeDirectory` does not strip the filename. This applies to `getAudioOffset.ts` and `reorderTracksFfmpeg.ts`; callers like `copyFiles.ts` and `splitChaptersFfmpeg.ts` already pass directory paths and need no wrapping.
+
+## Commands that read `process.stdin`
+
+`nameAnimeEpisodes` and `nameTvShowEpisodes` historically prompted via stdin to pick a search result. They now accept an optional `malId` / `tvdbId` parameter that bypasses stdin entirely. Always supply these IDs when calling these commands from the API or sequence builder — omitting them will hang waiting for stdin input.
