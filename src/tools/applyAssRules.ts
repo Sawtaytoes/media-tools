@@ -111,7 +111,7 @@ const applySetStyleFields = (
   assFile: AssFile,
   rule: SetStyleFieldsRule,
 ): AssFile => {
-  const skipPattern = rule.ignoredStyleNamesRegexString
+  const ignoredStyleNamesRegex = rule.ignoredStyleNamesRegexString
     ? new RegExp(rule.ignoredStyleNamesRegexString, "i")
     : null
 
@@ -120,6 +120,7 @@ const applySetStyleFields = (
     sections: assFile.sections.map((section) => {
       if (section.sectionType !== "formatted") return section
 
+      console.log('hi 4', section)
       const hasStyleEntries = section.entries.some(
         (e) => e.entryType === "Style",
       )
@@ -131,7 +132,7 @@ const applySetStyleFields = (
           if (entry.entryType !== "Style") return entry
 
           const styleName = entry.fields["Name"] ?? ""
-          if (skipPattern && skipPattern.test(styleName)) return entry
+          if (ignoredStyleNamesRegex && ignoredStyleNamesRegex.test(styleName)) return entry
 
           return {
             ...entry,

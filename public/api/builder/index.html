@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sequence Builder</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/js-yaml@4/dist/js-yaml.min.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-200 font-sans text-sm">
+
+<div class="flex flex-col lg:flex-row" style="height:100dvh;overflow:hidden">
+
+  <!-- Left: Steps -->
+  <div class="flex-1 flex flex-col min-w-0" style="overflow:hidden">
+
+    <!-- Header -->
+    <div class="shrink-0 flex items-center justify-between px-4 py-3 border-b border-slate-700 bg-slate-900 z-10">
+      <h1 class="font-semibold text-slate-100">Sequence Builder</h1>
+      <div class="flex items-center gap-4">
+        <button onclick="toggleLoad()" class="text-xs text-blue-400 hover:text-blue-300">Load YAML</button>
+        <a href="/" class="text-xs text-slate-400 hover:text-slate-300">Jobs ↗</a>
+      </div>
+    </div>
+
+    <!-- Load YAML panel -->
+    <div id="load-panel" class="hidden shrink-0 px-4 py-3 border-b border-slate-700 bg-slate-800/60">
+      <p class="text-xs text-slate-400 mb-2">Paste saved YAML to restore sequence</p>
+      <textarea id="load-input" rows="5"
+        class="w-full bg-slate-900 text-slate-200 text-xs font-mono p-2 rounded border border-slate-600 resize-y focus:outline-none focus:border-blue-500"
+        placeholder="- command: copyFiles&#10;  params:&#10;    sourcePath: /src&#10;    destinationPath: /dst"></textarea>
+      <div class="flex items-center gap-3 mt-2">
+        <button onclick="loadYaml()" class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded">Load</button>
+        <button onclick="toggleLoad()" class="text-xs text-slate-400 hover:text-slate-300">Cancel</button>
+        <span id="load-error" class="text-xs text-red-400 hidden"></span>
+      </div>
+    </div>
+
+    <!-- Step list -->
+    <div id="steps-el" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
+
+    <!-- Footer toolbar -->
+    <div class="shrink-0 flex items-center gap-2 px-4 py-3 border-t border-slate-700 bg-slate-900">
+      <select id="cmd-pick" class="bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 max-w-xs">
+        <option value="">— pick command —</option>
+      </select>
+      <button onclick="addPicked()" class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium shrink-0">+ Add</button>
+      <button id="run-btn" onclick="runSequence()"
+        class="ml-auto text-xs bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white px-4 py-1.5 rounded font-medium shrink-0">
+        ▶ Run Sequence
+      </button>
+    </div>
+  </div>
+
+  <!-- Right: YAML panel -->
+  <div class="lg:w-80 xl:w-96 shrink-0 flex flex-col border-t lg:border-t-0 lg:border-l border-slate-700" style="background:#020617">
+    <div class="shrink-0 flex items-center justify-between px-3 py-2 border-b border-slate-800">
+      <span class="text-xs font-medium text-slate-400">YAML</span>
+      <button onclick="copyYaml()" id="copy-btn" class="text-xs text-blue-400 hover:text-blue-300 px-2 py-1 rounded hover:bg-slate-800">Copy</button>
+    </div>
+    <pre id="yaml-out" class="flex-1 overflow-auto p-3 text-xs text-emerald-400 font-mono leading-relaxed whitespace-pre-wrap"></pre>
+  </div>
+
+</div>
+
+<script>
+// ─── Command definitions ──────────────────────────────────────────────────────
+
+const COMMANDS = {
+  // File Operations
+  copyFiles: {
+    summary: "Copy files from source to destination",
+    tag: "File Operations",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "destinationPath", type: "path", label: "Destination Path", required: true },
+    ]
+  },
+  moveFiles: {
+    summary: "Move files from source to destination",
+    tag: "File Operations",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "destinationPath", type: "path", label: "Destination Path", required: true },
+    ]
+  },
+  replaceAttachments: {
+    summary: "Replace attachments in media files",
+    tag: "File Operations",
+    outputFolderName: "REPLACED-ATTACHMENTS",
+    fields: [
+      { name: "sourceFilesPath", type: "path", label: "Source Files Path", required: true },
+      { name: "destinationFilesPath", type: "path", label: "Destination Files Path", required: true },
+    ]
+  },
+  deleteFilesByExtension: {
+    summary: "Delete files matching extensions",
+    tag: "File Operations",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "extensions", type: "stringArray", label: "Extensions", required: true, placeholder: ".srt, .idx" },
+      { name: "isRecursive", type: "boolean", label: "Recursive", default: false },
+      { name: "recursiveDepth", type: "number", label: "Recursive Depth", default: 0 },
+    ]
+  },
+  splitChapters: {
+    summary: "Split media files by chapter markers",
+    tag: "File Operations",
+    outputFolderName: "SPLITS",
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "chapterSplits", type: "stringArray", label: "Chapter Splits", required: true, placeholder: "ch1, ch2" },
+    ]
+  },
+  // Audio Operations
+  getAudioOffsets: {
+    summary: "Calculate audio sync offsets between files",
+    tag: "Audio Operations",
+    outputFolderName: "AUDIO-OFFSETS",
+    fields: [
+      { name: "sourceFilesPath", type: "path", label: "Source Files Path", required: true },
+      { name: "destinationFilesPath", type: "path", label: "Destination Files Path", required: true },
+    ]
+  },
+  replaceFlacWithPcmAudio: {
+    summary: "Replace FLAC audio with PCM audio",
+    tag: "Audio Operations",
+    outputFolderName: "AUDIO-CONVERTED",
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "isRecursive", type: "boolean", label: "Recursive", default: false },
+    ]
+  },
+  // Track Operations
+  changeTrackLanguages: {
+    summary: "Change language tags for media tracks",
+    tag: "Track Operations",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "isRecursive", type: "boolean", label: "Recursive", default: false },
+      { name: "audioLanguage", type: "languageCode", label: "Audio Language" },
+      { name: "subtitlesLanguage", type: "languageCode", label: "Subtitles Language" },
+      { name: "videoLanguage", type: "languageCode", label: "Video Language" },
+    ]
+  },
+  fixIncorrectDefaultTracks: {
+    summary: "Fix incorrect default track designations",
+    tag: "Track Operations",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "isRecursive", type: "boolean", label: "Recursive", default: false },
+    ]
+  },
+  keepLanguages: {
+    summary: "Filter media tracks by language",
+    tag: "Track Operations",
+    outputFolderName: "LANGUAGE-TRIMMED",
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "isRecursive", type: "boolean", label: "Recursive", default: false },
+      { name: "audioLanguages", type: "languageCodes", label: "Audio Languages", placeholder: "eng, jpn" },
+      { name: "subtitlesLanguages", type: "languageCodes", label: "Subtitles Languages", placeholder: "eng" },
+      { name: "useFirstAudioLanguage", type: "boolean", label: "Use First Audio Language Only", default: false },
+      { name: "useFirstSubtitlesLanguage", type: "boolean", label: "Use First Subtitles Language Only", default: false },
+    ]
+  },
+  mergeTracks: {
+    summary: "Merge subtitle tracks into media files",
+    tag: "Track Operations",
+    outputFolderName: "SUBTITLED",
+    fields: [
+      { name: "mediaFilesPath", type: "path", label: "Media Files Path", required: true },
+      { name: "subtitlesPath", type: "path", label: "Subtitles Path", required: true },
+      { name: "automaticOffset", type: "boolean", label: "Automatic Offset", default: false },
+      { name: "globalOffset", type: "number", label: "Global Offset (ms)", default: 0 },
+      { name: "includeChapters", type: "boolean", label: "Include Chapters", default: false },
+      { name: "offsets", type: "numberArray", label: "Per-file Offsets (ms)", placeholder: "0, -200, 150" },
+    ]
+  },
+  reorderTracks: {
+    summary: "Reorder media tracks",
+    tag: "Track Operations",
+    outputFolderName: "REORDERED-TRACKS",
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "isRecursive", type: "boolean", label: "Recursive", default: false },
+      { name: "videoTrackIndexes", type: "numberArray", label: "Video Track Indexes", placeholder: "0" },
+      { name: "audioTrackIndexes", type: "numberArray", label: "Audio Track Indexes", placeholder: "0, 1" },
+      { name: "subtitlesTrackIndexes", type: "numberArray", label: "Subtitles Track Indexes", placeholder: "0" },
+    ]
+  },
+  replaceTracks: {
+    summary: "Replace media tracks in destination files",
+    tag: "Track Operations",
+    outputFolderName: "REPLACED-TRACKS",
+    fields: [
+      { name: "sourceFilesPath", type: "path", label: "Source Files Path", required: true },
+      { name: "destinationFilesPath", type: "path", label: "Destination Files Path", required: true },
+      { name: "automaticOffset", type: "boolean", label: "Automatic Offset", default: false },
+      { name: "globalOffset", type: "number", label: "Global Offset (ms)", default: 0 },
+      { name: "includeChapters", type: "boolean", label: "Include Chapters", default: false },
+      { name: "audioLanguages", type: "languageCodes", label: "Audio Languages", placeholder: "eng, jpn" },
+      { name: "subtitlesLanguages", type: "languageCodes", label: "Subtitles Languages", placeholder: "eng" },
+      { name: "videoLanguages", type: "languageCodes", label: "Video Languages" },
+      { name: "offsets", type: "numberArray", label: "Per-file Offsets (ms)" },
+    ]
+  },
+  // Subtitle Operations
+  copyOutSubtitles: {
+    summary: "Extract subtitle files from media files",
+    tag: "Subtitle Operations",
+    outputFolderName: "EXTRACTED-SUBTITLES",
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "isRecursive", type: "boolean", label: "Recursive", default: false },
+      { name: "subtitlesLanguage", type: "languageCode", label: "Subtitles Language" },
+    ]
+  },
+  isMissingSubtitles: {
+    summary: "Identify media files missing subtitle tracks",
+    tag: "Subtitle Operations",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "isRecursive", type: "boolean", label: "Recursive", default: false },
+    ]
+  },
+  modifySubtitleMetadata: {
+    summary: "Apply DSL-driven modifications to ASS subtitle metadata",
+    tag: "Subtitle Operations",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "isRecursive", type: "boolean", label: "Recursive", default: false },
+      { name: "recursiveDepth", type: "number", label: "Recursive Depth", default: 0 },
+      { name: "rules", type: "json", label: "Rules (JSON)", required: true,
+        placeholder: '[{"type":"setScriptInfo","key":"YCbCr Matrix","value":"TV.709"}]' },
+    ]
+  },
+  // Analysis
+  hasBetterAudio: {
+    summary: "Analyze and compare audio quality across files",
+    tag: "Analysis",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "isRecursive", type: "boolean", label: "Recursive", default: false },
+      { name: "recursiveDepth", type: "number", label: "Recursive Depth", default: 0 },
+    ]
+  },
+  hasBetterVersion: {
+    summary: "Check if better version of media exists",
+    tag: "Analysis",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "isRecursive", type: "boolean", label: "Recursive", default: false },
+      { name: "recursiveDepth", type: "number", label: "Recursive Depth", default: 0 },
+    ]
+  },
+  hasDuplicateMusicFiles: {
+    summary: "Identify duplicate music files",
+    tag: "Analysis",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "isRecursive", type: "boolean", label: "Recursive", default: false },
+      { name: "recursiveDepth", type: "number", label: "Recursive Depth", default: 0 },
+    ]
+  },
+  hasImaxEnhancedAudio: {
+    summary: "Check for IMAX enhanced audio tracks",
+    tag: "Analysis",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "isRecursive", type: "boolean", label: "Recursive", default: false },
+    ]
+  },
+  hasManyAudioTracks: {
+    summary: "Identify files with many audio tracks",
+    tag: "Analysis",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "isRecursive", type: "boolean", label: "Recursive", default: false },
+    ]
+  },
+  hasSurroundSound: {
+    summary: "Check for surround sound audio tracks",
+    tag: "Analysis",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "isRecursive", type: "boolean", label: "Recursive", default: false },
+      { name: "recursiveDepth", type: "number", label: "Recursive Depth", default: 0 },
+    ]
+  },
+  hasWrongDefaultTrack: {
+    summary: "Find files with incorrect default track selection",
+    tag: "Analysis",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "isRecursive", type: "boolean", label: "Recursive", default: false },
+    ]
+  },
+  // Naming Operations
+  nameAnimeEpisodes: {
+    summary: "Rename anime episode files based on metadata",
+    tag: "Naming Operations",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "searchTerm", type: "string", label: "Search Term", required: true },
+      { name: "seasonNumber", type: "number", label: "Season Number", default: 1 },
+    ]
+  },
+  nameSpecialFeatures: {
+    summary: "Rename special features based on timecode data",
+    tag: "Naming Operations",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "url", type: "string", label: "URL", required: true },
+      { name: "fixedOffset", type: "number", label: "Fixed Offset (ms)", default: 0 },
+      { name: "timecodePadding", type: "number", label: "Timecode Padding", default: 0 },
+    ]
+  },
+  nameTvShowEpisodes: {
+    summary: "Rename TV show episode files based on metadata",
+    tag: "Naming Operations",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "searchTerm", type: "string", label: "Search Term", required: true },
+      { name: "seasonNumber", type: "number", label: "Season Number", required: true },
+    ]
+  },
+  renameDemos: {
+    summary: "Rename demo files based on content analysis",
+    tag: "Naming Operations",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "isRecursive", type: "boolean", label: "Recursive", default: false },
+    ]
+  },
+  renameMovieClipDownloads: {
+    summary: "Rename downloaded movie clip files",
+    tag: "Naming Operations",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+    ]
+  },
+  // Video Operations
+  setDisplayWidth: {
+    summary: "Set display width for video tracks",
+    tag: "Video Operations",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "displayWidth", type: "number", label: "Display Width (px)", default: 853 },
+      { name: "isRecursive", type: "boolean", label: "Recursive", default: false },
+      { name: "recursiveDepth", type: "number", label: "Recursive Depth", default: 0 },
+    ]
+  },
+  // Metadata Operations
+  storeAspectRatioData: {
+    summary: "Analyze and store aspect ratio metadata",
+    tag: "Metadata Operations",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "isRecursive", type: "boolean", label: "Recursive", default: false },
+      { name: "recursiveDepth", type: "number", label: "Recursive Depth", default: 0 },
+      { name: "outputPath", type: "path", label: "Output Path" },
+      { name: "rootPath", type: "path", label: "Root Path" },
+      { name: "folders", type: "stringArray", label: "Folders" },
+      { name: "force", type: "boolean", label: "Force Overwrite", default: false },
+      { name: "threads", type: "number", label: "Thread Count" },
+    ]
+  },
+}
+
+const TAG_ORDER = [
+  "File Operations","Audio Operations","Track Operations",
+  "Subtitle Operations","Analysis","Naming Operations",
+  "Video Operations","Metadata Operations",
+]
+
+// ─── State ────────────────────────────────────────────────────────────────────
+
+let steps = []
+let stepCounter = 0
+let running = false
+
+// ─── Path helpers ─────────────────────────────────────────────────────────────
+
+function mainSrcField(commandName) {
+  const cmd = COMMANDS[commandName]
+  for (const n of ['sourcePath','sourceFilesPath','mediaFilesPath']) {
+    if (cmd.fields.some(f => f.name === n)) return n
+  }
+  const pf = cmd.fields.find(f => f.type === 'path')
+  return pf ? pf.name : null
+}
+
+function stepOutput(step) {
+  const cmd = COMMANDS[step.command]
+  const msf = mainSrcField(step.command)
+  let src = msf ? (linkedVal(step, msf) ?? step.params[msf] ?? '') : ''
+  src = src.replace(/[\\/]$/, '')
+
+  if (cmd.outputFolderName) return src ? src + '/' + cmd.outputFolderName : cmd.outputFolderName
+
+  const hasField = n => cmd.fields.some(f => f.name === n)
+  if (hasField('destinationPath') && step.params.destinationPath) return step.params.destinationPath
+  if (hasField('destinationFilesPath') && step.params.destinationFilesPath) return step.params.destinationFilesPath
+  return src
+}
+
+function linkedVal(step, fieldName) {
+  const srcId = step.links?.[fieldName]
+  if (!srcId) return null
+  const src = steps.find(s => s.id === srcId)
+  return src ? stepOutput(src) : null
+}
+
+// ─── Step CRUD ────────────────────────────────────────────────────────────────
+
+function makeStep(command) {
+  const cmd = COMMANDS[command]
+  const params = {}
+  for (const f of cmd.fields) if (f.default !== undefined) params[f.name] = f.default
+  return { id: ++stepCounter, command, params, links: {}, status: null, error: null }
+}
+
+function addPicked() {
+  const sel = document.getElementById('cmd-pick')
+  if (!sel.value) return
+  steps.push(makeStep(sel.value))
+  sel.value = ''
+  renderAll()
+}
+
+function removeStep(id) {
+  const i = steps.findIndex(s => s.id === id)
+  steps.splice(i, 1)
+  // Remove any links pointing to removed step
+  for (const s of steps) {
+    for (const [k, v] of Object.entries(s.links)) {
+      if (v === id) delete s.links[k]
+    }
+  }
+  renderAll()
+}
+
+function moveStep(id, dir) {
+  const i = steps.findIndex(s => s.id === id)
+  const j = i + dir
+  if (j < 0 || j >= steps.length) return
+  ;[steps[i], steps[j]] = [steps[j], steps[i]]
+  renderAll()
+}
+
+// ─── Param handlers ───────────────────────────────────────────────────────────
+
+function setParam(id, field, value) {
+  const step = steps.find(s => s.id === id)
+  if (!step) return
+  step.params[field] = value
+  refreshLinkedInputs()
+  updateYaml()
+}
+
+function setLink(id, field, srcIdStr) {
+  const step = steps.find(s => s.id === id)
+  if (!step) return
+  if (srcIdStr) {
+    step.links[field] = Number(srcIdStr)
+  } else {
+    delete step.links[field]
+  }
+  // Update the linked input
+  const linkedInput = document.querySelector(`[data-step="${id}"][data-field="${field}"].linked-input`)
+  const manualInput = document.querySelector(`[data-step="${id}"][data-field="${field}"].manual-input`)
+  const val = linkedVal(step, field)
+  if (val !== null) {
+    if (linkedInput) { linkedInput.value = val; linkedInput.classList.remove('hidden') }
+    if (manualInput) manualInput.classList.add('hidden')
+  } else {
+    if (linkedInput) linkedInput.classList.add('hidden')
+    if (manualInput) manualInput.classList.remove('hidden')
+  }
+  refreshLinkedInputs()
+  updateYaml()
+}
+
+function refreshLinkedInputs() {
+  for (const step of steps) {
+    for (const [field, srcId] of Object.entries(step.links)) {
+      const inp = document.querySelector(`[data-step="${step.id}"][data-field="${field}"].linked-input`)
+      if (inp) inp.value = linkedVal(step, field) ?? ''
+    }
+  }
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+
+function esc(v) {
+  return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+}
+
+function renderAll() {
+  const el = document.getElementById('steps-el')
+  if (!steps.length) {
+    el.innerHTML = '<p class="text-slate-500 text-xs text-center mt-8">No steps yet — pick a command below and click + Add</p>'
+    updateYaml()
+    return
+  }
+  el.innerHTML = steps.map((s, i) => renderStep(s, i)).join('')
+  updateYaml()
+}
+
+function renderStep(step, index) {
+  const cmd = COMMANDS[step.command]
+  const statusBadge = step.status ? renderStatusBadge(step.status) : ''
+  const isFirst = index === 0, isLast = index === steps.length - 1
+
+  const cmdOptions = TAG_ORDER.map(tag => {
+    const cmds = Object.entries(COMMANDS).filter(([,c]) => c.tag === tag)
+    if (!cmds.length) return ''
+    return `<optgroup label="${esc(tag)}">${cmds.map(([name,c]) =>
+      `<option value="${esc(name)}"${step.command === name ? ' selected' : ''}>${esc(name)}</option>`
+    ).join('')}</optgroup>`
+  }).join('')
+
+  return `
+<div id="step-${step.id}" class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+  <div class="flex items-center gap-2 px-3 py-2 border-b border-slate-700 bg-slate-800/80">
+    <span class="text-xs font-mono text-slate-500 shrink-0 w-5 text-center">${index + 1}</span>
+    <select onchange="changeCommand(${step.id}, this.value)"
+      class="flex-1 min-w-0 bg-slate-700 text-slate-200 text-xs rounded px-2 py-1 border border-slate-600 focus:outline-none focus:border-blue-500">
+      ${cmdOptions}
+    </select>
+    ${statusBadge}
+    <div class="flex items-center gap-1 shrink-0">
+      <button onclick="moveStep(${step.id},-1)" ${isFirst ? 'disabled' : ''}
+        class="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700 disabled:opacity-30 text-xs">↑</button>
+      <button onclick="moveStep(${step.id},1)" ${isLast ? 'disabled' : ''}
+        class="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700 disabled:opacity-30 text-xs">↓</button>
+      <button onclick="removeStep(${step.id})"
+        class="w-6 h-6 flex items-center justify-center rounded text-slate-500 hover:text-red-400 hover:bg-slate-700 text-xs">✕</button>
+    </div>
+  </div>
+  <div class="px-3 py-2">
+    <p class="text-xs text-slate-500 mb-2">${esc(cmd.summary)}</p>
+    ${cmd.outputFolderName ? `<p class="text-xs text-amber-500/80 mb-2">→ outputs to <code class="text-amber-400 bg-slate-900 px-1 rounded">${esc(cmd.outputFolderName)}/</code> subfolder</p>` : ''}
+    ${step.error ? `<p class="text-xs text-red-400 bg-red-950/40 rounded px-2 py-1 mb-2 font-mono">${esc(step.error)}</p>` : ''}
+    <div class="space-y-2">${renderFields(step, index)}</div>
+  </div>
+</div>`
+}
+
+function renderStatusBadge(status) {
+  const map = {
+    pending:   'bg-blue-950 text-blue-300',
+    running:   'bg-blue-950 text-blue-400 animate-pulse',
+    completed: 'bg-emerald-950 text-emerald-400',
+    failed:    'bg-red-950 text-red-400',
+  }
+  return `<span class="status-badge shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${map[status] ?? ''}">${esc(status)}</span>`
+}
+
+function renderFields(step, stepIndex) {
+  const cmd = COMMANDS[step.command]
+  return cmd.fields.map(field => {
+    const val = step.params[field.name]
+    const label = `<label class="block text-xs text-slate-400 mb-1">${esc(field.label)}${field.required ? ' <span class="text-red-400">*</span>' : ''}</label>`
+
+    if (field.type === 'boolean') {
+      const checked = val ?? field.default ?? false
+      return `<label class="flex items-center gap-2 cursor-pointer select-none py-0.5">
+        <input type="checkbox" ${checked ? 'checked' : ''} onchange="setParam(${step.id},'${field.name}',this.checked)"
+          class="w-3.5 h-3.5 rounded bg-slate-700 border-slate-500 accent-blue-500 cursor-pointer" />
+        <span class="text-xs text-slate-300">${esc(field.label)}</span>
+      </label>`
+    }
+
+    if (field.type === 'path') {
+      return renderPathField(step, field, stepIndex)
+    }
+
+    if (field.type === 'number') {
+      const num = val ?? field.default ?? ''
+      return `<div>${label}<input type="number" value="${esc(num)}"
+        onchange="setParam(${step.id},'${field.name}',this.value===''?undefined:Number(this.value))"
+        class="w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500" /></div>`
+    }
+
+    if (field.type === 'languageCode') {
+      const str = val ?? ''
+      return `<div>${label}<input type="text" value="${esc(str)}" placeholder="eng"
+        oninput="setParam(${step.id},'${field.name}',this.value||undefined)"
+        maxlength="3"
+        class="w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono" /></div>`
+    }
+
+    if (field.type === 'languageCodes') {
+      const str = Array.isArray(val) ? val.join(', ') : (val ?? '')
+      return `<div>${label}<input type="text" value="${esc(str)}" placeholder="${esc(field.placeholder ?? 'eng, jpn')}"
+        oninput="setParam(${step.id},'${field.name}',this.value.split(',').map(s=>s.trim()).filter(Boolean))"
+        class="w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono" /></div>`
+    }
+
+    if (field.type === 'stringArray') {
+      const str = Array.isArray(val) ? val.join(', ') : (val ?? '')
+      return `<div>${label}<input type="text" value="${esc(str)}" placeholder="${esc(field.placeholder ?? '')}"
+        oninput="setParam(${step.id},'${field.name}',this.value.split(',').map(s=>s.trim()).filter(Boolean))"
+        class="w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono" /></div>`
+    }
+
+    if (field.type === 'numberArray') {
+      const str = Array.isArray(val) ? val.join(', ') : (val ?? '')
+      return `<div>${label}<input type="text" value="${esc(str)}" placeholder="${esc(field.placeholder ?? '0, 100')}"
+        oninput="setParam(${step.id},'${field.name}',this.value.split(',').map(s=>s.trim()).filter(Boolean).map(Number).filter(n=>!isNaN(n)))"
+        class="w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono" /></div>`
+    }
+
+    if (field.type === 'json') {
+      const str = val !== undefined ? (typeof val === 'string' ? val : JSON.stringify(val, null, 2)) : ''
+      return `<div>${label}<textarea rows="3" placeholder="${esc(field.placeholder ?? '[]')}"
+        oninput="setParamJson(${step.id},'${field.name}',this.value)"
+        class="w-full bg-slate-900 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono resize-y">${esc(str)}</textarea></div>`
+    }
+
+    // string
+    const str = val ?? ''
+    return `<div>${label}<input type="text" value="${esc(str)}" placeholder="${esc(field.placeholder ?? '')}"
+      oninput="setParam(${step.id},'${field.name}',this.value||undefined)"
+      class="w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500" /></div>`
+  }).join('')
+}
+
+function renderPathField(step, field, stepIndex) {
+  const val = step.params[field.name] ?? ''
+  const linkedStepId = step.links[field.name]
+  const computed = linkedStepId ? (linkedVal(step, field.name) ?? '') : null
+
+  // Build previous step options
+  const prevOptions = steps.slice(0, stepIndex).map((s, i) => {
+    const out = stepOutput(s)
+    const label = `Step ${i + 1}: ${s.command}${out ? ' → ' + out : ''}`
+    return `<option value="${s.id}"${linkedStepId === s.id ? ' selected' : ''}>${esc(label)}</option>`
+  }).join('')
+
+  const hasOptions = stepIndex > 0
+
+  return `<div>
+    <div class="flex items-center gap-2 mb-1">
+      <label class="text-xs text-slate-400">${esc(field.label)}${field.required ? ' <span class="text-red-400">*</span>' : ''}</label>
+      ${hasOptions ? `<select onchange="setLink(${step.id},'${field.name}',this.value)"
+        class="ml-auto text-xs bg-slate-700 text-slate-300 rounded px-1.5 py-0.5 border border-slate-600 focus:outline-none focus:border-blue-500 max-w-[200px] truncate">
+        <option value="">— manual —</option>
+        ${prevOptions}
+      </select>` : ''}
+    </div>
+    <input type="text" value="${esc(computed ?? val)}" ${computed !== null ? 'readonly' : ''}
+      data-step="${step.id}" data-field="${field.name}"
+      class="${computed !== null ? 'linked-input' : 'manual-input'} w-full bg-slate-${computed !== null ? '900' : '700'} text-slate-${computed !== null ? '400' : '200'} text-xs rounded px-2 py-1.5 border border-slate-${computed !== null ? '700' : '600'} focus:outline-none focus:border-blue-500 font-mono"
+      ${computed !== null ? '' : `oninput="setParam(${step.id},'${field.name}',this.value||undefined)"`} />
+    ${computed !== null ? `<input type="text" value="${esc(val)}" data-step="${step.id}" data-field="${field.name}" class="manual-input hidden w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono" oninput="setParam(${step.id},'${field.name}',this.value||undefined)" />` : ''}
+  </div>`
+}
+
+function changeCommand(id, command) {
+  const step = steps.find(s => s.id === id)
+  if (!step) return
+  step.command = command
+  step.params = {}
+  step.links = {}
+  step.status = null
+  step.error = null
+  const cmd = COMMANDS[command]
+  for (const f of cmd.fields) if (f.default !== undefined) step.params[f.name] = f.default
+  renderAll()
+}
+
+function setParamJson(id, field, raw) {
+  const step = steps.find(s => s.id === id)
+  if (!step) return
+  try {
+    step.params[field] = JSON.parse(raw)
+  } catch {
+    step.params[field] = raw
+  }
+  updateYaml()
+}
+
+// ─── YAML ─────────────────────────────────────────────────────────────────────
+
+function buildParams(step) {
+  const cmd = COMMANDS[step.command]
+  const out = {}
+  for (const field of cmd.fields) {
+    let val = step.params[field.name]
+
+    if (field.type === 'path') {
+      const lv = linkedVal(step, field.name)
+      if (lv !== null) val = lv
+    }
+
+    if (val === undefined || val === null || val === '') continue
+    if (Array.isArray(val) && val.length === 0) continue
+    if (!field.required && field.default !== undefined && val === field.default) continue
+
+    out[field.name] = val
+  }
+  return out
+}
+
+function toYamlStr() {
+  if (!steps.length) return '# No steps yet'
+  const data = steps.map(s => ({ command: s.command, params: buildParams(s) }))
+  return jsyaml.dump(data, { lineWidth: -1, flowLevel: 3, indent: 2 })
+}
+
+function updateYaml() {
+  document.getElementById('yaml-out').textContent = toYamlStr()
+}
+
+function copyYaml() {
+  navigator.clipboard.writeText(toYamlStr()).then(() => {
+    const btn = document.getElementById('copy-btn')
+    btn.textContent = 'Copied!'
+    setTimeout(() => btn.textContent = 'Copy', 2000)
+  })
+}
+
+// ─── Load YAML ────────────────────────────────────────────────────────────────
+
+function toggleLoad() {
+  const panel = document.getElementById('load-panel')
+  panel.classList.toggle('hidden')
+  document.getElementById('load-error').classList.add('hidden')
+}
+
+function loadYaml() {
+  const text = document.getElementById('load-input').value.trim()
+  const errEl = document.getElementById('load-error')
+  errEl.classList.add('hidden')
+  try {
+    const data = jsyaml.load(text)
+    if (!Array.isArray(data)) throw new Error('Expected a YAML sequence (array of steps)')
+    steps = []
+    for (const item of data) {
+      if (!item.command) throw new Error('Each step must have a "command" key')
+      if (!COMMANDS[item.command]) throw new Error(`Unknown command: ${item.command}`)
+      const step = makeStep(item.command)
+      // Merge loaded params
+      const cmd = COMMANDS[item.command]
+      for (const field of cmd.fields) {
+        const v = item.params?.[field.name]
+        if (v !== undefined) step.params[field.name] = v
+      }
+      steps.push(step)
+    }
+    document.getElementById('load-panel').classList.add('hidden')
+    renderAll()
+  } catch (e) {
+    errEl.textContent = e.message
+    errEl.classList.remove('hidden')
+  }
+}
+
+// ─── Run sequence ─────────────────────────────────────────────────────────────
+
+async function runSequence() {
+  if (running || !steps.length) return
+  running = true
+  document.getElementById('run-btn').disabled = true
+
+  for (const step of steps) {
+    step.status = 'pending'
+    step.error = null
+    updateStepUI(step)
+  }
+
+  for (const step of steps) {
+    step.status = 'running'
+    updateStepUI(step)
+
+    const params = buildParams(step)
+
+    let resp
+    try {
+      resp = await fetch(`/commands/${step.command}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      })
+    } catch (e) {
+      step.status = 'failed'
+      step.error = e.message
+      updateStepUI(step)
+      break
+    }
+
+    if (!resp.ok) {
+      step.status = 'failed'
+      step.error = `HTTP ${resp.status}: ${await resp.text()}`
+      updateStepUI(step)
+      break
+    }
+
+    const { jobId, outputFolderName } = await resp.json()
+    step.jobId = jobId
+
+    // If the API returned an outputFolderName that differs, store it (for future chaining refinement)
+    if (outputFolderName) step.runtimeOutputFolderName = outputFolderName
+
+    try {
+      await waitForJob(jobId)
+      step.status = 'completed'
+    } catch (e) {
+      step.status = 'failed'
+      step.error = String(e)
+    }
+    updateStepUI(step)
+    if (step.status === 'failed') break
+  }
+
+  running = false
+  document.getElementById('run-btn').disabled = false
+}
+
+function waitForJob(jobId) {
+  return new Promise((resolve, reject) => {
+    const es = new EventSource(`/jobs/${jobId}/logs`)
+    es.onmessage = e => {
+      try {
+        const data = JSON.parse(e.data)
+        if (data.done) {
+          es.close()
+          if (data.status === 'completed') resolve()
+          else reject(`Job ended with status: ${data.status}`)
+        }
+      } catch {}
+    }
+    es.onerror = () => { es.close(); reject('SSE connection error') }
+  })
+}
+
+function updateStepUI(step) {
+  const card = document.getElementById(`step-${step.id}`)
+  if (!card) return
+
+  // Update status badge
+  let badge = card.querySelector('.status-badge')
+  if (step.status) {
+    const html = renderStatusBadge(step.status)
+    if (badge) {
+      badge.outerHTML = html
+    } else {
+      // Insert before action buttons
+      const btns = card.querySelector('.flex.items-center.gap-1.shrink-0')
+      if (btns) btns.insertAdjacentHTML('beforebegin', html)
+    }
+  }
+
+  // Update error
+  let errEl = card.querySelector('.step-error')
+  if (step.error) {
+    if (errEl) {
+      errEl.textContent = step.error
+    } else {
+      const fieldsEl = card.querySelector('.space-y-2')
+      if (fieldsEl) {
+        fieldsEl.insertAdjacentHTML('beforebegin',
+          `<p class="step-error text-xs text-red-400 bg-red-950/40 rounded px-2 py-1 mb-2 font-mono">${esc(step.error)}</p>`)
+      }
+    }
+  }
+}
+
+// ─── Add command select ───────────────────────────────────────────────────────
+
+function populateCmdPick() {
+  const sel = document.getElementById('cmd-pick')
+  for (const tag of TAG_ORDER) {
+    const cmds = Object.entries(COMMANDS).filter(([,c]) => c.tag === tag)
+    if (!cmds.length) continue
+    const grp = document.createElement('optgroup')
+    grp.label = tag
+    for (const [name] of cmds) {
+      const opt = document.createElement('option')
+      opt.value = name
+      opt.textContent = name
+      grp.appendChild(opt)
+    }
+    sel.appendChild(grp)
+  }
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+
+populateCmdPick()
+renderAll()
+</script>
+</body>
+</html>
