@@ -276,10 +276,6 @@ export const mergeOrderedChapters = ({
     )),
     concatAll(),
     toArray(),
-    tap(() => {
-      process
-      .exit()
-    }),
     catchNamedError(
       mergeOrderedChapters
     ),

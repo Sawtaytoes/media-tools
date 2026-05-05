@@ -119,10 +119,6 @@ export const hasWrongDefaultTrack = ({
     )),
     concatAll(),
     toArray(),
-    tap(() => {
-      process
-      .exit()
-    }),
     catchNamedError(
       hasWrongDefaultTrack
     ),

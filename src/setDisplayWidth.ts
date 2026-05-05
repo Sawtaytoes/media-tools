@@ -57,10 +57,6 @@ export const setDisplayWidth = ({
       )
     )),
     toArray(),
-    tap(() => {
-      process
-      .exit()
-    }),
     catchNamedError(
       setDisplayWidth
     ),

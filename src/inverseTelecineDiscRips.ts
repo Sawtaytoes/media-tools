@@ -79,10 +79,6 @@ export const inverseTelecineDiscRips = ({
     )),
     concatAll(),
     toArray(),
-    tap(() => {
-      process
-      .exit()
-    }),
     catchNamedError(
       inverseTelecineDiscRips
     ),

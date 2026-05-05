@@ -39,10 +39,6 @@ export const fixIncorrectDefaultTracks = ({
     )),
     concatAll(),
     toArray(),
-    tap(() => {
-      process
-      .exit()
-    }),
     catchNamedError(
       fixIncorrectDefaultTracks
     ),
