@@ -65,12 +65,65 @@ const startCommandJob = ({
   )
 }
 
+const commandNames = [
+  "changeTrackLanguages",
+  "copyFiles",
+  "copyOutSubtitles",
+  "fixIncorrectDefaultTracks",
+  "getAudioOffsets",
+  "hasBetterAudio",
+  "hasBetterVersion",
+  "hasDuplicateMusicFiles",
+  "hasImaxEnhancedAudio",
+  "hasManyAudioTracks",
+  "hasSurroundSound",
+  "hasWrongDefaultTrack",
+  "isMissingSubtitles",
+  "keepLanguages",
+  "mergeTracks",
+  "moveFiles",
+  "nameAnimeEpisodes",
+  "nameSpecialFeatures",
+  "nameTvShowEpisodes",
+  "renameDemos",
+  "renameMovieClipDownloads",
+  "reorderTracks",
+  "replaceAttachments",
+  "replaceFlacWithPcmAudio",
+  "replaceTracks",
+  "setDisplayWidth",
+  "splitChapters",
+  "storeAspectRatioData",
+] as const
+
+export type CommandName = typeof commandNames[number]
+
 export const commandRoutes = new OpenAPIHono()
 
 commandRoutes.openapi(
   createRoute({
+    method: "get",
+    path: "/commands",
+    summary: "List all available commands",
+    tags: ["Commands"],
+    responses: {
+      200: {
+        description: "List of available command names",
+        content: {
+          "application/json": {
+            schema: z.object({ commandNames: z.array(z.enum(commandNames)) }),
+          },
+        },
+      },
+    },
+  }),
+  (context) => context.json({ commandNames }, 200),
+)
+
+commandRoutes.openapi(
+  createRoute({
     method: "post",
-    path: "/jobs/copyFiles",
+    path: "/commands/copyFiles",
     summary: "Copy files from source to destination",
     tags: ["File Operations"],
     request: {
@@ -107,7 +160,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/moveFiles",
+    path: "/commands/moveFiles",
     summary: "Move files from source to destination",
     tags: ["File Operations"],
     request: {
@@ -144,7 +197,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/copyOutSubtitles",
+    path: "/commands/copyOutSubtitles",
     summary: "Extract subtitle files from media files",
     tags: ["Subtitle Operations"],
     request: {
@@ -182,7 +235,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/getAudioOffsets",
+    path: "/commands/getAudioOffsets",
     summary: "Calculate audio synchronization offsets between files",
     tags: ["Audio Operations"],
     request: {
@@ -220,7 +273,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/changeTrackLanguages",
+    path: "/commands/changeTrackLanguages",
     summary: "Change language tags for media tracks",
     tags: ["Track Operations"],
     request: {
@@ -257,7 +310,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/fixIncorrectDefaultTracks",
+    path: "/commands/fixIncorrectDefaultTracks",
     summary: "Fix incorrect default track designations",
     tags: ["Track Operations"],
     request: {
@@ -294,7 +347,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/hasBetterAudio",
+    path: "/commands/hasBetterAudio",
     summary: "Analyze and compare audio quality across files",
     tags: ["Analysis"],
     request: {
@@ -331,7 +384,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/hasBetterVersion",
+    path: "/commands/hasBetterVersion",
     summary: "Check if better version of media exists",
     tags: ["Analysis"],
     request: {
@@ -368,7 +421,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/hasDuplicateMusicFiles",
+    path: "/commands/hasDuplicateMusicFiles",
     summary: "Identify duplicate music files",
     tags: ["Analysis"],
     request: {
@@ -405,7 +458,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/hasImaxEnhancedAudio",
+    path: "/commands/hasImaxEnhancedAudio",
     summary: "Check for IMAX enhanced audio tracks",
     tags: ["Analysis"],
     request: {
@@ -442,7 +495,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/hasManyAudioTracks",
+    path: "/commands/hasManyAudioTracks",
     summary: "Identify files with many audio tracks",
     tags: ["Analysis"],
     request: {
@@ -479,7 +532,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/hasSurroundSound",
+    path: "/commands/hasSurroundSound",
     summary: "Check for surround sound audio tracks",
     tags: ["Analysis"],
     request: {
@@ -516,7 +569,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/hasWrongDefaultTrack",
+    path: "/commands/hasWrongDefaultTrack",
     summary: "Find files with incorrect default track selection",
     tags: ["Analysis"],
     request: {
@@ -553,7 +606,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/isMissingSubtitles",
+    path: "/commands/isMissingSubtitles",
     summary: "Identify media files missing subtitle tracks",
     tags: ["Subtitle Operations"],
     request: {
@@ -590,7 +643,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/keepLanguages",
+    path: "/commands/keepLanguages",
     summary: "Filter media tracks by language",
     tags: ["Track Operations"],
     request: {
@@ -628,7 +681,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/mergeTracks",
+    path: "/commands/mergeTracks",
     summary: "Merge subtitle tracks into media files",
     tags: ["Track Operations"],
     request: {
@@ -666,7 +719,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/nameAnimeEpisodes",
+    path: "/commands/nameAnimeEpisodes",
     summary: "Rename anime episode files based on metadata",
     tags: ["Naming Operations"],
     request: {
@@ -703,7 +756,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/nameSpecialFeatures",
+    path: "/commands/nameSpecialFeatures",
     summary: "Rename special features based on timecode data",
     tags: ["Naming Operations"],
     request: {
@@ -740,7 +793,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/nameTvShowEpisodes",
+    path: "/commands/nameTvShowEpisodes",
     summary: "Rename TV show episode files based on metadata",
     tags: ["Naming Operations"],
     request: {
@@ -777,7 +830,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/renameDemos",
+    path: "/commands/renameDemos",
     summary: "Rename demo files based on content analysis",
     tags: ["Naming Operations"],
     request: {
@@ -814,7 +867,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/renameMovieClipDownloads",
+    path: "/commands/renameMovieClipDownloads",
     summary: "Rename downloaded movie clip files",
     tags: ["Naming Operations"],
     request: {
@@ -851,7 +904,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/reorderTracks",
+    path: "/commands/reorderTracks",
     summary: "Reorder media tracks",
     tags: ["Track Operations"],
     request: {
@@ -889,7 +942,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/replaceAttachments",
+    path: "/commands/replaceAttachments",
     summary: "Replace attachments in media files",
     tags: ["File Operations"],
     request: {
@@ -927,7 +980,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/replaceFlacWithPcmAudio",
+    path: "/commands/replaceFlacWithPcmAudio",
     summary: "Replace FLAC audio with PCM audio",
     tags: ["Audio Operations"],
     request: {
@@ -965,7 +1018,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/replaceTracks",
+    path: "/commands/replaceTracks",
     summary: "Replace media tracks in destination files",
     tags: ["Track Operations"],
     request: {
@@ -1013,7 +1066,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/setDisplayWidth",
+    path: "/commands/setDisplayWidth",
     summary: "Set display width for video tracks",
     tags: ["Video Operations"],
     request: {
@@ -1050,7 +1103,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/splitChapters",
+    path: "/commands/splitChapters",
     summary: "Split media files by chapter markers",
     tags: ["File Operations"],
     request: {
@@ -1088,7 +1141,7 @@ commandRoutes.openapi(
 commandRoutes.openapi(
   createRoute({
     method: "post",
-    path: "/jobs/storeAspectRatioData",
+    path: "/commands/storeAspectRatioData",
     summary: "Analyze and store aspect ratio metadata",
     tags: ["Metadata Operations"],
     request: {
