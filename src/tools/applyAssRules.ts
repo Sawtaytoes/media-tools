@@ -81,19 +81,19 @@ const applyScaleResolution = (
     { type: "setScriptInfo", key: "PlayResY", value: String(rule.to.height) },
   ]
 
-  if (rule.syncLayoutRes !== false) {
+  if (rule.isLayoutResSynced !== false) {
     const hasLayoutResX = getScriptInfoValue(assFile, "LayoutResX") !== undefined
     const hasLayoutResY = getScriptInfoValue(assFile, "LayoutResY") !== undefined
 
-    if (hasLayoutResX || rule.addLayoutRes) {
+    if (hasLayoutResX || rule.hasLayoutRes) {
       subRules.push({ type: "setScriptInfo", key: "LayoutResX", value: String(rule.to.width) })
     }
-    if (hasLayoutResY || rule.addLayoutRes) {
+    if (hasLayoutResY || rule.hasLayoutRes) {
       subRules.push({ type: "setScriptInfo", key: "LayoutResY", value: String(rule.to.height) })
     }
   }
 
-  if (rule.ensureScaledBorderAndShadow !== false) {
+  if (rule.hasScaledBorderAndShadow !== false) {
     subRules.push({
       type: "setScriptInfo",
       key: "ScaledBorderAndShadow",

@@ -51,9 +51,9 @@ export type ScaleResolutionRule = {
   type: 'scaleResolution'
   from?: { width: number; height: number }
   to: { width: number; height: number }
-  syncLayoutRes?: boolean
-  addLayoutRes?: boolean
-  ensureScaledBorderAndShadow?: boolean
+  hasLayoutRes?: boolean
+  hasScaledBorderAndShadow?: boolean
+  isLayoutResSynced?: boolean
 }
 
 export type SetStyleFieldsRule = {

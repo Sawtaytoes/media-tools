@@ -128,9 +128,9 @@ const scaleResolutionRuleSchema = z.object({
     width: z.number().describe("Target PlayResX value to write (e.g. 1920)."),
     height: z.number().describe("Target PlayResY value to write (e.g. 1080)."),
   }).describe("The resolution to scale the file to."),
-  syncLayoutRes: z.boolean().default(true).describe("When true, updates LayoutResX and LayoutResY if they already exist in the file. Keys that are absent are left alone unless addLayoutRes is also true. Defaults to true."),
-  addLayoutRes: z.boolean().default(false).describe("When true, creates LayoutResX and LayoutResY even if they are not already present. Only takes effect when syncLayoutRes is also true. Defaults to false."),
-  ensureScaledBorderAndShadow: z.boolean().default(true).describe("When true, sets 'ScaledBorderAndShadow: yes' in [Script Info] after scaling, which ensures borders and shadows scale proportionally at the new resolution. Defaults to true."),
+  hasLayoutRes: z.boolean().default(false).describe("When true, creates LayoutResX and LayoutResY even if they are not already present. Only takes effect when syncLayoutRes is also true. Defaults to false."),
+  hasScaledBorderAndShadow: z.boolean().default(true).describe("When true, sets 'ScaledBorderAndShadow: yes' in [Script Info] after scaling, which ensures borders and shadows scale proportionally at the new resolution. Defaults to true."),
+  isLayoutResSynced: z.boolean().default(true).describe("When true, updates LayoutResX and LayoutResY if they already exist in the file. Keys that are absent are left alone unless addLayoutRes is also true. Defaults to true."),
 }).openapi({
   description: "Updates PlayResX/PlayResY in the [Script Info] section to rescale the subtitle canvas. 'from' is an optional guard — if provided and the file's current resolution does not match, the rule is skipped; omit it to apply unconditionally. syncLayoutRes updates LayoutResX/Y only if they already exist; pair it with addLayoutRes:true to also create them when absent.",
 })

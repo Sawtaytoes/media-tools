@@ -275,7 +275,7 @@ describe("applyAssRules — scaleResolution", () => {
         type: "scaleResolution",
         from: { width: 640, height: 360 },
         to: { width: 1920, height: 1080 },
-        addLayoutRes: true,
+        hasLayoutRes: true,
       },
     ])
 
