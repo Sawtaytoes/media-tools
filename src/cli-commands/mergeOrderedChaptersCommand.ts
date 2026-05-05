@@ -5,6 +5,7 @@ import {
   FALLBACK_OUTRO_FILENAME,
   mergeOrderedChapters,
 } from "../mergeOrderedChapters.js"
+import { subscribeCli } from "../subscribeCli.js"
 
 type InferArgvOptions<T> = T extends Argv<infer U> ? U : never
 

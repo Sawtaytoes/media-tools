@@ -74,9 +74,9 @@ export const getReasonsFromDomSnippet = (
     .filter(Boolean)
     .concat(
       $("a[href]", $body)
-        .filter((_, el) =>
-          ($(el).text().match(/(review$)|(screenshots)/))
-        )
+        .filter((_, el) => (
+          Boolean($(el).text().match(/(review$)|(screenshots)/))
+        ))
         .map((_, el) => $(el).attr("href") || "")
         .get()
     )

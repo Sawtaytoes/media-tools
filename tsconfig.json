@@ -10,6 +10,7 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     // "noEmit": true,
+    // "noUncheckedIndexedAccess": true, // This is too strict.
     "outDir": "dist",
     "resolveJsonModule": true,
     // "rootDir": "src",

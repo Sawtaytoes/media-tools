@@ -65,7 +65,7 @@ describe(installLogCapture.name, () => {
 
   test("routes console.log to appendJobLog when inside a job context", () => {
     const appendSpy = vi.spyOn(jobStore, "appendJobLog")
-    const job = jobStore.createJob("test", {})
+    const job = jobStore.createJob({ commandName: "test" })
 
     withJobContext(job.id, () => {
       console.log("log line")
@@ -76,7 +76,7 @@ describe(installLogCapture.name, () => {
 
   test("strips ANSI codes before appending", () => {
     const appendSpy = vi.spyOn(jobStore, "appendJobLog")
-    const job = jobStore.createJob("test", {})
+    const job = jobStore.createJob({ commandName: "test" })
 
     withJobContext(job.id, () => {
       console.log("\x1B[32mcolored\x1B[0m")
@@ -95,7 +95,7 @@ describe(installLogCapture.name, () => {
 
   test("routes console.error inside a job context", () => {
     const appendSpy = vi.spyOn(jobStore, "appendJobLog")
-    const job = jobStore.createJob("test", {})
+    const job = jobStore.createJob({ commandName: "test" })
 
     withJobContext(job.id, () => {
       console.error("an error")

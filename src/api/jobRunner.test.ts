@@ -17,7 +17,7 @@ afterEach(() => {
 
 describe(runJob.name, () => {
   test("transitions job to running immediately", () => {
-    const job = createJob("hasBetterAudio", {})
+    const job = createJob({ commandName: "hasBetterAudio" })
     // Use a Subject that never completes so we can inspect the "running" state.
     const pending = new Subject<never>()
 
@@ -30,7 +30,7 @@ describe(runJob.name, () => {
   })
 
   test("transitions job to completed when observable completes", async () => {
-    const job = createJob("hasBetterAudio", {})
+    const job = createJob({ commandName: "hasBetterAudio" })
 
     runJob(job.id, of("result"))
 
@@ -42,7 +42,7 @@ describe(runJob.name, () => {
   })
 
   test("captures emitted values into job.results", async () => {
-    const job = createJob("hasBetterAudio", {})
+    const job = createJob({ commandName: "hasBetterAudio" })
 
     runJob(job.id, of("first", "second"))
 
@@ -52,7 +52,7 @@ describe(runJob.name, () => {
   })
 
   test("transitions job to failed when observable errors", async () => {
-    const job = createJob("hasBetterAudio", {})
+    const job = createJob({ commandName: "hasBetterAudio" })
 
     runJob(job.id, throwError(() => new Error("boom")))
 
@@ -64,7 +64,7 @@ describe(runJob.name, () => {
   })
 
   test("does not overwrite failed status when catchError completes the stream", async () => {
-    const job = createJob("hasBetterAudio", {})
+    const job = createJob({ commandName: "hasBetterAudio" })
 
     // throwError → catchError marks the job "failed" and returns EMPTY
     // → complete fires. Verify complete does not reset status to "completed".
