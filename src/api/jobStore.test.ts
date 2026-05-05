@@ -19,10 +19,17 @@ afterEach(() => {
 
 describe(createJob.name, () => {
   test("returns a job with pending status and empty logs", () => {
-    const job = createJob("hasBetterAudio", { sourcePath: "/media" })
+    const job = (
+      createJob({
+        commandName: "hasBetterAudio",
+        params: {
+          sourcePath: "/media",
+        }
+      })
+    )
 
     expect(job.status).toBe("pending")
-    expect(job.command).toBe("hasBetterAudio")
+    expect(job.commandName).toBe("hasBetterAudio")
     expect(job.logs).toEqual([])
     expect(job.startedAt).toBeNull()
     expect(job.completedAt).toBeNull()
@@ -30,14 +37,14 @@ describe(createJob.name, () => {
   })
 
   test("assigns a unique id", () => {
-    const a = createJob("hasBetterAudio", {})
-    const b = createJob("hasBetterAudio", {})
+    const a = createJob({ commandName: "hasBetterAudio" })
+    const b = createJob({ commandName: "hasBetterAudio" })
 
     expect(a.id).not.toBe(b.id)
   })
 
   test("stores job so getJob can retrieve it", () => {
-    const job = createJob("hasBetterAudio", {})
+    const job = createJob({ commandName: "hasBetterAudio" })
 
     expect(getJob(job.id)).toEqual(job)
   })
@@ -55,27 +62,27 @@ describe(getAllJobs.name, () => {
   })
 
   test("returns all created jobs", () => {
-    const a = createJob("hasBetterAudio", {})
-    const b = createJob("reorderTracks", {})
+    const a = createJob({ commandName: "hasBetterAudio" })
+    const b = createJob({ commandName: "reorderTracks" })
 
     expect(getAllJobs()).toHaveLength(2)
-    expect(getAllJobs().map((j) => j.id)).toContain(a.id)
-    expect(getAllJobs().map((j) => j.id)).toContain(b.id)
+    expect(getAllJobs().map((jobs) => jobs.id)).toContain(a.id)
+    expect(getAllJobs().map((jobs) => jobs.id)).toContain(b.id)
   })
 })
 
 describe(updateJob.name, () => {
   test("returns a new object with the applied changes", () => {
-    const original = createJob("hasBetterAudio", {})
+    const original = createJob({ commandName: "hasBetterAudio" })
     const updated = updateJob(original.id, { status: "running" })
 
     expect(updated).not.toBe(original)
     expect(updated?.status).toBe("running")
-    expect(updated?.command).toBe(original.command)
+    expect(updated?.commandName).toBe(original.commandName)
   })
 
   test("does not mutate the previous object", () => {
-    const job = createJob("hasBetterAudio", {})
+    const job = createJob({ commandName: "hasBetterAudio" })
     const snapshot = { ...job }
 
     updateJob(job.id, { status: "running" })
@@ -90,7 +97,7 @@ describe(updateJob.name, () => {
 
 describe(appendJobLog.name, () => {
   test("appends line to job logs", () => {
-    const job = createJob("hasBetterAudio", {})
+    const job = createJob({ commandName: "hasBetterAudio" })
 
     appendJobLog(job.id, "line one")
     appendJobLog(job.id, "line two")
@@ -99,7 +106,7 @@ describe(appendJobLog.name, () => {
   })
 
   test("emits to subject if one exists", async () => {
-    const job = createJob("hasBetterAudio", {})
+    const job = createJob({ commandName: "hasBetterAudio" })
     const subject = createSubject(job.id)
     const received: string[] = []
 
@@ -117,7 +124,7 @@ describe(appendJobLog.name, () => {
 
 describe(createSubject.name, () => {
   test("returns a Subject that getSubject finds", () => {
-    const job = createJob("hasBetterAudio", {})
+    const job = createJob({ commandName: "hasBetterAudio" })
     const subject = createSubject(job.id)
 
     expect(getSubject(job.id)).toBe(subject)
@@ -126,7 +133,7 @@ describe(createSubject.name, () => {
 
 describe(completeSubject.name, () => {
   test("completes the subject and removes it from the store", async () => {
-    const job = createJob("hasBetterAudio", {})
+    const job = createJob({ commandName: "hasBetterAudio" })
     const subject = createSubject(job.id)
 
     let completed = false

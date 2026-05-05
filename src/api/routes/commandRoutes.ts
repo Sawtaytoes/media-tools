@@ -47,7 +47,11 @@ const startCommandJob = ({
   outputFolderName?: string | null,
   params: unknown,
 }) => {
-  const job = createJob(command, params, outputFolderName)
+  const job = createJob({
+    commandName: command,
+    params,
+    outputFolderName,
+  })
 
   runJob(job.id, jobObservable)
 

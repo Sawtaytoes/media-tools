@@ -17,13 +17,17 @@ export const jobEvents$ = jobSubject.asObservable()
 // Job CRUD
 // ---------------------------------------------------------------------------
 
-export const createJob = (
-  command: string,
-  params: unknown,
-  outputFolderName: string | null = null,
-): Job => {
+export const createJob = ({
+  commandName,
+  params,
+  outputFolderName = null,
+}: {
+  commandName: string,
+  params?: unknown,
+  outputFolderName?: string | null,
+}): Job => {
   const job: Job = {
-    command,
+    commandName,
     completedAt: null,
     error: null,
     id: randomUUID(),
