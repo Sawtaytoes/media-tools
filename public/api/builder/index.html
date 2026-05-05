@@ -416,6 +416,31 @@ const TAG_ORDER = [
 let steps = []
 let stepCounter = 0
 let running = false
+const stepLogs = new Map()
+
+// ─── URL persistence ──────────────────────────────────────────────────────────
+
+function updateUrl() {
+  const basePath = document.getElementById('base-path')?.value ?? ''
+  const params = new URLSearchParams()
+  if (basePath) params.set('base', basePath)
+  if (steps.length) params.set('seq', btoa(unescape(encodeURIComponent(toYamlStr()))))
+  const query = params.toString()
+  history.replaceState(null, '', window.location.pathname + (query ? '?' + query : ''))
+}
+
+function restoreFromUrl() {
+  const params = new URLSearchParams(window.location.search)
+  const base = params.get('base')
+  if (base) document.getElementById('base-path').value = base
+  const seq = params.get('seq')
+  if (seq) {
+    try {
+      const yaml = decodeURIComponent(escape(atob(seq)))
+      loadYamlFromText(yaml)
+    } catch {}
+  }
+}
 
 // ─── Path helpers ─────────────────────────────────────────────────────────────
 
@@ -445,6 +470,10 @@ function stepOutput(step) {
 function linkedVal(step, fieldName) {
   const srcId = step.links?.[fieldName]
   if (!srcId) return null
+  if (srcId === '__base__') {
+    const val = document.getElementById('base-path')?.value
+    return val || null
+  }
   const src = steps.find(s => s.id === srcId)
   return src ? stepOutput(src) : null
 }
@@ -461,7 +490,17 @@ function makeStep(command) {
 function addPicked() {
   const sel = document.getElementById('cmd-pick')
   if (!sel.value) return
-  steps.push(makeStep(sel.value))
+  const step = makeStep(sel.value)
+  const msf = mainSrcField(sel.value)
+  if (msf) {
+    const prevStep = steps.at(-1)
+    if (prevStep) {
+      step.links[msf] = prevStep.id
+    } else if (document.getElementById('base-path').value) {
+      step.links[msf] = '__base__'
+    }
+  }
+  steps.push(step)
   sel.value = ''
   renderAll()
 }
@@ -483,6 +522,14 @@ function moveStep(id, dir) {
   const j = i + dir
   if (j < 0 || j >= steps.length) return
   ;[steps[i], steps[j]] = [steps[j], steps[i]]
+  // Clear any links that now point to a step at or after the linking step's position
+  steps.forEach((step, stepIndex) => {
+    for (const [field, srcId] of Object.entries(step.links)) {
+      if (srcId === '__base__') continue
+      const srcIndex = steps.findIndex(s => s.id === srcId)
+      if (srcIndex >= stepIndex) delete step.links[field]
+    }
+  })
   renderAll()
 }
 
@@ -500,7 +547,7 @@ function setLink(id, field, srcIdStr) {
   const step = steps.find(s => s.id === id)
   if (!step) return
   if (srcIdStr) {
-    step.links[field] = Number(srcIdStr)
+    step.links[field] = srcIdStr === '__base__' ? '__base__' : Number(srcIdStr)
   } else {
     delete step.links[field]
   }
@@ -539,10 +586,12 @@ function renderAll() {
   if (!steps.length) {
     el.innerHTML = '<p class="text-slate-500 text-xs text-center mt-8">No steps yet — pick a command below and click + Add</p>'
     updateYaml()
+    updateUrl()
     return
   }
   el.innerHTML = steps.map((s, i) => renderStep(s, i)).join('')
   updateYaml()
+  updateUrl()
 }
 
 function renderStep(step, index) {
@@ -670,6 +719,9 @@ function renderPathField(step, field, stepIndex) {
   const linkedStepId = step.links[field.name]
   const computed = linkedStepId ? (linkedVal(step, field.name) ?? '') : null
 
+  const basePathValue = document.getElementById('base-path')?.value ?? ''
+  const baseOption = `<option value="__base__"${linkedStepId === '__base__' ? ' selected' : ''}>Base Path${basePathValue ? ' → ' + basePathValue : ''}</option>`
+
   // Build previous step options
   const prevOptions = steps.slice(0, stepIndex).map((s, i) => {
     const out = stepOutput(s)
@@ -677,16 +729,17 @@ function renderPathField(step, field, stepIndex) {
     return `<option value="${s.id}"${linkedStepId === s.id ? ' selected' : ''}>${esc(label)}</option>`
   }).join('')
 
-  const hasOptions = stepIndex > 0
+  const hasOptions = true
 
   return `<div>
     <div class="flex items-center gap-2 mb-1">
       <label class="text-xs text-slate-400">${esc(field.label)}${field.required ? ' <span class="text-red-400">*</span>' : ''}</label>
-      ${hasOptions ? `<select onchange="setLink(${step.id},'${field.name}',this.value)"
+      <select onchange="setLink(${step.id},'${field.name}',this.value)"
         class="ml-auto text-xs bg-slate-700 text-slate-300 rounded px-1.5 py-0.5 border border-slate-600 focus:outline-none focus:border-blue-500 max-w-[200px] truncate">
         <option value="">— manual —</option>
+        ${baseOption}
         ${prevOptions}
-      </select>` : ''}
+      </select>
     </div>
     <input type="text" value="${esc(computed ?? val)}" ${computed !== null ? 'readonly' : ''}
       data-step="${step.id}" data-field="${field.name}"
@@ -790,28 +843,32 @@ function toggleLoad() {
   document.getElementById('load-error').classList.add('hidden')
 }
 
+function loadYamlFromText(text) {
+  const data = jsyaml.load(text)
+  if (!Array.isArray(data)) throw new Error('Expected a YAML sequence (array of steps)')
+  steps = []
+  for (const item of data) {
+    if (!item.command) throw new Error('Each step must have a "command" key')
+    if (!COMMANDS[item.command]) throw new Error(`Unknown command: ${item.command}`)
+    const step = makeStep(item.command)
+    const cmd = COMMANDS[item.command]
+    for (const field of cmd.fields) {
+      const v = item.params?.[field.name]
+      if (v !== undefined) step.params[field.name] = v
+    }
+    steps.push(step)
+  }
+}
+
 function loadYaml() {
   const text = document.getElementById('load-input').value.trim()
   const errEl = document.getElementById('load-error')
   errEl.classList.add('hidden')
   try {
-    const data = jsyaml.load(text)
-    if (!Array.isArray(data)) throw new Error('Expected a YAML sequence (array of steps)')
-    steps = []
-    for (const item of data) {
-      if (!item.command) throw new Error('Each step must have a "command" key')
-      if (!COMMANDS[item.command]) throw new Error(`Unknown command: ${item.command}`)
-      const step = makeStep(item.command)
-      // Merge loaded params
-      const cmd = COMMANDS[item.command]
-      for (const field of cmd.fields) {
-        const v = item.params?.[field.name]
-        if (v !== undefined) step.params[field.name] = v
-      }
-      steps.push(step)
-    }
+    loadYamlFromText(text)
     document.getElementById('load-panel').classList.add('hidden')
     renderAll()
+    updateUrl()
   } catch (e) {
     errEl.textContent = e.message
     errEl.classList.remove('hidden')
@@ -823,6 +880,7 @@ function loadYaml() {
 async function runSequence() {
   if (running || !steps.length) return
   running = true
+  stepLogs.clear()
   document.getElementById('run-btn').disabled = true
 
   for (const step of steps) {
@@ -865,7 +923,7 @@ async function runSequence() {
     if (outputFolderName) step.runtimeOutputFolderName = outputFolderName
 
     try {
-      await waitForJob(jobId)
+      await waitForJob(jobId, step.id)
       step.status = 'completed'
     } catch (e) {
       step.status = 'failed'
@@ -879,7 +937,8 @@ async function runSequence() {
   document.getElementById('run-btn').disabled = false
 }
 
-function waitForJob(jobId) {
+function waitForJob(jobId, stepId) {
+  stepLogs.set(stepId, [])
   return new Promise((resolve, reject) => {
     const es = new EventSource(`/jobs/${jobId}/logs`)
     es.onmessage = e => {
@@ -889,11 +948,33 @@ function waitForJob(jobId) {
           es.close()
           if (data.status === 'completed') resolve()
           else reject(`Job ended with status: ${data.status}`)
+        } else if (data.line) {
+          const logs = stepLogs.get(stepId) ?? []
+          logs.push(data.line)
+          stepLogs.set(stepId, logs)
+          updateStepLogs(stepId, logs)
         }
       } catch {}
     }
     es.onerror = () => { es.close(); reject('SSE connection error') }
   })
+}
+
+function updateStepLogs(stepId, logs) {
+  const card = document.getElementById(`step-${stepId}`)
+  if (!card) return
+  let logEl = card.querySelector('.step-logs')
+  const text = logs.slice(-8).join('\n')
+  if (!logEl) {
+    const fieldsEl = card.querySelector('.space-y-2')
+    if (fieldsEl) {
+      fieldsEl.insertAdjacentHTML('beforebegin',
+        `<pre class="step-logs text-xs text-slate-400 bg-slate-950 rounded px-2 py-1.5 mb-2 font-mono max-h-24 overflow-y-auto whitespace-pre-wrap">${esc(text)}</pre>`)
+    }
+  } else {
+    logEl.textContent = text
+    logEl.scrollTop = logEl.scrollHeight
+  }
 }
 
 function updateStepUI(step) {
@@ -928,6 +1009,10 @@ function updateStepUI(step) {
   } else if (errEl) {
     errEl.remove()
   }
+
+  // Remove log output once the step is no longer running
+  const logEl = card.querySelector('.step-logs')
+  if (logEl && step.status !== 'running') logEl.remove()
 }
 
 // ─── Add command select ───────────────────────────────────────────────────────
@@ -952,6 +1037,7 @@ function populateCmdPick() {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 populateCmdPick()
+restoreFromUrl()
 renderAll()
 </script>
 </body>
