@@ -15,6 +15,7 @@ import { hasManyAudioTracks } from "../../app-commands/hasManyAudioTracks.js"
 import { hasSurroundSound } from "../../app-commands/hasSurroundSound.js"
 import { hasWrongDefaultTrack } from "../../app-commands/hasWrongDefaultTrack.js"
 import { isMissingSubtitles } from "../../app-commands/isMissingSubtitles.js"
+import { deleteFilesByExtension } from "../../app-commands/deleteFilesByExtension.js"
 import { modifySubtitleMetadata } from "../../app-commands/modifySubtitleMetadata.js"
 import { keepLanguages, keepLanguagesDefaultProps } from "../../app-commands/keepLanguages.js"
 import { mergeTracks, mergeTracksDefaultProps } from "../../app-commands/mergeTracks.js"
@@ -80,6 +81,7 @@ const commandNames = [
   "hasSurroundSound",
   "hasWrongDefaultTrack",
   "isMissingSubtitles",
+  "deleteFilesByExtension",
   "modifySubtitleMetadata",
   "keepLanguages",
   "mergeTracks",
@@ -188,6 +190,12 @@ const commandConfigs: Record<CommandName, CommandConfig> = {
     schema: schemas.isMissingSubtitlesRequestSchema,
     summary: "Identify media files missing subtitle tracks",
     tags: ["Subtitle Operations"],
+  },
+  deleteFilesByExtension: {
+    getObservable: (body) => deleteFilesByExtension({ extensions: body.extensions, isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, sourcePath: body.sourcePath }),
+    schema: schemas.deleteFilesByExtensionRequestSchema,
+    summary: "Delete files that match one or more extensions",
+    tags: ["File Operations"],
   },
   modifySubtitleMetadata: {
     getObservable: (body) => modifySubtitleMetadata({ isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, rules: body.rules, sourcePath: body.sourcePath }),

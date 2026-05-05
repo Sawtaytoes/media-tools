@@ -101,6 +101,13 @@ export const isMissingSubtitlesRequestSchema = z.object({
   isRecursive: z.boolean().default(false).describe("Search recursively in subdirectories"),
 })
 
+export const deleteFilesByExtensionRequestSchema = z.object({
+  sourcePath: z.string().describe("Directory path to search for files to delete"),
+  isRecursive: z.boolean().default(false).describe("Search recursively in subdirectories"),
+  recursiveDepth: z.number().default(0).describe("Maximum recursion depth (0 = default depth of 2)"),
+  extensions: z.array(z.string()).min(1).describe("List of file extensions to delete (with or without leading dot), e.g. ['.srt', 'idx']"),
+})
+
 const setScriptInfoRuleSchema = z.object({
   type: z.literal("setScriptInfo"),
   key: z.string()
@@ -263,5 +270,5 @@ export const subtitleFileMetadataSchema = z.object({
 })
 
 export const getSubtitleMetadataResponseSchema = z.object({
-  files: z.array(subtitleFileMetadataSchema).describe("Metadata for each .ass file found"),
+  subtitlesMetadata: z.array(subtitleFileMetadataSchema).describe("Metadata for each .ass file found"),
 })

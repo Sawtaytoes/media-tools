@@ -33,13 +33,13 @@ queryRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    const files = await lastValueFrom(
+    const subtitlesMetadata = await lastValueFrom(
       getSubtitleMetadata({
         isRecursive: body.isRecursive,
         recursiveDepth: body.recursiveDepth,
         sourcePath: body.sourcePath,
       })
     )
-    return context.json({ files }, 200)
+    return context.json({ subtitlesMetadata }, 200)
   },
 )

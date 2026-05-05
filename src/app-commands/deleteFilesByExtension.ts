@@ -1,0 +1,70 @@
+import { unlink } from "node:fs/promises"
+import { extname } from "node:path"
+import {
+  concatMap,
+  defer,
+  filter,
+  map,
+  tap,
+} from "rxjs"
+
+import { catchNamedError } from "../tools/catchNamedError.js"
+import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
+import { logInfo } from "../tools/logMessage.js"
+
+export type DeleteFilesByExtensionRequiredProps = {
+  isRecursive: boolean
+  extensions: string[]
+  sourcePath: string
+}
+
+export type DeleteFilesByExtensionOptionalProps = {
+  recursiveDepth?: number
+}
+
+export type DeleteFilesByExtensionProps = (
+  DeleteFilesByExtensionRequiredProps
+  & DeleteFilesByExtensionOptionalProps
+)
+
+export const deleteFilesByExtension = ({
+  isRecursive,
+  recursiveDepth,
+  sourcePath,
+  extensions,
+}: DeleteFilesByExtensionProps) => {
+  const normalizedExtensions = extensions
+    .map((extension) => extension.toLowerCase().replace(/^\./u, ""))
+    .filter(Boolean)
+
+  return getFilesAtDepth({
+    depth: (
+      isRecursive
+      ? (recursiveDepth || 2)
+      : 0
+    ),
+    sourcePath,
+  })
+  .pipe(
+    filter((fileInfo) => {
+      const fileExtension = extname(fileInfo.fullPath)
+        .toLowerCase()
+        .replace(/^\./u, "")
+
+      return normalizedExtensions.includes(fileExtension)
+    }),
+    concatMap((fileInfo) => (
+      defer(() => unlink(fileInfo.fullPath))
+      .pipe(
+        tap(() => {
+          logInfo(
+            "DELETED FILE",
+            fileInfo.fullPath,
+          )
+        }),
+        map(() => fileInfo.fullPath),
+      )
+    )),
+    catchNamedError(deleteFilesByExtension),
+  )
+}
