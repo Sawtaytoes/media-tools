@@ -6,6 +6,7 @@ import { copyFilesCommand } from "./cli-commands/copyFilesCommand.js"
 import { copyOutSubtitlesCommand } from "./cli-commands/copyOutSubtitlesCommand.js"
 import { fixIncorrectDefaultTracksCommand } from "./cli-commands/fixIncorrectDefaultTracksCommand.js"
 import { getAudioOffsetsCommand } from "./cli-commands/getAudioOffsetsCommand.js"
+import { getSubtitleMetadataCommand } from "./cli-commands/getSubtitleMetadataCommand.js"
 import { hasBetterAudioCommand } from "./cli-commands/hasBetterAudioCommand.js"
 import { hasBetterVersionCommand } from "./cli-commands/hasBetterVersionCommand.js"
 import { hasDuplicateMusicFilesCommand } from "./cli-commands/hasDuplicateMusicFilesCommand.js"
@@ -15,6 +16,7 @@ import { hasSurroundSoundCommand } from "./cli-commands/hasSurroundSoundCommand.
 import { hasWrongDefaultTrackCommand } from "./cli-commands/hasWrongDefaultTrackCommand.js"
 import { inverseTelecineDiscRipsCommand } from "./cli-commands/inverseTelecineDiscRipsCommand.js"
 import { isMissingSubtitlesCommand } from "./cli-commands/isMissingSubtitlesCommand.js"
+import { modifySubtitleMetadataCommand } from "./cli-commands/modifySubtitleMetadataCommand.js"
 import { keepLanguagesCommand } from "./cli-commands/keepLanguagesCommand.js"
 import { mergeOrderedChaptersCommand } from "./cli-commands/mergeOrderedChaptersCommand.js"
 import { mergeTracksCommand } from "./cli-commands/mergeTracksCommand.js"
@@ -70,6 +72,7 @@ yargs(
 .command(copyOutSubtitlesCommand)
 .command(fixIncorrectDefaultTracksCommand)
 .command(getAudioOffsetsCommand)
+.command(getSubtitleMetadataCommand)
 .command(hasBetterAudioCommand)
 .command(hasBetterVersionCommand)
 .command(hasDuplicateMusicFilesCommand)
@@ -79,6 +82,7 @@ yargs(
 .command(hasWrongDefaultTrackCommand)
 .command(inverseTelecineDiscRipsCommand)
 .command(isMissingSubtitlesCommand)
+.command(modifySubtitleMetadataCommand)
 .command(keepLanguagesCommand)
 .command(mergeOrderedChaptersCommand)
 .command(mergeTracksCommand)

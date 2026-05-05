@@ -15,6 +15,7 @@ import { hasManyAudioTracks } from "../../app-commands/hasManyAudioTracks.js"
 import { hasSurroundSound } from "../../app-commands/hasSurroundSound.js"
 import { hasWrongDefaultTrack } from "../../app-commands/hasWrongDefaultTrack.js"
 import { isMissingSubtitles } from "../../app-commands/isMissingSubtitles.js"
+import { modifySubtitleMetadata } from "../../app-commands/modifySubtitleMetadata.js"
 import { keepLanguages, keepLanguagesDefaultProps } from "../../app-commands/keepLanguages.js"
 import { mergeTracks, mergeTracksDefaultProps } from "../../app-commands/mergeTracks.js"
 import { moveFiles } from "../../app-commands/moveFiles.js"
@@ -79,6 +80,7 @@ const commandNames = [
   "hasSurroundSound",
   "hasWrongDefaultTrack",
   "isMissingSubtitles",
+  "modifySubtitleMetadata",
   "keepLanguages",
   "mergeTracks",
   "moveFiles",
@@ -185,6 +187,12 @@ const commandConfigs: Record<CommandName, CommandConfig> = {
     getObservable: (body) => isMissingSubtitles({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }),
     schema: schemas.isMissingSubtitlesRequestSchema,
     summary: "Identify media files missing subtitle tracks",
+    tags: ["Subtitle Operations"],
+  },
+  modifySubtitleMetadata: {
+    getObservable: (body) => modifySubtitleMetadata({ isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, rules: body.rules, sourcePath: body.sourcePath }),
+    schema: schemas.modifySubtitleMetadataRequestSchema,
+    summary: "Apply DSL-driven modifications to ASS subtitle metadata",
     tags: ["Subtitle Operations"],
   },
   keepLanguages: {
