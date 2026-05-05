@@ -35,17 +35,21 @@
     </div>
   </div>
 
+  <!-- Base path bar -->
+  <div class="shrink-0 flex items-center gap-2 px-4 py-2 border-b border-slate-700 bg-slate-800/60">
+    <label for="base-path" class="text-xs text-slate-400 shrink-0 font-medium">Base Path</label>
+    <input type="text" id="base-path" placeholder="/mnt/media or D:\Media"
+      oninput="refreshLinkedInputs(); updateUrl()"
+      class="flex-1 min-w-0 bg-slate-900 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono" />
+    <span class="text-xs text-slate-500 shrink-0 hidden sm:inline">Starting path for linked step fields</span>
+  </div>
+
   <!-- Step list -->
   <div id="steps-el" class="flex-1 overflow-y-auto p-4 grid gap-3 auto-rows-min grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 content-start"></div>
 
   <!-- Footer toolbar -->
-  <div class="shrink-0 flex items-center gap-2 px-4 py-3 border-t border-slate-700 bg-slate-900">
-    <label class="text-xs text-slate-400 shrink-0">Base Path</label>
-    <input type="text" id="base-path" placeholder="/mnt/media or D:\Media"
-      oninput="refreshLinkedInputs(); updateUrl()"
-      class="bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono w-64 shrink-0" />
-    <div class="w-px h-5 bg-slate-600 mx-1 shrink-0"></div>
-    <select id="cmd-pick" class="bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 max-w-xs">
+  <div class="shrink-0 flex flex-wrap items-center gap-2 px-4 py-3 border-t border-slate-700 bg-slate-900">
+    <select id="cmd-pick" class="flex-1 min-w-0 bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500">
       <option value="">— pick command —</option>
     </select>
     <button onclick="addPicked()" class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium shrink-0">+ Add</button>
