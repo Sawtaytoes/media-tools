@@ -4,6 +4,10 @@ import {
   of,
 } from "rxjs"
 
+import {
+  dirname,
+} from "node:path"
+
 import { AUDIO_OFFSETS_FOLDER_NAME } from "../tools/outputFolderNames.js"
 import { runAudioOffsetFinder } from "./runAudioOffsetFinder.js"
 import { runFfmpeg } from "./runFfmpeg.js"
@@ -56,7 +60,7 @@ export const getAudioOffset = ({
       sourceFileOutputPath,
     }) => (
       makeDirectory(
-        destinationFileOutputPath
+        dirname(destinationFileOutputPath)
       )
       .pipe(
         map(() => ({

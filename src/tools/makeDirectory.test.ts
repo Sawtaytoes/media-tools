@@ -1,4 +1,5 @@
 import { vol } from "memfs"
+import { dirname } from "node:path"
 import { firstValueFrom } from "rxjs"
 import { beforeEach, describe, expect, test } from "vitest"
 
@@ -12,10 +13,10 @@ describe(makeDirectory.name, () => {
     })
   })
 
-  test("creates the parent directory given a file path with an extension", async () => {
+  test("creates the parent directory when caller passes dirname of a file path", async () => {
     const filePath = "G:\\Movies\\Super Mario Bros (1993)\\Super Mario Bros (1993).mkv"
 
-    await firstValueFrom(makeDirectory(filePath))
+    await firstValueFrom(makeDirectory(dirname(filePath)))
 
     await expect(
       new Promise((

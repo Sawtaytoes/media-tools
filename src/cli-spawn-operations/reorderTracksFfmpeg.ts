@@ -83,7 +83,7 @@ export const reorderTracksFfmpeg = ({
         outputFilePath,
       ) => (
         makeDirectory(
-          outputFilePath
+          dirname(outputFilePath)
         )
         .pipe(
           map(() => (
