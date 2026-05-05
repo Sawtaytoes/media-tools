@@ -1,5 +1,5 @@
 import createClient from "openapi-fetch"
-import { paths } from "./schema.generated/tvdb.js"
+import { paths } from "./schema.generated/tvdbApiSchema.js"
 
 export const tvdbApiSchemaUrl = "https://thetvdb.github.io/v4-api/swagger.yml"
 export const tvdbApiUrl = "https://api4.thetvdb.com/v4"

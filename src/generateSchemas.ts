@@ -1,44 +1,18 @@
 import { writeFile } from 'node:fs/promises'
-import generateTypescriptFromOpenapiSchema from 'openapi-typescript'
+import openapiTS, { astToString } from 'openapi-typescript'
 
 import { tvdbApiSchemaUrl } from './tvdbApi.js'
 
 const generateSchemas = () => (
-  generateTypescriptFromOpenapiSchema(
-    tvdbApiSchemaUrl,
-    {
-      transform: (
-        schemaObject,
-        metadata,
-      ) => {
-        if (
-          "format" in schemaObject
-          && (
-            (
-              schemaObject
-              .format
-            )
-            === "binary"
-          )
-        ) {
-          return (
-            (
-              schemaObject
-              .nullable
-            )
-            ? "Blob | null"
-            : "Blob"
-          )
-        }
-      },
-    }
+  openapiTS(
+    new URL(tvdbApiSchemaUrl),
   )
   .then((
-    schema,
+    ast,
   ) => (
     writeFile(
-      './src/schema.generated/tvdb.ts',
-      schema,
+      './src/schema.generated/tvdbApiSchema.ts',
+      astToString(ast),
     )
   ))
   .then(() => {
