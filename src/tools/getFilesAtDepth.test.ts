@@ -1,5 +1,5 @@
 import { vol } from "memfs"
-import { EmptyError, firstValueFrom, toArray } from "rxjs"
+import { firstValueFrom, toArray } from "rxjs"
 import { beforeEach, describe, expect, test } from "vitest"
 
 import { captureLogMessage } from "./captureLogMessage.js"

@@ -1,5 +1,5 @@
 import { copyFile } from "node:fs/promises"
-import { join } from "node:path"
+import { extname, join } from "node:path"
 import {
   concatMap,
   defer,
@@ -32,7 +32,14 @@ export const copyFiles = ({
           (
             fileInfo
             .filename
+            .concat(
+              extname(
+                fileInfo
+                .fullPath
+              )
+            )
           ),
+
         )
       )
 
@@ -45,16 +52,20 @@ export const copyFiles = ({
         .pipe(
           concatMap(() => (
             copyFile(
-              fileInfo
-              .fullPath,
+              (
+                fileInfo
+                .fullPath
+              ),
               targetPath,
             )
           )),
           tap(() => {
             logInfo(
               "COPIED",
-              fileInfo
-              .fullPath,
+              (
+                fileInfo
+                .fullPath
+              ),
               targetPath,
             )
           }),

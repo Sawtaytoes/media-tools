@@ -4,6 +4,7 @@
     "**/.pnp.*": true
   },
   "chat.tools.terminal.autoApprove": {
-    "yarn tsc": true
+    "yarn tsc": true,
+    "git commit": true
   }
 }
