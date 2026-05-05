@@ -1,7 +1,7 @@
 ﻿import type { Argv, CommandBuilder, CommandModule } from "yargs"
 
-import { replaceAttachments } from "../replaceAttachments.js"
-import { subscribeCli } from "../subscribeCli.js"
+import { replaceAttachments } from "../app-commands/replaceAttachments.js"
+import { subscribeCli } from "../tools/subscribeCli.js"
 
 type InferArgvOptions<T> = T extends Argv<infer U> ? U : never
 

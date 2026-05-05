@@ -3,9 +3,9 @@
 import {
   iso6392LanguageCodes,
   type Iso6392LanguageCode,
-} from "../iso6392LanguageCodes.js"
-import { keepLanguages } from "../keepLanguages.js"
-import { subscribeCli } from "../subscribeCli.js"
+} from "../tools/iso6392LanguageCodes.js"
+import { keepLanguages } from "../app-commands/keepLanguages.js"
+import { subscribeCli } from "../tools/subscribeCli.js"
 
 type InferArgvOptions<T> = T extends Argv<infer U> ? U : never
 

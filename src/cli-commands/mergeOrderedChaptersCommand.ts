@@ -4,8 +4,8 @@ import {
   FALLBACK_INTRO_FILENAME,
   FALLBACK_OUTRO_FILENAME,
   mergeOrderedChapters,
-} from "../mergeOrderedChapters.js"
-import { subscribeCli } from "../subscribeCli.js"
+} from "../app-commands/mergeOrderedChapters.js"
+import { subscribeCli } from "../tools/subscribeCli.js"
 
 type InferArgvOptions<T> = T extends Argv<infer U> ? U : never
 

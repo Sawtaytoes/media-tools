@@ -2,8 +2,8 @@
 
 import type { Argv, CommandBuilder, CommandModule } from "yargs"
 
-import { storeAspectRatioData } from "../storeAspectRatioData.js"
-import { subscribeCli } from "../subscribeCli.js"
+import { storeAspectRatioData } from "../app-commands/storeAspectRatioData.js"
+import { subscribeCli } from "../tools/subscribeCli.js"
 
 type InferArgvOptions<T> = T extends Argv<infer U> ? U : never
 

@@ -1,13 +1,13 @@
 ﻿import type { Argv, CommandBuilder, CommandModule } from "yargs"
 
-import { inverseTelecineDiscRips } from "../inverseTelecineDiscRips.js"
-import { subscribeCli } from "../subscribeCli.js"
+import { inverseTelecineDiscRips } from "../app-commands/inverseTelecineDiscRips.js"
+import { subscribeCli } from "../tools/subscribeCli.js"
 import {
   videoEncoderType,
   videoFilterPulldown,
   type Pulldown,
   type VideoEncoder,
-} from "../inverseTelecineVideo.js"
+} from "../cli-spawn-operations/inverseTelecineVideo.js"
 
 type InferArgvOptions<T> = T extends Argv<infer U> ? U : never
 

@@ -1,7 +1,7 @@
 ﻿import type { Argv, CommandBuilder, CommandModule } from "yargs"
 
-import { nameSpecialFeatures } from "../nameSpecialFeatures.js"
-import { subscribeCli } from "../subscribeCli.js"
+import { nameSpecialFeatures } from "../app-commands/nameSpecialFeatures.js"
+import { subscribeCli } from "../tools/subscribeCli.js"
 
 type InferArgvOptions<T> = T extends Argv<infer U> ? U : never
 

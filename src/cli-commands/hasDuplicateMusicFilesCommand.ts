@@ -1,7 +1,7 @@
 ﻿import type { Argv, CommandBuilder, CommandModule } from "yargs"
 
-import { hasDuplicateMusicFiles } from "../hasDuplicateMusicFiles.js"
-import { subscribeCli } from "../subscribeCli.js"
+import { hasDuplicateMusicFiles } from "../app-commands/hasDuplicateMusicFiles.js"
+import { subscribeCli } from "../tools/subscribeCli.js"
 
 type InferArgvOptions<T> = T extends Argv<infer U> ? U : never
 

@@ -1,7 +1,7 @@
 import type { Argv, CommandBuilder, CommandModule } from "yargs"
 
-import { hasSurroundSound } from "../hasSurroundSound.js"
-import { subscribeCli } from "../subscribeCli.js"
+import { hasSurroundSound } from "../app-commands/hasSurroundSound.js"
+import { subscribeCli } from "../tools/subscribeCli.js"
 
 type InferArgvOptions<T> = T extends Argv<infer U> ? U : never
 

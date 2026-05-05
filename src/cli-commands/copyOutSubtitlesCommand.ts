@@ -1,11 +1,11 @@
 ﻿import type { Argv, CommandBuilder, CommandModule } from "yargs"
 
-import { copyOutSubtitles } from "../copyOutSubtitles.js"
-import { subscribeCli } from "../subscribeCli.js"
+import { copyOutSubtitles } from "../app-commands/copyOutSubtitles.js"
+import { subscribeCli } from "../tools/subscribeCli.js"
 import {
   iso6392LanguageCodes,
   type Iso6392LanguageCode,
-} from "../iso6392LanguageCodes.js"
+} from "../tools/iso6392LanguageCodes.js"
 
 type InferArgvOptions<T> = T extends Argv<infer U> ? U : never
 

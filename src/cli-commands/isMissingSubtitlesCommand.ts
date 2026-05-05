@@ -1,7 +1,7 @@
 ﻿import type { Argv, CommandBuilder, CommandModule } from "yargs"
 
-import { isMissingSubtitles } from "../isMissingSubtitles.js"
-import { subscribeCli } from "../subscribeCli.js"
+import { isMissingSubtitles } from "../app-commands/isMissingSubtitles.js"
+import { subscribeCli } from "../tools/subscribeCli.js"
 
 type InferArgvOptions<T> = T extends Argv<infer U> ? U : never
 

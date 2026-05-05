@@ -1,8 +1,8 @@
 ﻿import { toArray } from "rxjs"
 import type { Argv, CommandBuilder, CommandModule } from "yargs"
 
-import { nameAnimeEpisodes } from "../nameAnimeEpisodes.js"
-import { subscribeCli } from "../subscribeCli.js"
+import { nameAnimeEpisodes } from "../app-commands/nameAnimeEpisodes.js"
+import { subscribeCli } from "../tools/subscribeCli.js"
 
 type InferArgvOptions<T> = T extends Argv<infer U> ? U : never
 

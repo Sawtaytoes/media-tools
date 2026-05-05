@@ -2,7 +2,7 @@ import { OpenAPIHono } from "@hono/zod-openapi"
 import { Scalar } from "@scalar/hono-api-reference"
 import { createMarkdownFromOpenApi } from "@scalar/openapi-to-markdown"
 
-import { PORT } from "../../port.js"
+import { PORT } from "../../tools/port.js"
 
 export const addDocRoutes = async (honoRoutes: OpenAPIHono) => {
   honoRoutes.get("/docs", Scalar({ url: "/openapi.json" }))

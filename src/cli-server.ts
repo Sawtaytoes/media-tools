@@ -5,8 +5,8 @@ import { Hono } from "hono"
 import os from "node:os"
 import { Server } from "socket.io"
 
-import { logInfo } from "./logMessage.js"
-import { CLI_SERVER_PORT } from "./port.js"
+import { logInfo } from "./tools/logMessage.js"
+import { CLI_SERVER_PORT } from "./tools/port.js"
 
 const app = new Hono()
 

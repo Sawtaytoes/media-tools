@@ -1,0 +1,199 @@
+import {
+  concatAll,
+  concatMap,
+  ignoreElements,
+  map,
+  mergeAll,
+  mergeMap,
+  Observable,
+  scan,
+  tap,
+  toArray,
+} from "rxjs"
+
+import { catchNamedError } from "../tools/catchNamedError.js"
+import { getSpecialFeatureFromTimecode, TimecodeDeviation } from "../tools/getSpecialFeatureFromTimecode.js"
+import {
+  convertDurationToDvdCompareTimecode,
+  getFileDuration,
+} from "../tools/getFileDuration.js"
+import { getMediaInfo } from "../tools/getMediaInfo.js"
+import { parseSpecialFeatures } from "../tools/parseSpecialFeatures.js"
+import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
+import { searchDvdCompare } from "../tools/searchDvdCompare.js"
+
+const getNextFilenameCount = (
+  previousCount?: number,
+) => (
+  (
+    previousCount
+    || 0
+  )
+  + 1
+)
+
+export const nameSpecialFeatures = ({
+  fixedOffset,
+  sourcePath,
+  timecodePaddingAmount,
+  url,
+}: (
+  {
+    sourcePath: string,
+    url: string,
+  }
+  & TimecodeDeviation
+)) => (
+  searchDvdCompare({
+    url,
+  })
+  .pipe(
+    concatMap((
+      specialFeatureText,
+    ) => (
+      parseSpecialFeatures(
+        specialFeatureText
+      )
+    )),
+    concatMap((
+      specialFeatures,
+    ) => (
+      getFilesAtDepth({
+        depth: 0,
+        sourcePath,
+      })
+      .pipe(
+        mergeMap((
+          fileInfo,
+        ) => (
+          getMediaInfo(
+            fileInfo
+            .fullPath
+          )
+          .pipe(
+            mergeMap((
+              mediaInfo,
+            ) => (
+              getFileDuration({
+                mediaInfo,
+              })
+            )),
+            map((
+              duration,
+            ) => ({
+              fileInfo,
+              timecode: (
+                convertDurationToDvdCompareTimecode(
+                  duration
+                )
+              ),
+            })),
+          )
+        )),
+        concatMap(({
+          fileInfo,
+          timecode,
+        }) => (
+          getSpecialFeatureFromTimecode({
+            filename: (
+              fileInfo
+              .filename
+            ),
+            fixedOffset,
+            specialFeatures,
+            timecode,
+            timecodePaddingAmount,
+          })
+          .pipe(
+            map((
+              renamedFilename,
+            ) => ({
+              fileInfo,
+              renamedFilename,
+            }))
+          )
+        )),
+        scan(
+          (
+            {
+              previousFilenameCount,
+            },
+            {
+              fileInfo,
+              renamedFilename,
+            },
+          ) => ({
+            previousFilenameCount: {
+              ...previousFilenameCount,
+              [renamedFilename]: (
+                getNextFilenameCount(
+                  previousFilenameCount
+                  [renamedFilename]
+                )
+              )
+            },
+            renameFileObservable: (
+              fileInfo
+              .renameFile(
+                (
+                  renamedFilename in (
+                    previousFilenameCount
+                  )
+                )
+                ? (
+                  "("
+                  .concat(
+                    (
+                      String(
+                        getNextFilenameCount(
+                          previousFilenameCount
+                          [renamedFilename]
+                        )
+                      )
+                    ),
+                    ") ",
+                    renamedFilename
+                  )
+                )
+                : renamedFilename
+              )
+            ),
+          }),
+          {
+            previousFilenameCount: {} as (
+              Record<
+                string,
+                number
+              >
+            ),
+            renameFileObservable: (
+              new Observable()
+            ) as (
+              Observable<
+                void
+              >
+            ),
+          },
+        ),
+        map(({
+          renameFileObservable
+        }) => (
+          renameFileObservable
+        )),
+      )
+    )),
+
+    // Wait till all renames are figured out before doing any renaming.
+    toArray(),
+
+    // Unfold the array.
+    mergeAll(),
+
+    // Rename everything by calling the mapped function.
+    mergeAll(),
+
+    catchNamedError(
+      nameSpecialFeatures
+    )
+  )
+)

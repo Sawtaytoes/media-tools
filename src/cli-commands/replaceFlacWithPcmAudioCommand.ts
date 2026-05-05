@@ -1,7 +1,7 @@
 ﻿import type { Argv, CommandBuilder, CommandModule } from "yargs"
 
-import { replaceFlacWithPcmAudio } from "../replaceFlacWithPcmAudio.js"
-import { subscribeCli } from "../subscribeCli.js"
+import { replaceFlacWithPcmAudio } from "../app-commands/replaceFlacWithPcmAudio.js"
+import { subscribeCli } from "../tools/subscribeCli.js"
 
 type InferArgvOptions<T> = T extends Argv<infer U> ? U : never
 

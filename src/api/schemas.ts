@@ -1,6 +1,6 @@
 import { z } from "@hono/zod-openapi"
 
-import { iso6392LanguageCodes } from "../iso6392LanguageCodes.js"
+import { iso6392LanguageCodes } from "../tools/iso6392LanguageCodes.js"
 
 // Shared response schemas
 export const createJobResponseSchema = (

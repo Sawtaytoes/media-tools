@@ -1,7 +1,7 @@
 ﻿import type { Argv, CommandBuilder, CommandModule } from "yargs"
 
-import { renameMovieClipDownloads } from "../renameMovieClipDownloads.js"
-import { subscribeCli } from "../subscribeCli.js"
+import { renameMovieClipDownloads } from "../app-commands/renameMovieClipDownloads.js"
+import { subscribeCli } from "../tools/subscribeCli.js"
 
 type InferArgvOptions<T> = T extends Argv<infer U> ? U : never
 

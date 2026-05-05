@@ -1,7 +1,7 @@
 ﻿import type { Argv, CommandBuilder, CommandModule } from "yargs"
 
-import { hasBetterVersion } from "../hasBetterVersion.js"
-import { subscribeCli } from "../subscribeCli.js"
+import { hasBetterVersion } from "../app-commands/hasBetterVersion.js"
+import { subscribeCli } from "../tools/subscribeCli.js"
 
 type InferArgvOptions<T> = T extends Argv<infer U> ? U : never
 
