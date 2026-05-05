@@ -4,9 +4,11 @@ import {
 } from "node:fs/promises"
 import { join } from "node:path"
 import {
+  catchError,
   concatAll,
   concatMap,
   defer,
+  EMPTY,
   filter,
   from,
   map,
@@ -84,6 +86,13 @@ export const filterFolderAtPath = <
       map(() => (
         pipelineValue
       )),
+      catchError((error) => {
+        if (error.code === 'ENOENT') {
+          return EMPTY
+        }
+
+        throw error
+      }),
     )
   ))
 )
