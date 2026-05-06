@@ -31,8 +31,17 @@
 
   <!-- Header -->
   <div class="shrink-0 flex items-center justify-between px-4 py-3 border-b border-slate-700 bg-slate-900 z-10">
-    <h1 class="text-lg font-bold tracking-tight text-slate-100">Sequence Builder</h1>
+    <h1 class="text-lg font-bold tracking-tight">
+      <a href="/" class="text-slate-100 hover:text-blue-300 transition-colors">Sequence Builder</a>
+    </h1>
     <div class="flex items-center gap-2">
+      <button onclick="startNewSequence()" title="Clear the current sequence and start fresh (Ctrl+Z to undo)"
+        class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded font-medium border border-slate-600">New Sequence</button>
+      <button id="undo-btn" onclick="undo()" title="Undo (Ctrl+Z)" disabled
+        class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 disabled:opacity-30 disabled:hover:bg-slate-700 px-2 py-1.5 rounded border border-slate-600 w-7">↶</button>
+      <button id="redo-btn" onclick="redo()" title="Redo (Ctrl+Y / Ctrl+Shift+Z)" disabled
+        class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 disabled:opacity-30 disabled:hover:bg-slate-700 px-2 py-1.5 rounded border border-slate-600 w-7">↷</button>
+      <span class="w-px h-6 bg-slate-700 mx-1"></span>
       <button onclick="addPicked()" title="Append an empty step"
         class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium">Add Step</button>
       <button onclick="addPath()" title="Add a path variable"
@@ -592,6 +601,11 @@ function updateUrl() {
   const query = params.toString()
   history.replaceState(null, '', window.location.pathname + (query ? '?' + query : ''))
   updateJobsLinkHref()
+  // Capture an in-memory snapshot whenever we persist state. Hooking
+  // here (rather than at every mutation site) means we get one snapshot
+  // per debounced state change — typing burst -> one snapshot, click
+  // add/remove -> one snapshot via the next scheduleUpdateUrl flush.
+  pushUndoSnapshot(yaml)
 }
 
 // Threads the current `?seq=` through the Jobs nav link so the user can
@@ -635,6 +649,127 @@ function flushScheduledUpdateUrl() {
 window.addEventListener('beforeunload', flushScheduledUpdateUrl)
 // Also flush whenever any input loses focus, so blur acts as an explicit commit.
 window.addEventListener('blur', flushScheduledUpdateUrl, true)
+
+// ─── Undo / redo (in-memory snapshot stack) ─────────────────────────────────
+
+// Snapshots are the canonical YAML form of paths + steps. Storing strings
+// (rather than deep-cloned objects) keeps memory bounded, gives us free
+// equality via ===, and means restore is just loadYamlFromText. The stack
+// is purely in-memory — not persisted to URL/storage — per the user's
+// preference.
+
+const UNDO_STACK_LIMIT = 50
+const undoStack = []
+const redoStack = []
+let lastSnapshot = null
+let isApplyingSnapshot = false
+
+function pushUndoSnapshot(currentYaml) {
+  // applySnapshot calls updateUrl() to keep the URL in sync; that path
+  // re-enters pushUndoSnapshot. Skip the recursive push so the same
+  // change doesn't fragment across both stacks.
+  if (isApplyingSnapshot) return
+  if (lastSnapshot === null) {
+    // First-ever snapshot (init / restoreFromUrl) — seed without
+    // pushing onto undoStack so the user can't undo back to nothing.
+    lastSnapshot = currentYaml
+    return
+  }
+  if (currentYaml === lastSnapshot) return
+  undoStack.push(lastSnapshot)
+  if (undoStack.length > UNDO_STACK_LIMIT) undoStack.shift()
+  lastSnapshot = currentYaml
+  // A new edit invalidates the redo timeline.
+  redoStack.length = 0
+  refreshUndoRedoButtons()
+}
+
+function applySnapshot(snapshotYaml) {
+  isApplyingSnapshot = true
+  try {
+    paths = []
+    steps = []
+    if (snapshotYaml === '# No steps yet') {
+      initPaths()
+    } else {
+      loadYamlFromText(snapshotYaml)
+    }
+    renderAll()
+    updateUrl()
+  } finally {
+    isApplyingSnapshot = false
+  }
+  refreshUndoRedoButtons()
+}
+
+function undo() {
+  // Make sure any pending debounced typing burst is captured *before*
+  // we pop, otherwise Ctrl+Z right after a fast edit would skip the
+  // most recent state.
+  flushScheduledUpdateUrl()
+  if (undoStack.length === 0) return
+  const previous = undoStack.pop()
+  redoStack.push(lastSnapshot)
+  lastSnapshot = previous
+  applySnapshot(previous)
+}
+
+function redo() {
+  if (redoStack.length === 0) return
+  const next = redoStack.pop()
+  undoStack.push(lastSnapshot)
+  lastSnapshot = next
+  applySnapshot(next)
+}
+
+function refreshUndoRedoButtons() {
+  const undoBtn = document.getElementById('undo-btn')
+  const redoBtn = document.getElementById('redo-btn')
+  if (undoBtn) undoBtn.disabled = undoStack.length === 0
+  if (redoBtn) redoBtn.disabled = redoStack.length === 0
+}
+
+// Global Ctrl/Cmd+Z (undo) / Ctrl+Y / Ctrl+Shift+Z (redo). Skipped when
+// the user is typing in an input/textarea so the browser's native
+// per-input undo still works for keystroke-level reverts.
+document.addEventListener('keydown', (event) => {
+  const target = event.target
+  const isTextField = target && (
+    target.tagName === 'INPUT'
+    || target.tagName === 'TEXTAREA'
+    || target.isContentEditable
+  )
+  if (isTextField) return
+  if (!(event.ctrlKey || event.metaKey)) return
+  const key = event.key.toLowerCase()
+  if (key === 'z' && !event.shiftKey) {
+    event.preventDefault()
+    undo()
+  } else if ((key === 'z' && event.shiftKey) || key === 'y') {
+    event.preventDefault()
+    redo()
+  }
+})
+
+// "New Sequence" reset action — confirms with the user before clearing
+// (the existing state is otherwise unrecoverable since we don't persist
+// the undo stack). Pushes a snapshot first so Ctrl+Z can still bring
+// it back.
+function startNewSequence() {
+  flushScheduledUpdateUrl()
+  const hasContent = (
+    steps.some((s) => s.command !== null)
+    || paths.some((p) => p.value)
+  )
+  if (hasContent && !window.confirm('Clear the current sequence and start fresh? Ctrl+Z will bring it back.')) {
+    return
+  }
+  paths = []
+  steps = []
+  initPaths()
+  renderAll()
+  updateUrl()
+}
 
 function restoreFromUrl() {
   const params = new URLSearchParams(window.location.search)
