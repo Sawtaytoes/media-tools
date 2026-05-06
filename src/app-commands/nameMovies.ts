@@ -1,36 +1,28 @@
-import { extname, join } from "node:path"
 import {
-  combineLatest,
   concatMap,
-  defer,
   EMPTY,
   from,
   map,
   mergeMap,
-  of,
   toArray,
   type Observable,
 } from "rxjs"
 
-import { setMkvSegmentTitleMkvPropEdit } from "../cli-spawn-operations/setMkvSegmentTitleMkvPropEdit.js"
 import { catchNamedError } from "../tools/catchNamedError.js"
 import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 import { logInfo } from "../tools/logMessage.js"
-import { lookupDvdCompareRelease } from "../tools/searchDvdCompare.js"
 import { lookupMovieDbById } from "../tools/searchMovieDb.js"
 
-// Pulls a movie's title + year from TMDB and an optional edition label
-// from a DVDCompare release, then renames every video file in sourcePath
-// to Plex's expected form:
+// Pulls a movie's title + year from TMDB and renames every video file in
+// sourcePath to Plex's expected form:
 //
 //   Title (Year) {edition-Edition Name}.<ext>
 //
-// Edition resolution priority:
-//   1. `editionLabel` (explicit override) — used as-is.
-//   2. `dvdCompareId` + `dvdCompareReleaseHash` — fetch the release label
-//      and take the third+ ' - '-delimited segment (drops format & studio).
-//   3. Neither set — emits `Title (Year).<ext>` with no edition suffix.
+// `editionLabel` is taken literally — when set, it's appended as
+// `{edition-<editionLabel>}`. Films with multiple editions in the same
+// folder need to be processed one at a time with the right label per run;
+// the command does not auto-detect editions.
 //
 // Multi-file behavior: if sourcePath contains >1 video file, every file
 // gets the same base name with a `-pt1`, `-pt2`, ... suffix appended
@@ -40,13 +32,7 @@ import { lookupMovieDbById } from "../tools/searchMovieDb.js"
 export type NameMoviesProps = {
   sourcePath: string
   movieDbId: number
-  dvdCompareId?: number
-  dvdCompareReleaseHash?: string
   editionLabel?: string
-  // When true, also write the resolved title into the MKV file's
-  // segment-level "title" property via mkvpropedit so Plex/Emby surface
-  // it in the file's metadata view. Off by default — opt in per run.
-  isMkvTitleSet?: boolean
 }
 
 const PLEX_INVALID_FILENAME_CHARS_REGEX = /[<>:"/\\|?*\x00-\x1f]/gu
@@ -64,20 +50,6 @@ const sanitizeFilename = (name: string): string => (
   .trim()
 )
 
-// DVDCompare release labels follow the pattern
-//   "<Format> <Region> - <Studio> - <Edition...>"
-// e.g. "Blu-ray ALL America - Arrow Films - Director's Cut Limited Edition".
-// The edition is everything from the third segment onward (joined back
-// with ' - ' so multi-part editions survive).
-export const extractEditionFromReleaseLabel = (
-  label: string | null | undefined,
-): string => {
-  if (!label) return ""
-  const segments = label.split(/\s+-\s+/u)
-  if (segments.length < 3) return ""
-  return segments.slice(2).join(" - ").trim()
-}
-
 export const buildPlexBaseName = ({
   title,
   year,
@@ -94,10 +66,7 @@ export const buildPlexBaseName = ({
 }
 
 export const nameMovies = ({
-  dvdCompareId,
-  dvdCompareReleaseHash,
   editionLabel,
-  isMkvTitleSet = false,
   movieDbId,
   sourcePath,
 }: NameMoviesProps): Observable<string> => {
@@ -106,26 +75,12 @@ export const nameMovies = ({
     return EMPTY
   }
 
-  const movieLookup$ = lookupMovieDbById(movieDbId)
-
-  // The release lookup feeds the edition heuristic. When the user supplies
-  // an explicit `editionLabel`, we skip the network call entirely.
-  const editionResolution$: Observable<string> = (
-    editionLabel
-    ? of(editionLabel.trim())
-    : (
-      dvdCompareId && dvdCompareReleaseHash
-      ? lookupDvdCompareRelease(dvdCompareId, dvdCompareReleaseHash).pipe(
-          map((release) => extractEditionFromReleaseLabel(release?.label ?? null)),
-        )
-      : of("")
-    )
-  )
+  const edition = editionLabel?.trim() ?? ""
 
   return (
-    combineLatest([movieLookup$, editionResolution$])
+    lookupMovieDbById(movieDbId)
     .pipe(
-      concatMap(([movie, edition]) => {
+      concatMap((movie) => {
         if (!movie) {
           throw new Error(`TMDB returned no result for movieDbId=${movieDbId}`)
         }
@@ -136,7 +91,6 @@ export const nameMovies = ({
         const title = yearMatch ? yearMatch[1].trim() : movie.name
         const year = yearMatch ? yearMatch[2] : ""
         const baseName = buildPlexBaseName({ title, year, edition })
-        const segmentTitle = year ? `${title} (${year})` : title
         logInfo("NAME MOVIES", `Plex name: ${baseName}`)
 
         return (
@@ -158,30 +112,7 @@ export const nameMovies = ({
               // pass the bare base name (no .mkv) and let it stitch.
               const partSuffix = total > 1 ? ` - pt${index + 1}` : ""
               const renamedBase = `${baseName}${partSuffix}`
-              const renamedFullPath = join(sourcePath, `${renamedBase}${extname(fileInfo.fullPath)}`)
-
-              const renamed$ = fileInfo.renameFile(renamedBase).pipe(map(() => renamedBase))
-
-              if (!isMkvTitleSet) return renamed$
-
-              // After the rename lands, write the MKV segment-level title.
-              // Only meaningful for .mkv containers — mkvpropedit refuses
-              // anything else, so skip non-MKV files quietly.
-              const isMkvFile = extname(fileInfo.fullPath).toLowerCase() === ".mkv"
-              if (!isMkvFile) return renamed$
-
-              return renamed$.pipe(
-                concatMap((emitted) => (
-                  defer(() => of(emitted))
-                  .pipe(
-                    concatMap(() => setMkvSegmentTitleMkvPropEdit({
-                      filePath: renamedFullPath,
-                      title: segmentTitle,
-                    })),
-                    map(() => emitted),
-                  )
-                )),
-              )
+              return fileInfo.renameFile(renamedBase).pipe(map(() => renamedBase))
             }),
           )
         )

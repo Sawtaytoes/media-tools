@@ -495,16 +495,13 @@ const COMMANDS = {
     ]
   },
   nameMovies: {
-    summary: "Rename a movie folder's files to Plex's `Title (Year) {edition-...}.mkv` using TMDB + DVDCompare metadata",
+    summary: "Rename a movie folder's files to Plex's `Title (Year) {edition-...}.mkv` using TMDB metadata",
     tag: "Naming Operations",
     outputFolderName: null,
     fields: [
       { name: "sourcePath", type: "path", label: "Source Path", required: true },
       { name: "movieDbId", type: "numberWithLookup", lookupType: "tmdb", label: "TMDB Movie ID", placeholder: "27205", required: true, companionNameField: "movieDbName" },
-      { name: "editionLabel", type: "string", label: "Edition Label (overrides DVDCompare lookup)", placeholder: "Director's Cut" },
-      { name: "dvdCompareId", type: "numberWithLookup", lookupType: "dvdcompare", label: "DVDCompare Film ID (optional, drives edition)", placeholder: "12345", companionNameField: "dvdCompareName" },
-      { name: "dvdCompareReleaseHash", type: "string", label: "DVDCompare Release Hash", placeholder: "1", companionNameField: "dvdCompareReleaseLabel" },
-      { name: "isMkvTitleSet", type: "boolean", label: "Also write the resolved 'Title (Year)' into each .mkv's segment title", default: false },
+      { name: "editionLabel", type: "string", label: "Edition Label (appended as {edition-…} when set)", placeholder: "Hybrid Cut" },
     ]
   },
   nameTvShowEpisodes: {

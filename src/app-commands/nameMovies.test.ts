@@ -4,45 +4,17 @@ import { firstValueFrom, of, toArray } from "rxjs"
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
 
 import { captureConsoleMessage } from "../tools/captureConsoleMessage.js"
-import {
-  buildPlexBaseName,
-  extractEditionFromReleaseLabel,
-  nameMovies,
-} from "./nameMovies.js"
+import { buildPlexBaseName, nameMovies } from "./nameMovies.js"
 
 // ── Pure helpers ────────────────────────────────────────────────────────────
-
-describe(extractEditionFromReleaseLabel.name, () => {
-  test("returns the third+ ' - '-delimited segment from a typical DVDCompare label", () => {
-    expect(extractEditionFromReleaseLabel(
-      "Blu-ray ALL America - Arrow Films - Director's Cut Limited Edition",
-    )).toBe("Director's Cut Limited Edition")
-  })
-
-  test("joins multi-segment editions back with ' - '", () => {
-    expect(extractEditionFromReleaseLabel(
-      "Blu-ray ALL America - Arrow - Director's Cut - 50th Anniversary - Steelbook",
-    )).toBe("Director's Cut - 50th Anniversary - Steelbook")
-  })
-
-  test("returns blank for labels with fewer than three segments", () => {
-    expect(extractEditionFromReleaseLabel("Blu-ray ALL America")).toBe("")
-    expect(extractEditionFromReleaseLabel("Blu-ray - Arrow Films")).toBe("")
-  })
-
-  test("handles null / undefined gracefully", () => {
-    expect(extractEditionFromReleaseLabel(null)).toBe("")
-    expect(extractEditionFromReleaseLabel(undefined)).toBe("")
-  })
-})
 
 describe(buildPlexBaseName.name, () => {
   test("builds 'Title (Year) {edition-Edition Name}' when all three are set", () => {
     expect(buildPlexBaseName({
-      title: "Soldier",
-      year: "1998",
-      edition: "Director's Cut",
-    })).toBe("Soldier (1998) {edition-Director's Cut}")
+      title: "Dragon Lord",
+      year: "1982",
+      edition: "Hybrid Cut",
+    })).toBe("Dragon Lord (1982) {edition-Hybrid Cut}")
   })
 
   test("drops the edition suffix when no edition is provided", () => {
@@ -70,29 +42,16 @@ describe(buildPlexBaseName.name, () => {
   })
 })
 
-// ── Pipeline (mocked TMDB / DVDCompare lookups) ─────────────────────────────
+// ── Pipeline (mocked TMDB lookup) ───────────────────────────────────────────
 
 vi.mock("../tools/searchMovieDb.js", () => ({
   lookupMovieDbById: vi.fn(),
 }))
 
-vi.mock("../tools/searchDvdCompare.js", () => ({
-  lookupDvdCompareRelease: vi.fn(),
-}))
-
-vi.mock("../cli-spawn-operations/setMkvSegmentTitleMkvPropEdit.js", () => ({
-  setMkvSegmentTitleMkvPropEdit: vi.fn(),
-}))
-
 const { lookupMovieDbById } = await import("../tools/searchMovieDb.js")
-const { lookupDvdCompareRelease } = await import("../tools/searchDvdCompare.js")
-const { setMkvSegmentTitleMkvPropEdit } = await import("../cli-spawn-operations/setMkvSegmentTitleMkvPropEdit.js")
 
 const mockMovie = (movie: { name: string } | null) => {
   vi.mocked(lookupMovieDbById).mockReturnValue(of(movie))
-}
-const mockRelease = (release: { label: string } | null) => {
-  vi.mocked(lookupDvdCompareRelease).mockReturnValue(of(release))
 }
 
 // memfs reads files via stat() to verify the rename actually moved the
@@ -126,37 +85,19 @@ describe(nameMovies.name, () => {
     await expect(stat("G:\\Movies\\Some Folder\\rip.mkv")).rejects.toThrow()
   })
 
-  test("uses an explicit editionLabel and skips the DVDCompare lookup entirely", async () => {
-    mockMovie({ name: "Soldier (1998)" })
+  test("appends the editionLabel literally as {edition-<label>}", async () => {
+    mockMovie({ name: "Dragon Lord (1982)" })
 
     await firstValueFrom(
       nameMovies({
         sourcePath: "G:\\Movies\\Some Folder",
         movieDbId: 9504,
-        editionLabel: "Director's Cut",
+        editionLabel: "Hybrid Cut",
       })
       .pipe(toArray()),
     )
 
-    await expect(stat("G:\\Movies\\Some Folder\\Soldier (1998) {edition-Director's Cut}.mkv")).resolves.toBeDefined()
-    expect(vi.mocked(lookupDvdCompareRelease)).not.toHaveBeenCalled()
-  })
-
-  test("derives the edition from a DVDCompare release label when no explicit override is given", async () => {
-    mockMovie({ name: "Soldier (1998)" })
-    mockRelease({ label: "Blu-ray ALL America - Arrow Films - Director's Cut" })
-
-    await firstValueFrom(
-      nameMovies({
-        sourcePath: "G:\\Movies\\Some Folder",
-        movieDbId: 9504,
-        dvdCompareId: 12345,
-        dvdCompareReleaseHash: "1",
-      })
-      .pipe(toArray()),
-    )
-
-    await expect(stat("G:\\Movies\\Some Folder\\Soldier (1998) {edition-Director's Cut}.mkv")).resolves.toBeDefined()
+    await expect(stat("G:\\Movies\\Some Folder\\Dragon Lord (1982) {edition-Hybrid Cut}.mkv")).resolves.toBeDefined()
   })
 
   test("appends -pt1 / -pt2 suffixes when sourcePath contains multiple video files", async () => {
@@ -215,59 +156,6 @@ describe(nameMovies.name, () => {
       await expect(stat("G:\\Movies\\Some Folder\\rip.mkv")).resolves.toBeDefined()
     })
   ))
-
-  test("does not invoke mkvpropedit by default (isMkvTitleSet: false)", async () => {
-    mockMovie({ name: "Inception (2010)" })
-    vi.mocked(setMkvSegmentTitleMkvPropEdit).mockReturnValue(of("ok") as ReturnType<typeof setMkvSegmentTitleMkvPropEdit>)
-
-    await firstValueFrom(
-      nameMovies({
-        sourcePath: "G:\\Movies\\Some Folder",
-        movieDbId: 27205,
-      })
-      .pipe(toArray()),
-    )
-
-    expect(vi.mocked(setMkvSegmentTitleMkvPropEdit)).not.toHaveBeenCalled()
-  })
-
-  test("invokes mkvpropedit on each renamed .mkv with 'Title (Year)' when isMkvTitleSet is true", async () => {
-    mockMovie({ name: "Inception (2010)" })
-    vi.mocked(setMkvSegmentTitleMkvPropEdit).mockReturnValue(of("ok") as ReturnType<typeof setMkvSegmentTitleMkvPropEdit>)
-
-    await firstValueFrom(
-      nameMovies({
-        sourcePath: "G:\\Movies\\Some Folder",
-        movieDbId: 27205,
-        isMkvTitleSet: true,
-      })
-      .pipe(toArray()),
-    )
-
-    expect(vi.mocked(setMkvSegmentTitleMkvPropEdit)).toHaveBeenCalledOnce()
-    expect(vi.mocked(setMkvSegmentTitleMkvPropEdit)).toHaveBeenCalledWith({
-      filePath: "G:\\Movies\\Some Folder\\Inception (2010).mkv",
-      title: "Inception (2010)",
-    })
-  })
-
-  test("skips mkvpropedit on non-.mkv files even when isMkvTitleSet is true", async () => {
-    vol.reset()
-    vol.fromJSON({ "G:\\Movies\\Some Folder\\rip.mp4": "video" })
-    mockMovie({ name: "Inception (2010)" })
-    vi.mocked(setMkvSegmentTitleMkvPropEdit).mockReturnValue(of("ok") as ReturnType<typeof setMkvSegmentTitleMkvPropEdit>)
-
-    await firstValueFrom(
-      nameMovies({
-        sourcePath: "G:\\Movies\\Some Folder",
-        movieDbId: 27205,
-        isMkvTitleSet: true,
-      })
-      .pipe(toArray()),
-    )
-
-    expect(vi.mocked(setMkvSegmentTitleMkvPropEdit)).not.toHaveBeenCalled()
-  })
 
   test("emits nothing and leaves the directory alone when no video files are present", async () => (
     captureConsoleMessage("info", async () => {

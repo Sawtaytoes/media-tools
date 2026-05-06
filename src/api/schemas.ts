@@ -131,10 +131,7 @@ export const computeDefaultSubtitleRulesRequestSchema = z.object({
 export const nameMoviesRequestSchema = z.object({
   sourcePath: z.string().describe("Directory containing the movie file(s) to rename."),
   movieDbId: z.number().int().positive().describe("TMDB movie ID (the integer in the URL: themoviedb.org/movie/<id>)."),
-  editionLabel: z.string().optional().describe("Explicit Plex edition label, e.g. \"Director's Cut\". When set, the DVDCompare lookup is skipped."),
-  dvdCompareId: z.number().optional().describe("DVDCompare film ID. Combined with dvdCompareReleaseHash to derive the edition from the release label."),
-  dvdCompareReleaseHash: z.string().optional().describe("DVDCompare release hash (the integer at the end of a release URL — e.g. \"1\", \"2\")."),
-  isMkvTitleSet: z.boolean().default(false).describe("Also write the resolved 'Title (Year)' into each .mkv's segment-level title via mkvpropedit so Plex/Emby surface it in the file metadata."),
+  editionLabel: z.string().optional().describe("Plex edition label appended as `{edition-<label>}`. Leave blank for films with no edition. Multi-edition films in the same folder need separate runs with the right label each time."),
 })
 
 export const remuxToMkvRequestSchema = z.object({

@@ -15,10 +15,6 @@ const builder = (yargs: Argv) => (
     "$0 nameMovies \"/path/to/movie/folder\" --movieDbId 9504 --editionLabel \"Director's Cut\"",
     "Same, with an explicit Plex edition suffix.",
   )
-  .example(
-    "$0 nameMovies \"/path/to/movie/folder\" --movieDbId 9504 --dvdCompareId 12345 --dvdCompareReleaseHash 1",
-    "Same, deriving the edition from a DVDCompare release.",
-  )
   .positional(
     "sourcePath",
     {
@@ -38,32 +34,8 @@ const builder = (yargs: Argv) => (
   .option(
     "editionLabel",
     {
-      describe: "Explicit edition label (e.g. \"Director's Cut\"). Skips the DVDCompare lookup when set.",
+      describe: "Edition label appended as `{edition-<label>}` (e.g. \"Director's Cut\"). Omit for films with no edition.",
       type: "string",
-    },
-  )
-  .option(
-    "dvdCompareId",
-    {
-      describe: "DVDCompare film ID. Combined with --dvdCompareReleaseHash to fetch the release label and derive the edition.",
-      type: "number",
-    },
-  )
-  .option(
-    "dvdCompareReleaseHash",
-    {
-      describe: "DVDCompare release hash (the integer at the end of a release URL — e.g. 1, 2, 3).",
-      type: "string",
-    },
-  )
-  .option(
-    "isMkvTitleSet",
-    {
-      boolean: true,
-      default: false,
-      describe: "Also write the resolved 'Title (Year)' into each .mkv's segment-level title via mkvpropedit.",
-      nargs: 0,
-      type: "boolean",
     },
   )
 )
@@ -72,16 +44,13 @@ type Args = InferArgvOptions<ReturnType<typeof builder>>
 
 export const nameMoviesCommand: CommandModule<{}, Args> = {
   command: "nameMovies <sourcePath>",
-  describe: "Rename a movie folder's files to Plex's `Title (Year) {edition-...}.mkv` format using TMDB + DVDCompare metadata.",
+  describe: "Rename a movie folder's files to Plex's `Title (Year) {edition-...}.mkv` format using a TMDB ID for the title/year.",
 
   builder: builder as CommandBuilder<{}, Args>,
 
   handler: (argv) => {
     nameMovies({
-      dvdCompareId: argv.dvdCompareId,
-      dvdCompareReleaseHash: argv.dvdCompareReleaseHash,
       editionLabel: argv.editionLabel,
-      isMkvTitleSet: argv.isMkvTitleSet,
       movieDbId: argv.movieDbId,
       sourcePath: argv.sourcePath,
     })
