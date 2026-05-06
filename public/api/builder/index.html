@@ -495,7 +495,7 @@ function mainSrcField(commandName) {
 function stepOutput(step) {
   const cmd = COMMANDS[step.command]
   const msf = mainSrcField(step.command)
-  let src = msf ? (linkedVal(step, msf) ?? step.params[msf] ?? '') : ''
+  let src = msf ? (getLinkedValue(step, msf) ?? step.params[msf] ?? '') : ''
   src = src.replace(/[\\/]$/, '')
 
   if (cmd.outputFolderName) return src ? src + '/' + cmd.outputFolderName : cmd.outputFolderName
@@ -506,7 +506,7 @@ function stepOutput(step) {
   return src
 }
 
-function linkedVal(step, fieldName) {
+function getLinkedValue(step, fieldName) {
   const srcId = step.links?.[fieldName]
   if (!srcId) return null
   if (typeof srcId === 'string') {
@@ -615,7 +615,7 @@ function setLink(id, field, srcIdStr) {
   // Update the linked input
   const linkedInput = document.querySelector(`[data-step="${id}"][data-field="${field}"].linked-input`)
   const manualInput = document.querySelector(`[data-step="${id}"][data-field="${field}"].manual-input`)
-  const val = linkedVal(step, field)
+  const val = getLinkedValue(step, field)
   if (val !== null) {
     if (linkedInput) { linkedInput.value = val; linkedInput.classList.remove('hidden') }
     if (manualInput) manualInput.classList.add('hidden')
@@ -631,7 +631,7 @@ function refreshLinkedInputs() {
   for (const step of steps) {
     for (const [field, srcId] of Object.entries(step.links)) {
       const inp = document.querySelector(`[data-step="${step.id}"][data-field="${field}"].linked-input`)
-      if (inp) inp.value = linkedVal(step, field) ?? ''
+      if (inp) inp.value = getLinkedValue(step, field) ?? ''
     }
   }
 }
@@ -874,7 +874,7 @@ function renderFields(step, stepIndex) {
 function renderPathField(step, field, stepIndex) {
   const val = step.params[field.name] ?? ''
   const linkedStepId = step.links[field.name]
-  const computed = linkedStepId ? (linkedVal(step, field.name) ?? '') : null
+  const computed = linkedStepId ? (getLinkedValue(step, field.name) ?? '') : null
 
   const pathVarOptions = paths.map(pv =>
     `<option value="${pv.id}"${linkedStepId === pv.id ? ' selected' : ''}>${esc(pv.label)}${pv.value ? ' → ' + pv.value : ''}</option>`
@@ -942,13 +942,13 @@ function buildParams(step, { resolveLinks = false } = {}) {
       if (srcId) {
         if (resolveLinks) {
           // For API calls, every link must be a real path string.
-          const lv = linkedVal(step, field.name)
-          if (lv !== null) val = lv
+          const linkedValue = getLinkedValue(step, field.name)
+          if (linkedValue !== null) val = linkedValue
         } else if (typeof srcId === 'string') {
           val = '@' + srcId  // path var reference — store as @id, not resolved value
         } else {
-          const lv = linkedVal(step, field.name)
-          if (lv !== null) val = lv
+          const linkedValue = getLinkedValue(step, field.name)
+          if (linkedValue !== null) val = linkedValue
         }
       }
     }

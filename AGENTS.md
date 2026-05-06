@@ -25,8 +25,10 @@ in module files must be removed before those modules can be used in the API.
 
 ### Variable naming
 - No single-letter variable names. Always use descriptive names that convey purpose.
+- No two- or three-letter abbreviations either (e.g. `lv`, `pv`, `el`, `msf`, `idx`). Spell the word out — `linkedValue`, `pathVar`, `element`, `mainSourceField`, `index`.
 - Hono route handler context: use `context` (not `c`). Example: `app.get("/", (context) => context.json({}))`.
-- Spell out all abbreviations in variable names (e.g. `destination` not `dest`, `source` not `src`, `options` not `opts`).
+- Spell out all abbreviations in variable names (e.g. `destination` not `dest`, `source` not `src`, `options` not `opts`, `value` not `val`, `error` not `err`, `response` not `resp`).
+- Function names take an action verb; variables hold the noun the function returns. `linkedVal` is wrong on two counts — it abbreviates `Value`, and as a function it should describe the action: `getLinkedValue` is the function, and the variable that captures its result is `linkedValue`.
 
 ### Coding style
 - Functional style; prefer `concatMap` / `mergeMap` over imperative loops
