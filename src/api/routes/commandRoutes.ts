@@ -5,6 +5,7 @@ import { type Observable } from "rxjs"
 import { makeDirectory } from "../../tools/makeDirectory.js"
 import { changeTrackLanguages } from "../../app-commands/changeTrackLanguages.js"
 import { copyFiles } from "../../app-commands/copyFiles.js"
+import { copyOutputBack } from "../../app-commands/copyOutputBack.js"
 import { copyOutSubtitles, copyOutSubtitlesDefaultProps } from "../../app-commands/copyOutSubtitles.js"
 import { fixIncorrectDefaultTracks } from "../../app-commands/fixIncorrectDefaultTracks.js"
 import { getAudioOffsets, getAudioOffsetsDefaultProps } from "../../app-commands/getAudioOffsets.js"
@@ -73,6 +74,7 @@ const commandNames = [
   "makeDirectory",
   "changeTrackLanguages",
   "copyFiles",
+  "copyOutputBack",
   "copyOutSubtitles",
   "fixIncorrectDefaultTracks",
   "getAudioOffsets",
@@ -131,6 +133,12 @@ const commandConfigs: Record<CommandName, CommandConfig> = {
     getObservable: (body) => copyFiles({ destinationPath: body.destinationPath, sourcePath: body.sourcePath }),
     schema: schemas.copyFilesRequestSchema,
     summary: "Copy files from source to destination",
+    tags: ["File Operations"],
+  },
+  copyOutputBack: {
+    getObservable: (body) => copyOutputBack({ sourcePath: body.sourcePath }),
+    schema: schemas.copyOutputBackRequestSchema,
+    summary: "Flatten a chained step's output: copies the folder's contents up one level and removes the folder",
     tags: ["File Operations"],
   },
   copyOutSubtitles: {

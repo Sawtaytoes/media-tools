@@ -32,6 +32,10 @@ export const copyFilesRequestSchema = z.object({
   destinationPath: z.string().describe("Destination directory path"),
 })
 
+export const copyOutputBackRequestSchema = z.object({
+  sourcePath: z.string().describe("Output folder produced by a previous step (e.g. /work/SUBTITLED). Its contents are copied up one level (overwriting same-named originals) and then the folder is deleted."),
+})
+
 export const moveFilesRequestSchema = z.object({
   sourcePath: z.string().describe("Source directory path"),
   destinationPath: z.string().describe("Destination directory path"),

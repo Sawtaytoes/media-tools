@@ -159,6 +159,14 @@ const COMMANDS = {
       { name: "destinationPath", type: "path", label: "Destination Path", required: true },
     ]
   },
+  copyOutputBack: {
+    summary: "Flatten a chained step's output (copies files up one level and removes the source folder)",
+    tag: "File Operations",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Output Folder to Flatten", required: true },
+    ]
+  },
   moveFiles: {
     summary: "Move files from source to destination",
     tag: "File Operations",

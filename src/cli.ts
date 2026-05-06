@@ -3,6 +3,7 @@ import { hideBin } from "yargs/helpers"
 
 import { changeTrackLanguagesCommand } from "./cli-commands/changeTrackLanguagesCommand.js"
 import { copyFilesCommand } from "./cli-commands/copyFilesCommand.js"
+import { copyOutputBackCommand } from "./cli-commands/copyOutputBackCommand.js"
 import { copyOutSubtitlesCommand } from "./cli-commands/copyOutSubtitlesCommand.js"
 import { fixIncorrectDefaultTracksCommand } from "./cli-commands/fixIncorrectDefaultTracksCommand.js"
 import { getAudioOffsetsCommand } from "./cli-commands/getAudioOffsetsCommand.js"
@@ -71,6 +72,7 @@ yargs(
 )
 .command(changeTrackLanguagesCommand)
 .command(copyFilesCommand)
+.command(copyOutputBackCommand)
 .command(copyOutSubtitlesCommand)
 .command(fixIncorrectDefaultTracksCommand)
 .command(getAudioOffsetsCommand)
