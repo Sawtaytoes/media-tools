@@ -286,7 +286,7 @@ export const commandConfigs: Record<CommandName, CommandConfig> = {
   nameSpecialFeatures: {
     getObservable: (body) => nameSpecialFeatures({ dvdCompareId: body.dvdCompareId, dvdCompareReleaseHash: body.dvdCompareReleaseHash, fixedOffset: body.fixedOffset, searchTerm: body.searchTerm, sourcePath: body.sourcePath, timecodePaddingAmount: body.timecodePadding, url: body.url }),
     schema: schemas.nameSpecialFeaturesRequestSchema,
-    summary: "Rename special features based on timecode data",
+    summary: "Rename special features (and the main movie file) based on DVDCompare timecodes; movie title is canonicalized via TMDB",
     tags: ["Naming Operations"],
   },
   nameTvShowEpisodes: {
