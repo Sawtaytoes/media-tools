@@ -1,4 +1,4 @@
-import colors from "ansi-colors"
+﻿import colors from "ansi-colors"
 import cliProgress from "cli-progress"
 import {
   spawn,
@@ -17,6 +17,7 @@ import {
 
 import { ffmpegPath as defaultFfmpegPath } from "../tools/appPaths.js";
 import { catchNamedError } from "../tools/catchNamedError.js"
+import { getActiveJobId } from "../api/logCapture.js"
 import { getFileDuration } from "../tools/getFileDuration.js";
 import { getMediaInfo } from "../tools/getMediaInfo.js";
 import { convertTimecodeToMilliseconds } from "../tools/parseTimestamps.js";
@@ -144,6 +145,14 @@ export const runFfmpeg = ({
       >((
         observer,
       ) => {
+        // In API/job context the server runs as a long-lived daemon; the CLI
+        // affordances below (stdin raw mode, cli-progress bar drawing, and
+        // process.exit on cancel) all break that environment â€” they leak
+        // stdin listeners, spam the dev-watcher's stdout, and could crash
+        // the server. Guard them here.
+        const inApiContext = Boolean(getActiveJobId())
+        const useTtyAffordances = !inApiContext && Boolean(process.stdin.isTTY)
+
         const commandArgs = (
           [
             "-hide_banner",
@@ -274,6 +283,11 @@ export const runFfmpeg = ({
                 "time="
               )
             ) {
+              if (!useTtyAffordances) {
+                // No progress bar in API context â€” skip silently so the dev
+                // watcher's stdout isn't flooded with carriage-returned redraws.
+                return
+              }
               if (hasStarted) {
                 cliProgressBar
                 .update(
@@ -326,6 +340,25 @@ export const runFfmpeg = ({
           },
         )
 
+
+        // CTRL+C handler — wired up to process.stdin only in CLI/TTY mode.
+        // Held in a const so the listener can be removed on exit (otherwise
+        // each runFfmpeg call leaks one listener).
+        const stdinDataHandler = (
+          useTtyAffordances
+          ? (inputBuffer: Buffer) => {
+            const key = inputBuffer.toString()
+
+            // [CTRL][C]
+            if (key === "") {
+              childProcess.kill()
+            }
+            else {
+              process.stdout.write(key)
+            }
+          }
+          : null
+        )
         childProcess
         .on(
           'close',
@@ -345,13 +378,15 @@ export const runFfmpeg = ({
                   "Process canceled by user.",
                 )
 
-                setTimeout(
-                  () => {
-                    process
-                    .exit()
-                  },
-                  500,
-                )
+                if (useTtyAffordances) {
+                  setTimeout(
+                    () => {
+                      process
+                      .exit()
+                    },
+                    500,
+                  )
+                }
               })
             }
           },
@@ -376,14 +411,14 @@ export const runFfmpeg = ({
             observer
             .complete()
 
-            cliProgressBar
-            .stop()
-
-            process
-            .stdin
-            .setRawMode(
-              false
-            )
+            if (useTtyAffordances) {
+              cliProgressBar.stop()
+              process.stdin.setRawMode(false)
+              if (stdinDataHandler) {
+                process.stdin.removeListener('data', stdinDataHandler)
+              }
+              process.stdin.pause()
+            }
 
             childProcess
             .stderr
@@ -411,51 +446,13 @@ export const runFfmpeg = ({
           },
         )
 
-        process
-        .stdin
-        .setRawMode(
-          true
-        )
+        if (useTtyAffordances) {
+          process.stdin.setRawMode(true)
+          process.stdin.resume()
+          process.stdin.setEncoding('utf8')
+          process.stdin.on('data', stdinDataHandler!)
+        }
 
-        process
-        .stdin
-        .resume()
-
-        process
-        .stdin
-        .setEncoding(
-          'utf8'
-        )
-
-        process
-        .stdin
-        .on(
-          'data',
-          (
-            inputBuffer,
-          ) => {
-            const key = (
-              inputBuffer
-              .toString()
-            )
-
-            // [CTRL][C]
-            if (
-              key
-              === "\u0003"
-            ) {
-              childProcess
-              .kill()
-            }
-            else {
-              process
-              .stdout
-              .write(
-                key
-              )
-            }
-          }
-        )
       })
   )),
     catchNamedError(

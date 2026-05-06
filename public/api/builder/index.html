@@ -1100,6 +1100,7 @@ async function runSequence() {
   for (const step of steps) {
     step.status = 'pending'
     step.error = null
+    step.results = null
     updateStepUI(step)
   }
 
@@ -1161,6 +1162,10 @@ function waitForJob(jobId, stepId) {
         if (data.done) {
           closePromptModal()
           es.close()
+          const step = steps.find(s => s.id === stepId)
+          if (step && Array.isArray(data.results) && data.results.length > 0) {
+            step.results = data.results
+          }
           if (data.status === 'completed') resolve()
           else reject(`Job ended with status: ${data.status}`)
         } else if (data.type === 'prompt') {
@@ -1747,6 +1752,48 @@ function updateStepUI(step) {
   // Remove log output once the step is no longer running
   const logEl = card.querySelector('.step-logs')
   if (logEl && step.status !== 'running') logEl.remove()
+
+  // Render results when the step has finished
+  let resultsEl = card.querySelector('.step-results')
+  const formatted = step.results && step.results.length > 0 ? formatStepResults(step.command, step.results) : ''
+  if (formatted) {
+    if (!resultsEl) {
+      const fieldsEl = card.querySelector('.space-y-2')
+      if (fieldsEl) {
+        fieldsEl.insertAdjacentHTML('beforebegin',
+          `<details class="step-results text-xs mb-2" open>
+            <summary class="cursor-pointer text-emerald-400 hover:text-emerald-300 select-none">▸ Results</summary>
+            <pre class="text-emerald-300 bg-slate-950 rounded px-2 py-1.5 mt-1 font-mono whitespace-pre-wrap break-words"></pre>
+          </details>`)
+        resultsEl = card.querySelector('.step-results')
+      }
+    }
+    if (resultsEl) {
+      resultsEl.querySelector('pre').textContent = formatted
+    }
+  } else if (resultsEl) {
+    resultsEl.remove()
+  }
+}
+
+function formatStepResults(commandName, results) {
+  const filenameOf = (path) => String(path ?? '').split(/[\\/]/).pop() || String(path ?? '')
+
+  if (commandName === 'getAudioOffsets') {
+    return results.flat().map(item => {
+      const file = filenameOf(item?.destinationFilePath)
+      const offset = item?.offsetInMilliseconds
+      return `${file}: ${offset}ms`
+    }).join('\n')
+  }
+
+  // Generic fallback — pretty JSON, but unwrap a single array result
+  const value = results.length === 1 ? results[0] : results
+  try {
+    return JSON.stringify(value, null, 2)
+  } catch {
+    return String(value)
+  }
 }
 
 // ─── Add command select ───────────────────────────────────────────────────────
