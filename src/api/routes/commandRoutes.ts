@@ -133,6 +133,11 @@ export type CommandConfig = {
   // itself). 'parentOfSource' covers the flattenOutput case where files
   // are written into dirname(sourcePath).
   outputComputation?: 'parentOfSource'
+  // When true, surfaces as `deprecated: true` on the OpenAPI operation
+  // — Scalar UI renders the route with a strikethrough + badge so users
+  // can see it's on the way out alongside the runtime [name] DEPRECATED
+  // log line emitted by the underlying app-command shim.
+  deprecated?: boolean
   schema: z.ZodTypeAny
   summary: string
   tags: string[]
@@ -178,6 +183,7 @@ export const commandConfigs: Record<CommandName, CommandConfig> = {
   copyOutSubtitles: {
     // Deprecated alias for extractSubtitles — getObservable points to the
     // shim app-command which logs a deprecation warning then delegates.
+    deprecated: true,
     getObservable: (body) => copyOutSubtitles({ isRecursive: body.isRecursive, sourcePath: body.sourcePath, subtitlesLanguage: body.subtitlesLanguage }),
     outputFolderName: extractSubtitlesDefaultProps.outputFolderName,
     schema: schemas.copyOutSubtitlesRequestSchema,
@@ -424,7 +430,7 @@ commandRoutes.openapi(
 )
 
 commandNames.forEach((commandName) => {
-  const { extractOutputs, getObservable, outputFolderName, schema, summary, tags } = commandConfigs[commandName]
+  const { deprecated, extractOutputs, getObservable, outputFolderName, schema, summary, tags } = commandConfigs[commandName]
 
   commandRoutes.openapi(
     createRoute({
@@ -432,6 +438,7 @@ commandNames.forEach((commandName) => {
       path: `/commands/${commandName}`,
       summary,
       tags,
+      ...(deprecated ? { deprecated: true } : {}),
       request: {
         body: {
           content: {
