@@ -591,13 +591,28 @@ function renderAllAnimated() {
 // field to the previous step's output happens in changeCommand at that
 // moment.
 function addPicked() {
-  steps.push(makeStep(null))
+  const step = makeStep(null)
+  steps.push(step)
   renderAllAnimated()
+  scrollStepIntoView(step.id)
 }
 
 function insertAt(index) {
-  steps.splice(index, 0, makeStep(null))
+  const step = makeStep(null)
+  steps.splice(index, 0, step)
   renderAllAnimated()
+  scrollStepIntoView(step.id)
+}
+
+function scrollStepIntoView(stepId) {
+  // The card is in the DOM as soon as renderAllAnimated returns (the View
+  // Transition only buffers the *visual* transition). Smooth-scrolling now
+  // runs concurrently with the transition, which lands the card centered
+  // by the time the animation finishes.
+  const card = document.getElementById(`step-${stepId}`)
+  if (card) {
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
 }
 
 function removeStep(id) {
