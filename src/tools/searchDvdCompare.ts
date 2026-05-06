@@ -233,6 +233,16 @@ export const listDvdCompareReleases = (
   })())
 )
 
+// DVDCompare's <title> element historically used "DVD Compare: <Title>"
+// but newer pages use "Rewind @ www.dvdcompare.net - <Title>". Both
+// prefixes are stripped here so the parsed result is just the film
+// portion regardless of which template the page was rendered with.
+const stripDvdCompareTitlePrefix = (text: string): string => (
+  text
+  .replace(/^Rewind\s*@\s*www\.dvdcompare\.net\s*[-:]\s*/i, "")
+  .replace(/^DVD\s*Compare\s*[-:]\s*/i, "")
+)
+
 export const parseDvdCompareFilmTitle = (
   html: string,
   fid: number,
@@ -240,8 +250,7 @@ export const parseDvdCompareFilmTitle = (
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
   if (!titleMatch) return null
   const titleText = (
-    decodeHtmlEntities(titleMatch[1])
-    .replace(/^DVD\s*Compare\s*[-:]\s*/i, "")
+    stripDvdCompareTitlePrefix(decodeHtmlEntities(titleMatch[1]))
     .replace(/\s+/g, " ")
     .trim()
   )
@@ -292,11 +301,23 @@ export const lookupDvdCompareRelease = (
   )
 )
 
+export type DvdCompareReleaseScrape = {
+  // Raw text of the chosen release's "Extras" section. Lines are
+  // separated by `\n` (the scraper rewrites `<br>` to newlines so the
+  // downstream parser's `.split("\n")` actually sees per-item lines).
+  extras: string
+  // The film's display name + year, parsed from the page <title>. Null
+  // when the title can't be parsed (no year present, etc.). When set,
+  // the caller can use baseTitle + year directly without a follow-up
+  // network round-trip.
+  filmTitle: DvdCompareResult | null
+}
+
 export const searchDvdCompare = ({
   url,
 }: {
   url: string,
-}): Observable<string> => (
+}): Observable<DvdCompareReleaseScrape> => (
   from((async () => {
     const browser = await launchBrowser()
     try {
@@ -306,6 +327,14 @@ export const searchDvdCompare = ({
       // saved cookie state.
       const fullUrl = url.replace(/(.+)(#.+)/, "$1&sel=on$2")
       await page.goto(fullUrl)
+
+      // Capture the page <title> before the form submission triggers a
+      // navigation — title content survives the round-trip but reading
+      // it now keeps the eval simple.
+      const filmIdMatch = url.match(/fid=(\d+)/)
+      const filmId = filmIdMatch ? Number(filmIdMatch[1]) : 0
+      const rawTitleHtml = `<title>${await page.title()}</title>`
+      const filmTitle = parseDvdCompareFilmTitle(rawTitleHtml, filmId)
 
       const releasePackagesForm = page.locator('form[action^="film.php"]')
       if ((await releasePackagesForm.count()) === 0) {
@@ -339,11 +368,24 @@ export const searchDvdCompare = ({
         throw new Error("No extras for this release.")
       }
 
-      return await extrasLabel.evaluate((element) => (
-        element?.parentElement?.querySelector(".description")?.textContent
-        || element?.parentElement?.parentElement?.querySelector(".description")?.textContent
-        || ""
-      ))
+      // textContent collapses <br> tags, which DVDCompare uses to
+      // separate per-item lines inside .description. Inject a newline
+      // for every <br> on a clone of the node so the parser's
+      // `.split("\n")` actually sees per-item rows.
+      const extras = await extrasLabel.evaluate((element) => {
+        const description = (
+          element?.parentElement?.querySelector(".description")
+          ?? element?.parentElement?.parentElement?.querySelector(".description")
+        )
+        if (!description) return ""
+        const cloned = description.cloneNode(true) as HTMLElement
+        cloned.querySelectorAll("br").forEach((br) => {
+          br.replaceWith("\n")
+        })
+        return cloned.textContent ?? ""
+      })
+
+      return { extras, filmTitle }
     }
     finally {
       await browser.close()

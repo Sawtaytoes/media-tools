@@ -260,6 +260,21 @@ describe(parseDvdCompareFilmTitle.name, () => {
     })
   })
 
+  test("strips a leading 'Rewind @ www.dvdcompare.net - ' prefix from newer pages", () => {
+    // The current DVDCompare template renders the page <title> with the
+    // "Rewind @ www.dvdcompare.net - " brand prefix instead of the older
+    // "DVD Compare:" form. Both must parse cleanly.
+    expect(parseDvdCompareFilmTitle(
+      "<title>Rewind @ www.dvdcompare.net - Dragon Lord AKA Long xiao ye AKA Dragon Strike AKA Young Master in Love (Blu-ray 4K) (1982)</title>",
+      74250,
+    )).toEqual({
+      id: 74250,
+      baseTitle: "Dragon Lord AKA Long xiao ye AKA Dragon Strike AKA Young Master in Love",
+      variant: "Blu-ray 4K",
+      year: "1982",
+    })
+  })
+
   test("extracts Blu-ray variant from the title", () => {
     expect(parseDvdCompareFilmTitle("<title>DVDCompare - Soldier (Blu-ray) (1998)</title>", 12346))
     .toEqual({

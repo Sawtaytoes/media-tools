@@ -120,12 +120,11 @@ export const nameSpecialFeatures = ({
     concatMap((resolvedUrl) => (
       searchDvdCompare({ url: resolvedUrl })
     )),
-    concatMap((
-      specialFeatureText,
-    ) => (
-      parseSpecialFeatures(
-        specialFeatureText
-      )
+    // The scraper now returns { extras, filmTitle }. Until the cuts/movie-
+    // naming branches land (E.2/E.4), we still only consume the extras
+    // text the same way the old single-string return drove this pipeline.
+    concatMap(({ extras }) => (
+      parseSpecialFeatures(extras)
     )),
     concatMap((
       specialFeatures,
