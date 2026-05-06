@@ -16,14 +16,14 @@ export const queryRoutes = new OpenAPIHono()
 
 // Pulls the most informative message out of an error that may have a
 // nested cause (e.g. Node's TypeError(fetch failed) wraps ConnectTimeoutError).
-const messageFromError = (err: unknown): string => {
-  if (err instanceof Error) {
-    if (err.cause instanceof Error && err.cause.message) {
-      return err.cause.message
+const messageFromError = (error: unknown): string => {
+  if (error instanceof Error) {
+    if (error.cause instanceof Error && error.cause.message) {
+      return error.cause.message
     }
-    return err.message || String(err)
+    return error.message || String(error)
   }
-  return String(err)
+  return String(error)
 }
 
 queryRoutes.openapi(
