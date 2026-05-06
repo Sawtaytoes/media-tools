@@ -1,0 +1,125 @@
+# Canonical "anime subtitle processing" flow as a single YAML payload.
+#
+# This is the YAML equivalent of the TS pipeline in
+# ../media-sync/packages/sync-anime-and-manga/src/processAnimeSubtitles.ts.
+# Drop the contents into the Sequence Builder's Load YAML panel, fill in
+# the workDir + parentDir paths for the series you're processing, and click
+# either "▶ Run Sequence" (client-side per-step run) or "▶ Run via API"
+# (server-side umbrella job). Or POST it directly:
+#
+#   curl -X POST http://localhost:3000/sequences/run \
+#     -H 'Content-Type: application/json' \
+#     -d "{\"yaml\": \"$(jq -Rs . < examples/process-anime-subtitles.yaml | sed 's/^"//;s/"$//')\"}"
+#
+# Outline:
+#   1. keepLanguages     — drop everything but the requested audio + sub tracks
+#   2. copyFiles         — bring the filtered files back into workDir
+#   3. copyOutSubtitles  — extract the .ass subtitle files into a sibling
+#   4. deleteFilesByExtension — strip non-.ass cruft from the extracted set
+#   5. computeDefaultSubtitleRules — heuristic rules tailored to this series
+#   6. modifySubtitleMetadata     — apply them in place (no-op if empty)
+#   7. mergeTracks       — re-merge the subtitles into the media files
+#   8. copyFiles         — copy the merged result up to the parent series folder
+#   9. deleteFolder      — clean up the work directory
+#
+# OPTIONAL TRACK REORDERING:
+# If your series needs reordered tracks (subtitlesTrackIndexes), insert
+# this pair *between* steps 2 (firstCopyBack) and 3 (extractSubs):
+#
+#     - id: reorderTracks
+#       command: reorderTracks
+#       params:
+#         sourcePath: '@workDir'
+#         subtitlesTrackIndexes: [0]    # whatever order you need
+#         audioTrackIndexes: []
+#         videoTrackIndexes: []
+#     - id: secondCopyBack
+#       command: copyFiles
+#       params:
+#         sourcePath:
+#           linkedTo: reorderTracks
+#           output: folder
+#         destinationPath: '@workDir'
+#
+# (reorderTracks is now a no-op when all three index arrays are empty,
+# but the second copyFiles can't be — there'd be no folder to copy from.
+# Add both, or neither.)
+
+paths:
+  workDir:
+    label: Work Directory
+    value: 'D:\Anime\<series>\__work'
+  parentDir:
+    label: Parent Series Folder
+    value: 'D:\Anime\<series>'
+
+steps:
+  - id: keepLangs
+    command: keepLanguages
+    params:
+      sourcePath: '@workDir'
+      audioLanguages: [jpn]
+      subtitlesLanguages: [eng]
+
+  - id: firstCopyBack
+    command: copyFiles
+    params:
+      sourcePath:
+        linkedTo: keepLangs
+        output: folder
+      destinationPath: '@workDir'
+
+  - id: extractSubs
+    command: copyOutSubtitles
+    params:
+      sourcePath: '@workDir'
+
+  - id: pruneSubsFolder
+    command: deleteFilesByExtension
+    params:
+      sourcePath:
+        linkedTo: extractSubs
+        output: folder
+      extensions: [idx, vob, srt]
+      isRecursive: true
+
+  - id: computeRules
+    command: computeDefaultSubtitleRules
+    params:
+      sourcePath:
+        linkedTo: extractSubs
+        output: folder
+      isRecursive: true
+
+  - id: applyRules
+    command: modifySubtitleMetadata
+    params:
+      sourcePath:
+        linkedTo: extractSubs
+        output: folder
+      isRecursive: true
+      rules:
+        linkedTo: computeRules
+        output: rules
+
+  - id: mergeBack
+    command: mergeTracks
+    params:
+      mediaFilesPath: '@workDir'
+      subtitlesPath:
+        linkedTo: extractSubs
+        output: folder
+
+  - id: copyToSeriesFolder
+    command: copyFiles
+    params:
+      sourcePath:
+        linkedTo: mergeBack
+        output: folder
+      destinationPath: '@parentDir'
+
+  - id: cleanup
+    command: deleteFolder
+    params:
+      folderPath: '@workDir'
+      confirm: true
