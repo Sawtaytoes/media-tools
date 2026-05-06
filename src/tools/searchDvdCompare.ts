@@ -10,10 +10,18 @@ import {
 
 import { catchNamedError } from "./catchNamedError.js"
 
+export type DvdCompareVariant = "DVD" | "Blu-ray" | "Blu-ray 4K"
+
 export type DvdCompareResult = {
+  baseTitle: string
   id: number
-  title: string
+  variant: DvdCompareVariant
   year: string
+}
+
+export type DvdCompareRelease = {
+  hash: string
+  label: string
 }
 
 const DVDCOMPARE_BASE = "https://www.dvdcompare.net"
@@ -50,11 +58,22 @@ export const findDvdCompareResults = (
                   const fidMatch = href.match(/fid=(\d+)/)
                   const id = fidMatch ? Number(fidMatch[1]) : 0
                   const text = (link.textContent || "").trim()
-                  const yearMatch = text.match(/\((\d{4})\)/)
+                  // Match pattern: "Base Title [(Blu-ray 4K|Blu-ray)] (YYYY)"
+                  const fullMatch = text.match(/^(.+?)(?:\s*\((Blu-ray 4K|Blu-ray)\))?\s*\((\d{4})\)\s*$/)
+                  if (!fullMatch) {
+                    return { id, baseTitle: text, variant: "DVD", year: "" }
+                  }
+                  const [, base, variantToken, year] = fullMatch
+                  const variant = variantToken === "Blu-ray 4K"
+                    ? "Blu-ray 4K"
+                    : variantToken === "Blu-ray"
+                    ? "Blu-ray"
+                    : "DVD"
                   return {
                     id,
-                    title: text.replace(/\s*\(\d{4}\)\s*$/, "").trim(),
-                    year: yearMatch?.[1] ?? "",
+                    baseTitle: base.trim(),
+                    variant,
+                    year,
                   }
                 }).filter((r) => r.id > 0)
               })
@@ -68,6 +87,66 @@ export const findDvdCompareResults = (
       )
     )),
     catchNamedError(findDvdCompareResults),
+  )
+)
+
+export const listDvdCompareReleases = (
+  dvdCompareId: number,
+): Observable<DvdCompareRelease[]> => (
+  from(launchBrowser())
+  .pipe(
+    mergeMap((browser) => (
+      from(browser.newPage())
+      .pipe(
+        mergeMap((page) => (
+          from(
+            page.goto(
+              `${DVDCOMPARE_BASE}/comparisons/film.php?fid=${dvdCompareId}&sel=on`
+            )
+          )
+          .pipe(
+            mergeMap(async () => {
+              const releases = await page.evaluate(() => {
+                const checkboxes = Array.from(
+                  document.querySelectorAll('form[action^="film.php"] input[type="checkbox"]')
+                ) as HTMLInputElement[]
+
+                return checkboxes.map((checkbox) => {
+                  const hash = checkbox.getAttribute("name") || ""
+                  // The label text is usually in a wrapping <label> or in a sibling element.
+                  // Try several strategies to find the human-readable release description.
+                  let label = ""
+                  const wrappingLabel = checkbox.closest("label")
+                  if (wrappingLabel) {
+                    label = wrappingLabel.textContent?.trim() || ""
+                  }
+                  if (!label) {
+                    // Try parent row text minus the checkbox itself
+                    const parent = checkbox.parentElement
+                    if (parent) {
+                      label = parent.textContent?.trim() || ""
+                    }
+                  }
+                  if (!label) {
+                    // Fall back to next sibling text
+                    const next = checkbox.nextSibling
+                    if (next?.textContent) {
+                      label = next.textContent.trim()
+                    }
+                  }
+                  return { hash, label }
+                }).filter((r) => r.hash)
+              })
+
+              await browser.close()
+
+              return releases as DvdCompareRelease[]
+            }),
+          )
+        )),
+      )
+    )),
+    catchNamedError(listDvdCompareReleases),
   )
 )
 

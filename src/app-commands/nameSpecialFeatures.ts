@@ -65,7 +65,7 @@ const resolveUrl = ({
                 ...results
                 .map((result, index) => ({
                   index,
-                  label: `${result.title}${result.year ? ` (${result.year})` : ""}`,
+                  label: `${result.baseTitle}${result.variant !== "DVD" ? ` (${result.variant})` : ""}${result.year ? ` (${result.year})` : ""}`,
                 })),
                 {
                   index: -1,
