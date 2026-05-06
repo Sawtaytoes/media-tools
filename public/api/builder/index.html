@@ -675,6 +675,33 @@ function setParam(id, fieldName, value) {
   updateUrl()
 }
 
+// When the user commits a typed path (onchange = blur or Enter), lift it
+// out of step.params into a top-level path variable so it survives YAML
+// round-trips cleanly and the user can rename / reuse it. Skips empty
+// strings; if a path var with the same value already exists, just links
+// to that one instead of duplicating.
+function promotePathToPathVar(stepId, fieldName, rawValue) {
+  const step = steps.find(s => s.id === stepId)
+  if (!step) return
+  if (step.links?.[fieldName]) return
+  const value = (rawValue ?? '').trim()
+  if (!value) return
+
+  const existing = paths.find(p => p.value === value)
+  if (existing) {
+    step.links[fieldName] = existing.id
+    delete step.params[fieldName]
+    renderAll()
+    return
+  }
+
+  const newPath = { id: 'path_' + randomHex(), label: 'Path ' + paths.length, value }
+  paths.push(newPath)
+  step.links[fieldName] = newPath.id
+  delete step.params[fieldName]
+  renderAll()
+}
+
 function setLink(id, field, srcIdStr) {
   const step = steps.find(s => s.id === id)
   if (!step) return
@@ -999,8 +1026,8 @@ function renderPathField(step, field, stepIndex) {
     <input type="text" value="${esc(computed ?? val)}" ${computed !== null ? 'readonly' : ''}
       data-step="${step.id}" data-field="${field.name}"
       class="${computed !== null ? 'linked-input' : 'manual-input'} w-full bg-slate-${computed !== null ? '900' : '700'} text-slate-${computed !== null ? '400' : '200'} text-xs rounded px-2 py-1.5 border border-slate-${computed !== null ? '700' : '600'} focus:outline-none focus:border-blue-500 font-mono"
-      ${computed !== null ? '' : `oninput="setParam(${step.id},'${field.name}',this.value||undefined)"`} />
-    ${computed !== null ? `<input type="text" value="${esc(val)}" data-step="${step.id}" data-field="${field.name}" class="manual-input hidden w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono" oninput="setParam(${step.id},'${field.name}',this.value||undefined)" />` : ''}
+      ${computed !== null ? '' : `oninput="setParam(${step.id},'${field.name}',this.value||undefined)" onchange="promotePathToPathVar(${step.id},'${field.name}',this.value)"`} />
+    ${computed !== null ? `<input type="text" value="${esc(val)}" data-step="${step.id}" data-field="${field.name}" class="manual-input hidden w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono" oninput="setParam(${step.id},'${field.name}',this.value||undefined)" onchange="promotePathToPathVar(${step.id},'${field.name}',this.value)" />` : ''}
   </div>`
 }
 
