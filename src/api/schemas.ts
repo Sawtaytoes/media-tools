@@ -411,5 +411,6 @@ export const directoryEntrySchema = z.object({
 
 export const listDirectoryEntriesResponseSchema = z.object({
   entries: z.array(directoryEntrySchema).describe("Entries in the directory"),
+  separator: z.string().describe("OS-native path separator ('\\\\' on Windows, '/' on Linux/macOS). Use this when joining new path segments client-side."),
   error: z.string().nullable().optional().describe("Error message if the listing failed (e.g. missing path, permission denied). When present, entries is empty."),
 })

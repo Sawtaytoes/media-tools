@@ -1708,6 +1708,12 @@ async function runPathLookup(parentPath) {
     const data = await response.json()
     // Stale-check.
     if (!pathPickerState || pathPickerState.requestToken !== myToken) return
+    // Always trust the server's separator over guessing client-side: the
+    // user typing "G:\Movies" on a Linux server is still a Linux path,
+    // and vice-versa. Defaults to '/' if missing for any reason.
+    if (data.separator) {
+      pathPickerState.separator = data.separator
+    }
     if (data.error) {
       pathPickerState.entries = []
       pathPickerState.error = data.error
@@ -1775,12 +1781,11 @@ function renderPathPickerList() {
 
   const queryLower = pathPickerState.query.toLowerCase()
   const matches = pathPickerState.entries
+    // Path fields only ever hold directories — files are never valid values
+    // for a sourcePath / destinationPath / Base Path / etc. Filter aggressively.
+    .filter(e => e.isDirectory)
     .filter(e => !queryLower || e.name.toLowerCase().startsWith(queryLower))
-    // Directories first, then alphabetical.
-    .sort((a, b) => {
-      if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1
-      return a.name.localeCompare(b.name)
-    })
+    .sort((a, b) => a.name.localeCompare(b.name))
 
   pathPickerState.matches = matches
   if (pathPickerState.activeIndex >= matches.length) {
@@ -1794,11 +1799,10 @@ function renderPathPickerList() {
 
   list.innerHTML = matches.map((entry, index) => {
     const active = index === pathPickerState.activeIndex
-    const icon = entry.isDirectory ? '📁' : '📄'
     return `<button onmousedown="event.preventDefault()" onclick="pathPickerSelectByIndex(${index})"
       data-path-idx="${index}"
       class="w-full text-left px-3 py-1 flex items-center gap-2 ${active ? 'bg-blue-700 text-white' : 'text-slate-200 hover:bg-slate-800'}">
-      <span class="shrink-0">${icon}</span>
+      <span class="shrink-0 text-slate-400">📁</span>
       <span class="font-mono text-xs flex-1 min-w-0 truncate">${esc(entry.name)}</span>
     </button>`
   }).join('')
@@ -1817,28 +1821,25 @@ function pathPickerSelectByIndex(index) {
 function applyPathPickerSelection(entry) {
   if (!pathPickerState) return
   const { inputElement, target, parentPath } = pathPickerState
-  // Compose the new path. Use forward slashes for new joins (cross-platform);
-  // if the parent already used backslashes, follow that convention.
-  const sep = parentPath.includes('\\') && !parentPath.includes('/') ? '\\' : '/'
-  const base = parentPath.endsWith('/') || parentPath.endsWith('\\') ? parentPath.slice(0, -1) : parentPath
-  let newValue = `${base}${sep}${entry.name}`
-  if (entry.isDirectory) {
-    newValue = newValue + sep  // trailing separator so the user can keep drilling in
-  }
+  // Always use the server-reported separator (set in runPathLookup) — the
+  // user might have typed forward slashes on a Windows server, but the
+  // joined path should still be backslash-separated for that filesystem.
+  // Falls back to '/' only if the server didn't supply one for any reason.
+  const separator = pathPickerState.separator || '/'
+  const base = parentPath.endsWith('/') || parentPath.endsWith('\\')
+    ? parentPath.slice(0, -1)
+    : parentPath
+  // No trailing separator. The user picked a directory and may want it as
+  // the final value (e.g., a source path); if they want to drill in, they
+  // type the separator themselves and the picker reopens via oninput.
+  const newValue = `${base}${separator}${entry.name}`
   inputElement.value = newValue
-  // Re-fire the input handler so step.params/path-var stays in sync. Keep
-  // the typeahead open if we just navigated INTO a directory; close on file.
   if (target.mode === 'step') {
     setParam(target.stepId, target.fieldName, newValue)
   } else {
     setPathValue(target.pathVarId, newValue)
   }
-  if (entry.isDirectory) {
-    schedulePathLookup(inputElement, target, newValue)
-    inputElement.focus()
-  } else {
-    closePathPicker()
-  }
+  closePathPicker()
 }
 
 function pathPickerKeydown(event, inputElement, target) {

@@ -1,3 +1,5 @@
+import { sep as pathSeparator } from "node:path"
+
 import { OpenAPIHono, createRoute } from "@hono/zod-openapi"
 import { lastValueFrom } from "rxjs"
 
@@ -355,12 +357,14 @@ queryRoutes.openapi(
   async (context) => {
     const body = context.req.valid("json")
     try {
-      const entries = await lastValueFrom(listDirectoryEntries(body.path))
-      return context.json({ entries, error: null }, 200)
+      const result = await lastValueFrom(listDirectoryEntries(body.path))
+      return context.json({ ...result, error: null }, 200)
     } catch (err) {
       const message = messageFromError(err)
       console.error("[listDirectoryEntries]", message)
-      return context.json({ entries: [], error: message }, 200)
+      // Fall back to the OS native separator even on error so the client
+      // can still build sensible paths if it retries.
+      return context.json({ entries: [], separator: pathSeparator, error: message }, 200)
     }
   },
 )

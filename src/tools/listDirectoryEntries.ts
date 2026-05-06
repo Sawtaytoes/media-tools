@@ -1,5 +1,5 @@
 import { readdir, stat } from "node:fs/promises"
-import { dirname } from "node:path"
+import { dirname, sep as nativePathSeparator } from "node:path"
 import {
   from,
   type Observable,
@@ -10,7 +10,16 @@ export type DirectoryEntry = {
   name: string
 }
 
+export type ListDirectoryEntriesResult = {
+  entries: DirectoryEntry[]
+  separator: string
+}
+
 // One-shot directory listing for the path-field typeahead.
+//
+// Returns both the entries and the OS-native path separator ("\\" on Windows,
+// "/" on Linux/macOS) so the client can join paths with the right separator
+// regardless of what the user has typed so far.
 //
 // If `path` is a file, lists its parent directory instead — the typeahead
 // flow expects siblings of a partially-typed file path to surface.
@@ -18,7 +27,7 @@ export type DirectoryEntry = {
 // route can package them into the response's optional `error` field.
 export const listDirectoryEntries = (
   path: string,
-): Observable<DirectoryEntry[]> => (
+): Observable<ListDirectoryEntriesResult> => (
   from((async () => {
     let lookupPath = path
     try {
@@ -33,9 +42,12 @@ export const listDirectoryEntries = (
     }
 
     const entries = await readdir(lookupPath, { withFileTypes: true })
-    return entries.map((entry) => ({
-      isDirectory: entry.isDirectory(),
-      name: entry.name,
-    }))
+    return {
+      entries: entries.map((entry) => ({
+        isDirectory: entry.isDirectory(),
+        name: entry.name,
+      })),
+      separator: nativePathSeparator,
+    }
   })())
 )
