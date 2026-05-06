@@ -1394,11 +1394,31 @@ function openCmdPicker(stepId, anchorEl) {
   const popover = document.getElementById('cmd-picker-popover')
   const rect = anchorEl.getBoundingClientRect()
   const popoverWidth = 340
+  const popoverMaxHeight = 400  // matches CSS max-height
+  const margin = 8
+
+  // Horizontal: prefer aligning to the trigger's left, but stay within the viewport.
   let left = rect.left
-  if (left + popoverWidth > window.innerWidth - 8) left = window.innerWidth - popoverWidth - 8
-  if (left < 8) left = 8
+  if (left + popoverWidth > window.innerWidth - margin) left = window.innerWidth - popoverWidth - margin
+  if (left < margin) left = margin
+
+  // Vertical: prefer placing the popover BELOW the trigger; if the available
+  // room there is too small AND there's more room above, flip above instead.
+  // Cap the popover height so it never extends past the viewport edge.
+  const spaceBelow = window.innerHeight - rect.bottom - margin
+  const spaceAbove = rect.top - margin
+  const flipAbove = spaceBelow < 200 && spaceAbove > spaceBelow
+  let top, height
+  if (flipAbove) {
+    height = Math.min(popoverMaxHeight, spaceAbove)
+    top = rect.top - height - 4
+  } else {
+    height = Math.min(popoverMaxHeight, spaceBelow)
+    top = rect.bottom + 4
+  }
   popover.style.left = `${left}px`
-  popover.style.top = `${rect.bottom + 4}px`
+  popover.style.top = `${top}px`
+  popover.style.maxHeight = `${height}px`
   popover.classList.remove('hidden')
 
   const input = document.getElementById('cmd-picker-input')
