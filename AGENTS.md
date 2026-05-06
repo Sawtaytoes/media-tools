@@ -35,6 +35,15 @@ in module files must be removed before those modules can be used in the API.
 - For iterating arrays, use functional methods (`forEach`, `map`, `filter`, `reduce`, etc.) instead of `for...of` loops
 - Imports sorted alphabetically within each group
 - Observable pipelines broken across lines (see existing modules for reference)
+- Always use multi-line braced `if` bodies, even for early returns and one-liners. Don't write `if (!cmd) return null` — write:
+
+  ```ts
+  if (!cmd) {
+    return null
+  }
+  ```
+
+  Same rule for `else`, `for`, `while`. The brace cost is one line; the safety against silent edit mistakes (adding a second statement that quietly falls outside the conditional) is worth it.
 
 ## Testing
 

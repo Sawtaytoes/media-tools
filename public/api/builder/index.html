@@ -538,18 +538,26 @@ function restoreFromUrl() {
 
 function mainSrcField(commandName) {
   const cmd = COMMANDS[commandName]
-  if (!cmd) return null
+  if (!cmd) {
+    return null
+  }
   for (const n of ['sourcePath','sourceFilesPath','mediaFilesPath']) {
-    if (cmd.fields.some(f => f.name === n)) return n
+    if (cmd.fields.some(f => f.name === n)) {
+      return n
+    }
   }
   const pf = cmd.fields.find(f => f.type === 'path')
   return pf ? pf.name : null
 }
 
 function stepOutput(step) {
-  if (!step.command) return ''
+  if (!step.command) {
+    return ''
+  }
   const cmd = COMMANDS[step.command]
-  if (!cmd) return ''
+  if (!cmd) {
+    return ''
+  }
   const msf = mainSrcField(step.command)
   let src = msf ? (getLinkedValue(step, msf) ?? step.params[msf] ?? '') : ''
   src = src.replace(/[\\/]$/, '')
