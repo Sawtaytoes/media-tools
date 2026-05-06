@@ -494,6 +494,18 @@ const COMMANDS = {
       { name: "timecodePadding", type: "number", label: "Timecode Padding", default: 2 },
     ]
   },
+  nameMovies: {
+    summary: "Rename a movie folder's files to Plex's `Title (Year) {edition-...}.mkv` using TMDB + DVDCompare metadata",
+    tag: "Naming Operations",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "movieDbId", type: "numberWithLookup", lookupType: "tmdb", label: "TMDB Movie ID", placeholder: "27205", required: true, companionNameField: "movieDbName" },
+      { name: "editionLabel", type: "string", label: "Edition Label (overrides DVDCompare lookup)", placeholder: "Director's Cut" },
+      { name: "dvdCompareId", type: "numberWithLookup", lookupType: "dvdcompare", label: "DVDCompare Film ID (optional, drives edition)", placeholder: "12345", companionNameField: "dvdCompareName" },
+      { name: "dvdCompareReleaseHash", type: "string", label: "DVDCompare Release Hash", placeholder: "1", companionNameField: "dvdCompareReleaseLabel" },
+    ]
+  },
   nameTvShowEpisodes: {
     summary: "Rename TV show episode files based on metadata",
     tag: "Naming Operations",
@@ -2421,6 +2433,9 @@ async function runReverseLookup(stepId, fieldName, id, requestToken) {
   } else if (field.lookupType === 'tvdb') {
     endpoint = '/queries/lookupTvdb'
     body = { tvdbId: id }
+  } else if (field.lookupType === 'tmdb') {
+    endpoint = '/queries/lookupMovieDb'
+    body = { movieDbId: id }
   } else if (field.lookupType === 'dvdcompare') {
     endpoint = '/queries/lookupDvdCompare'
     body = { dvdCompareId: id }
@@ -2465,6 +2480,9 @@ function renderSimpleSearchResults() {
     } else if (lookupState.lookupType === 'tvdb') {
       id = r.tvdbId
       label = `${esc(r.name)}${r.year ? ` <span class="text-slate-500">(${esc(r.year)})</span>` : ''}${r.status ? ` <span class="text-slate-500">[${esc(r.status)}]</span>` : ''}`
+    } else if (lookupState.lookupType === 'tmdb') {
+      id = r.movieDbId
+      label = `${esc(r.title)}${r.year ? ` <span class="text-slate-500">(${esc(r.year)})</span>` : ''}`
     }
     return `<button onclick="lookupSelectSimpleByIndex(${index})"
       class="text-left text-sm px-3 py-2 rounded-lg border border-slate-600 text-slate-200 hover:bg-blue-700 hover:border-blue-500 transition-colors flex items-center gap-2">
@@ -2576,6 +2594,7 @@ async function runLookupSearch(searchTerm) {
   try {
     const endpoint = lookupState.lookupType === 'mal' ? '/queries/searchMal'
                    : lookupState.lookupType === 'tvdb' ? '/queries/searchTvdb'
+                   : lookupState.lookupType === 'tmdb' ? '/queries/searchMovieDb'
                    : '/queries/searchDvdCompare'
     const resp = await fetch(endpoint, {
       method: 'POST',
@@ -2599,14 +2618,30 @@ function lookupSelectSimpleByIndex(index) {
   if (!lookupState) return
   const r = lookupState._activeResults?.[index]
   if (!r) return
-  const id = lookupState.lookupType === 'mal' ? r.malId : r.tvdbId
+  // Each lookup type carries the id under its own key, and TMDB results
+  // use `title` + `year` rather than the `name` field that MAL/TVDB
+  // share. Build a uniform companion display string per type.
+  let id, displayName
+  if (lookupState.lookupType === 'mal') {
+    id = r.malId
+    displayName = r.name
+  } else if (lookupState.lookupType === 'tvdb') {
+    id = r.tvdbId
+    displayName = r.name
+  } else if (lookupState.lookupType === 'tmdb') {
+    id = r.movieDbId
+    displayName = r.year ? `${r.title} (${r.year})` : r.title
+  } else {
+    id = r.tvdbId
+    displayName = r.name
+  }
   const step = steps.find(s => s.id === lookupState.stepId)
   if (step) {
     const cmd = COMMANDS[step.command]
     const field = cmd?.fields.find(f => f.name === lookupState.fieldName)
     step.params[lookupState.fieldName] = id
-    if (field?.companionNameField && r.name) {
-      step.params[field.companionNameField] = r.name
+    if (field?.companionNameField && displayName) {
+      step.params[field.companionNameField] = displayName
     }
     refreshLinkedInputs()
     updateYaml()
