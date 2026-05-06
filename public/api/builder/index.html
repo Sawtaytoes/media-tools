@@ -1381,6 +1381,7 @@ async function runSequence() {
     step.status = 'pending'
     step.error = null
     step.results = null
+    step.logs = null
     updateStepUI(step)
   }
 
@@ -1404,6 +1405,7 @@ async function runStep(stepId) {
   step.status = 'pending'
   step.error = null
   step.results = null
+  step.logs = null
   updateStepUI(step)
 
   await runOneStep(step)
@@ -2427,6 +2429,13 @@ function uninstallLookupKeyboardHandler() {
 function updateStepLogs(stepId, logs) {
   const card = document.getElementById(`step-${stepId}`)
   if (!card) return
+
+  // Persist the full log on the step so it survives once the step is no
+  // longer running and the live-tail <pre> swaps for a collapsed <details>.
+  // The user can then expand and copy logs after a failure.
+  const step = steps.find(s => s.id === stepId)
+  if (step) step.logs = logs.slice()
+
   let logEl = card.querySelector('.step-logs')
   const text = logs.slice(-8).join('\n')
   if (!logEl) {
@@ -2435,10 +2444,13 @@ function updateStepLogs(stepId, logs) {
       fieldsEl.insertAdjacentHTML('beforebegin',
         `<pre class="step-logs text-xs text-slate-400 bg-slate-950 rounded px-2 py-1.5 mb-2 font-mono max-h-24 overflow-y-auto whitespace-pre-wrap">${esc(text)}</pre>`)
     }
-  } else {
+  } else if (logEl.tagName === 'PRE') {
+    // Live-tail update during run.
     logEl.textContent = text
     logEl.scrollTop = logEl.scrollHeight
   }
+  // If logEl is the post-run <details>, no live update is needed —
+  // updateStepUI will rebuild it once status flips off 'running'.
 }
 
 function updateStepUI(step) {
@@ -2474,9 +2486,32 @@ function updateStepUI(step) {
     errEl.remove()
   }
 
-  // Remove log output once the step is no longer running
+  // Once the step stops running, swap the live-tail <pre> for a
+  // collapsible <details> holding the FULL log + a copy button. Collapsed
+  // by default on success (logs are usually noise once results arrive),
+  // open by default on failure (the logs are the only diagnostic).
   const logEl = card.querySelector('.step-logs')
-  if (logEl && step.status !== 'running') logEl.remove()
+  if (logEl && step.status !== 'running') {
+    const fullLog = (step.logs || []).join('\n')
+    if (fullLog) {
+      const isOpen = step.status === 'failed'
+      const fieldsEl = card.querySelector('.space-y-2')
+      logEl.remove()
+      if (fieldsEl) {
+        fieldsEl.insertAdjacentHTML('beforebegin', `
+          <details class="step-logs text-xs mb-2"${isOpen ? ' open' : ''}>
+            <summary class="cursor-pointer text-slate-400 hover:text-slate-300 select-none flex items-center gap-2">
+              <span>Logs</span>
+              <button type="button" class="copy-btn ml-auto text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300" title="Copy logs to clipboard">📋 Copy</button>
+            </summary>
+            <pre class="text-slate-400 bg-slate-950 rounded px-2 py-1.5 mt-1 font-mono max-h-64 overflow-y-auto whitespace-pre-wrap">${esc(fullLog)}</pre>
+          </details>`)
+      }
+    } else {
+      // Step stopped with no captured logs — drop the live element entirely.
+      logEl.remove()
+    }
+  }
 
   // Render results when the step has finished
   let resultsEl = card.querySelector('.step-results')
@@ -2487,7 +2522,10 @@ function updateStepUI(step) {
       if (fieldsEl) {
         fieldsEl.insertAdjacentHTML('beforebegin',
           `<details class="step-results text-xs mb-2" open>
-            <summary class="cursor-pointer text-emerald-400 hover:text-emerald-300 select-none">Results</summary>
+            <summary class="cursor-pointer text-emerald-400 hover:text-emerald-300 select-none flex items-center gap-2">
+              <span>Results</span>
+              <button type="button" class="copy-btn ml-auto text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300" title="Copy results to clipboard">📋 Copy</button>
+            </summary>
             <pre class="text-emerald-300 bg-slate-950 rounded px-2 py-1.5 mt-1 font-mono whitespace-pre-wrap break-words"></pre>
           </details>`)
         resultsEl = card.querySelector('.step-results')
@@ -2514,6 +2552,33 @@ function formatStepResults(commandName, results) {
     return String(value)
   }
 }
+
+// ─── Copy buttons ─────────────────────────────────────────────────────────────
+
+// Delegated click for any `.copy-btn` inside a <details> (Results / Logs).
+// Copies the sibling <pre>'s text to the clipboard and stops the click from
+// bubbling up to the <summary> (which would toggle the disclosure).
+async function copyDetailsContent(button) {
+  const details = button.closest('details')
+  const pre = details?.querySelector('pre')
+  if (!pre) return
+  const original = button.textContent
+  try {
+    await navigator.clipboard.writeText(pre.textContent || '')
+    button.textContent = '✓ Copied'
+  } catch {
+    button.textContent = '✗ Failed'
+  }
+  setTimeout(() => { button.textContent = original }, 1200)
+}
+
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('.copy-btn')
+  if (!button) return
+  event.preventDefault()
+  event.stopPropagation()
+  copyDetailsContent(button)
+})
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
