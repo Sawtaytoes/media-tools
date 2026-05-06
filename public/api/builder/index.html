@@ -79,6 +79,20 @@
   </div>
 </div>
 
+<!-- Lookup modal -->
+<div id="lookup-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80" onclick="closeLookupModal(event)">
+  <div class="bg-slate-900 border border-slate-600 rounded-xl flex flex-col gap-4 p-6" style="width:min(90vw,640px);max-height:85vh" onclick="event.stopPropagation()">
+    <div class="flex items-center justify-between gap-3 shrink-0">
+      <div class="flex items-center gap-2">
+        <button id="lookup-back-btn" onclick="lookupGoBack()" class="hidden text-xs text-slate-400 hover:text-slate-200">← Back</button>
+        <p id="lookup-title" class="text-sm font-medium text-slate-200">Lookup</p>
+      </div>
+      <button onclick="closeLookupModal()" class="text-slate-500 hover:text-slate-200 text-lg leading-none w-7 h-7 flex items-center justify-center rounded hover:bg-slate-800">✕</button>
+    </div>
+    <div id="lookup-body" class="flex flex-col gap-3 overflow-y-auto min-h-0"></div>
+  </div>
+</div>
+
 <script>
 // ─── Command definitions ──────────────────────────────────────────────────────
 
@@ -795,6 +809,18 @@ function renderFields(step, stepIndex) {
         class="w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500" /></div>`
     }
 
+    if (field.type === 'numberWithLookup') {
+      const num = val ?? field.default ?? ''
+      return `<div>${label}<div class="flex items-center gap-2">
+        <input type="number" value="${esc(num)}" placeholder="${esc(field.placeholder ?? '')}"
+          onchange="setParam(${step.id},'${field.name}',this.value===''?undefined:Number(this.value))"
+          class="flex-1 min-w-0 bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500" />
+        <button onclick="openLookup('${field.lookupType}',${step.id},'${field.name}')"
+          title="Look up ${esc(field.label)}"
+          class="shrink-0 text-xs bg-slate-700 hover:bg-blue-700 text-slate-200 hover:text-white px-2.5 py-1.5 rounded border border-slate-600 hover:border-blue-500">🔍</button>
+      </div></div>`
+    }
+
     if (field.type === 'languageCode') {
       const str = val ?? ''
       return `<div>${label}<input type="text" value="${esc(str)}" placeholder="eng"
@@ -1185,6 +1211,277 @@ async function submitPromptChoice(jobId, promptId, selectedIndex) {
     console.error('Failed to submit prompt response', err)
   }
 }
+
+// ─── Lookup modal ─────────────────────────────────────────────────────────────
+
+let lookupState = null
+// shape: { lookupType, stepId, fieldName, stage, searchTerm, results, formatFilters,
+//          selectedGroup, selectedFid, releases, loading }
+
+const LOOKUP_TITLES = {
+  mal: 'Look up MAL ID',
+  tvdb: 'Look up TVDB ID',
+  dvdcompare: 'Look up DVDCompare Film ID',
+}
+
+function openLookup(lookupType, stepId, fieldName) {
+  lookupState = {
+    lookupType, stepId, fieldName,
+    stage: 'search',
+    searchTerm: '',
+    results: null,
+    formatFilters: { 'DVD': true, 'Blu-ray': true, 'Blu-ray 4K': true },
+    selectedGroup: null,
+    selectedFid: null,
+    releases: null,
+    loading: false,
+  }
+  renderLookupModal()
+  document.getElementById('lookup-modal').classList.remove('hidden')
+  setTimeout(() => document.getElementById('lookup-search-input')?.focus(), 50)
+}
+
+function closeLookupModal(event) {
+  if (event && event.target !== document.getElementById('lookup-modal')) return
+  document.getElementById('lookup-modal').classList.add('hidden')
+  lookupState = null
+}
+
+function lookupGoBack() {
+  if (!lookupState) return
+  if (lookupState.stage === 'release') {
+    lookupState.stage = 'variant'
+  } else if (lookupState.stage === 'variant') {
+    lookupState.stage = 'search'
+    lookupState.selectedGroup = null
+  }
+  renderLookupModal()
+}
+
+function renderLookupModal() {
+  const titleEl = document.getElementById('lookup-title')
+  const backBtn = document.getElementById('lookup-back-btn')
+  const body = document.getElementById('lookup-body')
+  if (!lookupState) return
+
+  titleEl.textContent = LOOKUP_TITLES[lookupState.lookupType] ?? 'Lookup'
+
+  if (lookupState.stage === 'search') {
+    backBtn.classList.add('hidden')
+    body.innerHTML = renderLookupSearchView()
+  } else if (lookupState.stage === 'variant') {
+    backBtn.classList.remove('hidden')
+    body.innerHTML = renderLookupVariantView()
+  } else if (lookupState.stage === 'release') {
+    backBtn.classList.remove('hidden')
+    body.innerHTML = renderLookupReleaseView()
+  }
+}
+
+function renderLookupSearchView() {
+  const isDvdCompare = lookupState.lookupType === 'dvdcompare'
+  const filters = isDvdCompare
+    ? `<div class="flex items-center gap-3 text-xs text-slate-400">
+        <span class="font-medium">Filter:</span>
+        ${['DVD', 'Blu-ray', 'Blu-ray 4K'].map(format => `
+          <label class="flex items-center gap-1 cursor-pointer">
+            <input type="checkbox" ${lookupState.formatFilters[format] ? 'checked' : ''}
+              onchange="lookupState.formatFilters['${format}']=this.checked; renderLookupModal()"
+              class="w-3.5 h-3.5 rounded bg-slate-700 border-slate-500 accent-blue-500" />
+            <span>${format}</span>
+          </label>
+        `).join('')}
+      </div>`
+    : ''
+
+  let resultsHtml = ''
+  if (lookupState.loading) {
+    resultsHtml = '<p class="text-xs text-slate-500 text-center py-4">Searching…</p>'
+  } else if (lookupState.results === null) {
+    resultsHtml = '<p class="text-xs text-slate-500 text-center py-4">Enter a search term and press Enter.</p>'
+  } else if (lookupState.results.length === 0) {
+    resultsHtml = '<p class="text-xs text-slate-500 text-center py-4">No results found.</p>'
+  } else if (isDvdCompare) {
+    resultsHtml = renderDvdCompareSearchResults()
+  } else {
+    resultsHtml = renderSimpleSearchResults()
+  }
+
+  return `
+    <div class="flex items-center gap-2">
+      <input id="lookup-search-input" type="text" value="${esc(lookupState.searchTerm)}" placeholder="Title to search…"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();runLookupSearch(this.value)}"
+        class="flex-1 bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500" />
+      <button onclick="runLookupSearch(document.getElementById('lookup-search-input').value)"
+        class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded font-medium shrink-0">Search</button>
+    </div>
+    ${filters}
+    <div class="flex flex-col gap-1.5 overflow-y-auto min-h-0">${resultsHtml}</div>
+  `
+}
+
+function renderSimpleSearchResults() {
+  return lookupState.results.map((r) => {
+    let label, id
+    if (lookupState.lookupType === 'mal') {
+      id = r.malId
+      label = `${esc(r.name)}${r.airDate ? ` <span class="text-slate-500">(${esc(r.airDate)})</span>` : ''}${r.mediaType ? ` <span class="text-slate-500">[${esc(r.mediaType)}]</span>` : ''}`
+    } else if (lookupState.lookupType === 'tvdb') {
+      id = r.tvdbId
+      label = `${esc(r.name)}${r.year ? ` <span class="text-slate-500">(${esc(r.year)})</span>` : ''}${r.status ? ` <span class="text-slate-500">[${esc(r.status)}]</span>` : ''}`
+    }
+    return `<button onclick="lookupSelectSimple(${id})"
+      class="text-left text-sm px-3 py-2 rounded-lg border border-slate-600 text-slate-200 hover:bg-blue-700 hover:border-blue-500 transition-colors">
+      ${label}<span class="ml-2 text-xs font-mono text-slate-500">#${id}</span>
+    </button>`
+  }).join('')
+}
+
+function renderDvdCompareSearchResults() {
+  // Group by baseTitle + year, filter by checked formats
+  const groups = new Map()
+  for (const r of lookupState.results) {
+    if (!lookupState.formatFilters[r.variant]) continue
+    const key = `${r.baseTitle}|${r.year}`
+    if (!groups.has(key)) groups.set(key, { baseTitle: r.baseTitle, year: r.year, variants: [] })
+    groups.get(key).variants.push({ id: r.id, variant: r.variant })
+  }
+
+  if (groups.size === 0) {
+    return '<p class="text-xs text-slate-500 text-center py-4">No results match the selected formats.</p>'
+  }
+
+  const items = Array.from(groups.values()).map((group, index) => {
+    const variantBadges = group.variants.map(v => `<span class="text-xs font-mono px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">${esc(v.variant)}</span>`).join(' ')
+    return `<button onclick="lookupSelectGroup(${index})"
+      class="text-left text-sm px-3 py-2 rounded-lg border border-slate-600 text-slate-200 hover:bg-blue-700 hover:border-blue-500 transition-colors flex items-center gap-2 flex-wrap">
+      <span class="font-medium">${esc(group.baseTitle)}</span>
+      ${group.year ? `<span class="text-slate-500">(${esc(group.year)})</span>` : ''}
+      <span class="ml-auto flex gap-1">${variantBadges}</span>
+    </button>`
+  }).join('')
+
+  // Stash the groups so lookupSelectGroup can resolve by index
+  lookupState._renderedGroups = Array.from(groups.values())
+  return items
+}
+
+function renderLookupVariantView() {
+  const group = lookupState.selectedGroup
+  const variants = group.variants.map((v) => `<button onclick="lookupSelectVariant(${v.id})"
+    class="text-left text-sm px-3 py-2 rounded-lg border border-slate-600 text-slate-200 hover:bg-blue-700 hover:border-blue-500 transition-colors flex items-center gap-2">
+    <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-700 text-slate-300">${esc(v.variant)}</span>
+    <span class="text-slate-400 text-xs">Film ID</span>
+    <span class="font-mono text-xs">#${v.id}</span>
+  </button>`).join('')
+  return `
+    <p class="text-sm text-slate-300">Pick a format for <span class="font-medium">${esc(group.baseTitle)}${group.year ? ` (${esc(group.year)})` : ''}</span>:</p>
+    <div class="flex flex-col gap-1.5">${variants}</div>
+  `
+}
+
+function renderLookupReleaseView() {
+  const fid = lookupState.selectedFid
+  const filmUrl = `https://www.dvdcompare.net/comparisons/film.php?fid=${fid}`
+  let body = ''
+  if (lookupState.loading) {
+    body = '<p class="text-xs text-slate-500 text-center py-4">Loading releases…</p>'
+  } else if (!lookupState.releases || lookupState.releases.length === 0) {
+    body = '<p class="text-xs text-slate-500 text-center py-4">No release packages found.</p>'
+  } else {
+    body = lookupState.releases.map(r => `<button onclick="lookupSelectRelease('${esc(r.hash)}')"
+      class="text-left text-sm px-3 py-2 rounded-lg border border-slate-600 text-slate-200 hover:bg-blue-700 hover:border-blue-500 transition-colors">
+      <span class="text-xs font-mono text-slate-500 mr-2">#${esc(r.hash)}</span>${esc(r.label || '(no label)')}
+    </button>`).join('')
+  }
+  return `
+    <p class="text-sm text-slate-300">Pick a release package (Film ID #${fid}):</p>
+    <a href="${filmUrl}" target="_blank" rel="noopener" class="text-xs text-blue-400 hover:text-blue-300 underline">Open film page in new tab ↗</a>
+    <div class="flex flex-col gap-1.5 overflow-y-auto min-h-0">${body}</div>
+  `
+}
+
+async function runLookupSearch(searchTerm) {
+  if (!searchTerm || !lookupState) return
+  lookupState.searchTerm = searchTerm
+  lookupState.loading = true
+  renderLookupModal()
+  try {
+    const endpoint = lookupState.lookupType === 'mal' ? '/queries/searchMal'
+                   : lookupState.lookupType === 'tvdb' ? '/queries/searchTvdb'
+                   : '/queries/searchDvdCompare'
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ searchTerm }),
+    })
+    const data = await resp.json()
+    lookupState.results = data.results ?? []
+  } catch (err) {
+    lookupState.results = []
+    console.error('Lookup search failed', err)
+  }
+  lookupState.loading = false
+  renderLookupModal()
+}
+
+function lookupSelectSimple(id) {
+  if (!lookupState) return
+  setParam(lookupState.stepId, lookupState.fieldName, id)
+  renderAll()
+  closeLookupModal()
+}
+
+function lookupSelectGroup(index) {
+  if (!lookupState) return
+  const group = lookupState._renderedGroups?.[index]
+  if (!group) return
+  lookupState.selectedGroup = group
+  // If only one variant, skip straight to release stage
+  if (group.variants.length === 1) {
+    lookupSelectVariant(group.variants[0].id)
+    return
+  }
+  lookupState.stage = 'variant'
+  renderLookupModal()
+}
+
+async function lookupSelectVariant(fid) {
+  if (!lookupState) return
+  lookupState.selectedFid = fid
+  lookupState.stage = 'release'
+  lookupState.releases = null
+  lookupState.loading = true
+  renderLookupModal()
+  try {
+    const resp = await fetch('/queries/listDvdCompareReleases', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dvdCompareId: fid }),
+    })
+    const data = await resp.json()
+    lookupState.releases = data.releases ?? []
+  } catch (err) {
+    lookupState.releases = []
+    console.error('listDvdCompareReleases failed', err)
+  }
+  lookupState.loading = false
+  renderLookupModal()
+}
+
+function lookupSelectRelease(hash) {
+  if (!lookupState) return
+  setParam(lookupState.stepId, 'dvdCompareId', lookupState.selectedFid)
+  setParam(lookupState.stepId, 'dvdCompareReleaseHash', Number(hash) || hash)
+  renderAll()
+  closeLookupModal()
+}
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !document.getElementById('lookup-modal').classList.contains('hidden')) {
+    closeLookupModal()
+  }
+})
 
 function updateStepLogs(stepId, logs) {
   const card = document.getElementById(`step-${stepId}`)
