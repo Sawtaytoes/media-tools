@@ -205,6 +205,7 @@ export const nameSpecialFeaturesRequestSchema = z.object({
   sourcePath: z.string().describe("Source directory path"),
   url: z.string().optional().describe("Direct DVDCompare.net URL (overrides dvdCompareId and searchTerm)"),
   dvdCompareId: z.number().optional().describe("DVDCompare film ID — constructs URL directly, bypasses search"),
+  dvdCompareReleaseHash: z.number().optional().describe("Release package hash (URL fragment, defaults to 1)"),
   searchTerm: z.string().optional().describe("Title to search on DVDCompare.net (used when no url or dvdCompareId)"),
   fixedOffset: z.number().default(0).describe("Fixed timecode offset in milliseconds"),
   timecodePadding: z.number().default(0).describe("Timecode padding amount"),
@@ -293,4 +294,57 @@ export const subtitleFileMetadataSchema = z.object({
 
 export const getSubtitleMetadataResponseSchema = z.object({
   subtitlesMetadata: z.array(subtitleFileMetadataSchema).describe("Metadata for each .ass file found"),
+})
+
+// Design-time lookup query schemas
+export const searchTermRequestSchema = z.object({
+  searchTerm: z.string().describe("Title to search for"),
+})
+
+export const searchMalResultSchema = z.object({
+  airDate: z.string().optional().describe("Air date string from MAL"),
+  imageUrl: z.string().optional().describe("Thumbnail URL"),
+  malId: z.number().describe("MyAnimeList ID"),
+  mediaType: z.string().optional().describe("Media type (TV, Movie, OVA, etc.)"),
+  name: z.string().describe("Anime title"),
+})
+
+export const searchMalResponseSchema = z.object({
+  results: z.array(searchMalResultSchema).describe("MAL search results"),
+})
+
+export const searchTvdbResultSchema = z.object({
+  imageUrl: z.string().optional().describe("Series image URL"),
+  name: z.string().describe("Series name"),
+  status: z.string().optional().describe("Status (e.g. Continuing, Ended)"),
+  tvdbId: z.number().describe("TVDB ID"),
+  year: z.string().optional().describe("Year of first air"),
+})
+
+export const searchTvdbResponseSchema = z.object({
+  results: z.array(searchTvdbResultSchema).describe("TVDB search results"),
+})
+
+export const searchDvdCompareResultSchema = z.object({
+  baseTitle: z.string().describe("Movie title without variant or year suffix"),
+  id: z.number().describe("DVDCompare film ID"),
+  variant: z.enum(["DVD", "Blu-ray", "Blu-ray 4K"]).describe("Media format variant"),
+  year: z.string().describe("Release year"),
+})
+
+export const searchDvdCompareResponseSchema = z.object({
+  results: z.array(searchDvdCompareResultSchema).describe("DVDCompare search results"),
+})
+
+export const listDvdCompareReleasesRequestSchema = z.object({
+  dvdCompareId: z.number().describe("DVDCompare film ID"),
+})
+
+export const dvdCompareReleaseSchema = z.object({
+  hash: z.string().describe("Release package URL hash (form checkbox name attribute)"),
+  label: z.string().describe("Release package description"),
+})
+
+export const listDvdCompareReleasesResponseSchema = z.object({
+  releases: z.array(dvdCompareReleaseSchema).describe("Release packages available for the film"),
 })
