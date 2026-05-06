@@ -494,16 +494,6 @@ const COMMANDS = {
       { name: "timecodePadding", type: "number", label: "Timecode Padding", default: 2 },
     ]
   },
-  nameMovies: {
-    summary: "Rename a movie folder's files to Plex's `Title (Year) {edition-...}.mkv` using TMDB metadata",
-    tag: "Naming Operations",
-    outputFolderName: null,
-    fields: [
-      { name: "sourcePath", type: "path", label: "Source Path", required: true },
-      { name: "movieDbId", type: "numberWithLookup", lookupType: "tmdb", label: "TMDB Movie ID", placeholder: "27205", required: true, companionNameField: "movieDbName" },
-      { name: "editionLabel", type: "string", label: "Edition Label (appended as {edition-…} when set)", placeholder: "Hybrid Cut" },
-    ]
-  },
   nameTvShowEpisodes: {
     summary: "Rename TV show episode files based on metadata",
     tag: "Naming Operations",

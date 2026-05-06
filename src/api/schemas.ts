@@ -128,12 +128,6 @@ export const computeDefaultSubtitleRulesRequestSchema = z.object({
   recursiveDepth: z.number().default(0).describe("Maximum recursion depth (0 = default depth of 2)."),
 })
 
-export const nameMoviesRequestSchema = z.object({
-  sourcePath: z.string().describe("Directory containing the movie file(s) to rename."),
-  movieDbId: z.number().int().positive().describe("TMDB movie ID (the integer in the URL: themoviedb.org/movie/<id>)."),
-  editionLabel: z.string().optional().describe("Plex edition label appended as `{edition-<label>}`. Leave blank for films with no edition. Multi-edition films in the same folder need separate runs with the right label each time."),
-})
-
 export const remuxToMkvRequestSchema = z.object({
   sourcePath: z.string().describe("Directory containing files to remux."),
   extensions: z.array(z.string()).min(1).describe("List of file extensions to remux (with or without leading dot), e.g. ['.ts', '.m2ts']").openapi({ example: [".ts"] }),

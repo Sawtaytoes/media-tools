@@ -25,7 +25,6 @@ import { keepLanguages, keepLanguagesDefaultProps } from "../../app-commands/kee
 import { mergeTracks, mergeTracksDefaultProps } from "../../app-commands/mergeTracks.js"
 import { moveFiles } from "../../app-commands/moveFiles.js"
 import { nameAnimeEpisodes } from "../../app-commands/nameAnimeEpisodes.js"
-import { nameMovies } from "../../app-commands/nameMovies.js"
 import { nameSpecialFeatures } from "../../app-commands/nameSpecialFeatures.js"
 import { nameTvShowEpisodes } from "../../app-commands/nameTvShowEpisodes.js"
 import { remuxToMkv } from "../../app-commands/remuxToMkv.js"
@@ -99,7 +98,6 @@ const commandNames = [
   "mergeTracks",
   "moveFiles",
   "nameAnimeEpisodes",
-  "nameMovies",
   "nameSpecialFeatures",
   "nameTvShowEpisodes",
   "remuxToMkv",
@@ -283,12 +281,6 @@ export const commandConfigs: Record<CommandName, CommandConfig> = {
     getObservable: (body) => nameAnimeEpisodes({ malId: body.malId, searchTerm: body.searchTerm, seasonNumber: body.seasonNumber, sourcePath: body.sourcePath }),
     schema: schemas.nameAnimeEpisodesRequestSchema,
     summary: "Rename anime episode files based on metadata",
-    tags: ["Naming Operations"],
-  },
-  nameMovies: {
-    getObservable: (body) => nameMovies({ editionLabel: body.editionLabel, movieDbId: body.movieDbId, sourcePath: body.sourcePath }),
-    schema: schemas.nameMoviesRequestSchema,
-    summary: "Rename a movie folder's files to Plex's `Title (Year) {edition-...}.mkv` format using a TMDB ID for the title/year",
     tags: ["Naming Operations"],
   },
   nameSpecialFeatures: {
