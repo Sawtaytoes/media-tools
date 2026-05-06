@@ -1661,6 +1661,14 @@ async function lookupSelectVariant(fid, variant) {
     console.error('listDvdCompareReleases failed', err)
   }
   lookupState.loading = false
+
+  // Single release — auto-select it; the user would just click anyway.
+  if (lookupState.releases && lookupState.releases.length === 1) {
+    const only = lookupState.releases[0]
+    lookupSelectRelease(only.hash, only.label)
+    return
+  }
+
   renderLookupModal()
 }
 
@@ -1786,7 +1794,7 @@ function updateStepUI(step) {
       if (fieldsEl) {
         fieldsEl.insertAdjacentHTML('beforebegin',
           `<details class="step-results text-xs mb-2" open>
-            <summary class="cursor-pointer text-emerald-400 hover:text-emerald-300 select-none">▸ Results</summary>
+            <summary class="cursor-pointer text-emerald-400 hover:text-emerald-300 select-none">Results</summary>
             <pre class="text-emerald-300 bg-slate-950 rounded px-2 py-1.5 mt-1 font-mono whitespace-pre-wrap break-words"></pre>
           </details>`)
         resultsEl = card.querySelector('.step-results')
@@ -1801,14 +1809,8 @@ function updateStepUI(step) {
 }
 
 function formatStepResults(commandName, results) {
-  const filenameOf = (path) => String(path ?? '').split(/[\\/]/).pop() || String(path ?? '')
-
   if (commandName === 'getAudioOffsets') {
-    return results.flat().map(item => {
-      const file = filenameOf(item?.destinationFilePath)
-      const offset = item?.offsetInMilliseconds
-      return `${file}: ${offset}ms`
-    }).join('\n')
+    return results.flat().map(item => `${item?.offsetInMilliseconds}ms`).join('\n')
   }
 
   // Generic fallback — pretty JSON, but unwrap a single array result

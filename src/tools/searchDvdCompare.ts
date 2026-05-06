@@ -108,6 +108,20 @@ export const findDvdCompareResults = (
       },
     )
     const html = await response.text()
+
+    // DVDCompare redirects search.php to a specific film.php page when
+    // there's only one match. fetch follows the redirect by default, so
+    // the final response.url points at the film. Treat that as a single
+    // search result so the builder UI can fast-path through the variant
+    // step into the release picker.
+    const redirectMatch = response.url.match(/film\.php\?fid=(\d+)/)
+    if (redirectMatch) {
+      const fid = Number(redirectMatch[1])
+      const filmInfo = parseDvdCompareFilmTitle(html, fid)
+      if (filmInfo) return [filmInfo]
+      return [{ baseTitle: "", id: fid, variant: "DVD" as const, year: "" }]
+    }
+
     return parseDvdCompareSearchHtml(html)
   })())
   .pipe(
