@@ -90,11 +90,58 @@ export const specialFeatureMatchTypes: (
 
 const timecodeRegex = /\s*\([^)]*?\s*(\d+:\d{2}:\d{2}|\d+:\d{2})\s*[^)]*?\)/
 
+// DVDCompare's Extras section flags main-feature entries with a leading
+// asterisk + "The Film". The whitespace after the asterisk is sometimes
+// present, sometimes not — both `* The Film …` and `*The Film …` show up
+// in the wild. Anchored, case-insensitive, requires a word boundary on
+// "Film" so things like "*The Filmography" don't false-match.
+const cutLineRegex = /^\*\s*The Film\b/iu
+
+// A "cut" is a main-feature entry from the Extras list. `name` is the
+// edition/version label that comes after "The Film" — e.g. "Hong Kong
+// Version", "Director's Cut" — or empty when the release labels its
+// only main-feature entry just "*The Film" (with no further text).
+// `timecode` is the parenthetical runtime when DVDCompare publishes one
+// for this cut.
+export type Cut = {
+  name: string
+  timecode?: string
+}
+
+const formatOnlyParenRegex = /^\((?:\d+p|3D|2D|HDR\d*|UHD|IMAX)[^)]*\)$/iu
+
+const parseCutLine = (rawLine: string): Cut => {
+  // Strip the "*<optional space>The Film" prefix plus any separator
+  // (em-dash, en-dash, hyphen, colon).
+  let remainder = rawLine.trim().replace(/^\*\s*The Film\b\s*[-–—:]?\s*/iu, "")
+  let timecode: string | undefined
+  const timecodeMatch = remainder.match(timecodeRegex)
+  if (timecodeMatch?.[1]) {
+    timecode = getTimecodeAtOffset(timecodeMatch[1], 0)
+    remainder = remainder.replace(timecodeRegex, "").trim()
+  }
+  // Drop residue parens that only carry format/resolution info — e.g.
+  // "(2160p)" on a release where the only "*The Film" entry differs by
+  // resolution, not by edition. Those don't contribute to a Plex edition.
+  if (formatOnlyParenRegex.test(remainder)) {
+    remainder = ""
+  }
+  return { name: remainder.trim(), timecode }
+}
+
+export const parseCuts = (specialFeatureText: string): Cut[] => (
+  specialFeatureText
+  .split("\n")
+  .map((line) => line.trim())
+  .filter((line) => cutLineRegex.test(line))
+  .map(parseCutLine)
+)
+
 export const parseSpecialFeatures = (
   specialFeatureText: string,
 ): (
   Observable<
-    SpecialFeature[]
+    { extras: SpecialFeature[], cuts: Cut[] }
   >
 ) => (
   from(
@@ -116,12 +163,11 @@ export const parseSpecialFeatures = (
     filter((
       lineItem
     ) => (
-      !(
-        lineItem
-        .startsWith(
-          "* The Film"
-        )
-      )
+      // Drops main-feature entries from the extras stream — they're
+      // collected separately by parseCuts and feed the movie-naming
+      // branch, not the extras-naming branch. Regex tolerates the
+      // missing-space `*The Film` form that DVDCompare also emits.
+      !cutLineRegex.test(lineItem)
     )),
     filter((
       lineItem
@@ -419,6 +465,13 @@ export const parseSpecialFeatures = (
         SpecialFeature[]
       ),
     ),
+    // Cuts come from the same source text but use a separate (sync)
+    // parser. Pair them with the reduced extras so callers see one
+    // structured payload regardless of which side they consume.
+    map((extras) => ({
+      extras,
+      cuts: parseCuts(specialFeatureText),
+    })),
     catchNamedError(
       parseSpecialFeatures
     ),
