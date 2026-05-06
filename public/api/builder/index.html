@@ -1844,31 +1844,43 @@ function applyPathPickerSelection(entry) {
   inputElement.focus()
 }
 
+// Strip any trailing separator from the input and close the picker. Used
+// when the user wants the current directory committed as-is (Escape, or
+// Enter/Tab when there are no matching entries to pick from).
+function commitTrimmedPath() {
+  if (!pathPickerState) return
+  const { inputElement, target } = pathPickerState
+  const current = inputElement.value
+  const trimmed = current.replace(/[\\/]+$/, '')
+  if (trimmed !== current) {
+    inputElement.value = trimmed
+    if (target.mode === 'step') {
+      setParam(target.stepId, target.fieldName, trimmed || undefined)
+    } else {
+      setPathValue(target.pathVarId, trimmed)
+    }
+  }
+  closePathPicker()
+}
+
 function pathPickerKeydown(event) {
   if (!pathPickerState) return
   if (event.key === 'Escape') {
     event.preventDefault()
-    // Treat Escape as "commit the parent directory" — strip any trailing
-    // separator that auto-drill appended so the stored value is the
-    // directory itself rather than a path ending in '/' or '\\'. Click-to-
-    // drill remains available because the picker reopens on the next
-    // keystroke via schedulePathLookup.
-    const { inputElement, target } = pathPickerState
-    const current = inputElement.value
-    const trimmed = current.replace(/[\\/]+$/, '')
-    if (trimmed !== current) {
-      inputElement.value = trimmed
-      if (target.mode === 'step') {
-        setParam(target.stepId, target.fieldName, trimmed || undefined)
-      } else {
-        setPathValue(target.pathVarId, trimmed)
-      }
-    }
-    closePathPicker()
+    commitTrimmedPath()
     return
   }
+
   const matches = pathPickerState.matches
-  if (!matches?.length) return
+  if (!matches?.length) {
+    // No matches to navigate. Enter / Tab should still commit (strip the
+    // trailing separator) so the user isn't stuck with a dangling path.
+    if (event.key === 'Enter' || event.key === 'Tab') {
+      event.preventDefault()
+      commitTrimmedPath()
+    }
+    return
+  }
 
   if (event.key === 'ArrowDown') {
     event.preventDefault()
