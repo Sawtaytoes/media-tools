@@ -12,3 +12,7 @@ node_modules/
 .cache
 .env
 installed_packages.txt
+
+# Playwright Test artifacts
+playwright-report/
+test-results/

@@ -47,11 +47,22 @@ in module files must be removed before those modules can be used in the API.
 
 ## Testing
 
-- Framework: vitest
+### Unit tests (vitest)
+
+- Framework: vitest. Run with `yarn test`.
 - `node:fs` and `node:fs/promises` are globally mocked with `memfs` (see `vitest.setup.ts`)
 - Tests live next to their source file: `foo.ts` → `foo.test.ts`
 - Use `captureConsoleMessage` / `captureLogMessage` helpers to silence and inspect console output
 - Use `vol.fromJSON(...)` from memfs to seed the virtual filesystem
+
+### Browser-driven tests (Playwright Test)
+
+- Framework: `@playwright/test`. Tests live in `e2e/*.spec.ts`.
+- Run headless once: `yarn e2e`. Run interactively: `yarn e2e:ui` (opens Playwright's UI mode for stepping through).
+- `playwright.config.ts` boots `yarn api-server` automatically before tests run; in dev it reuses an already-running server, in CI it starts a fresh one.
+- The first run requires `yarn install-playwright-browser` to fetch the Chromium binary.
+- For tests that depend on backend data (search/lookup/listDirectoryEntries), use `page.route('**/queries/<endpoint>', ...)` to stub the network rather than hitting real services. See the path-typeahead test in `e2e/builder.spec.ts` for the pattern.
+- Generated artifacts (`playwright-report/`, `test-results/`) are gitignored.
 
 ## API (`src/api/`)
 

@@ -8,6 +8,8 @@
     "build": "rimraf build/ && esbuild --format=cjs --minify --bundle --platform=node --external:./xhr-sync-worker.js --outfile=build/media-tools.cjs src/cli.ts",
     "cli-server": "tsx --env-file ./.env src/cli-server.ts",
     "copy-assets": "rimraf dist/assets && mkdir 'dist/assets' && npx cpx2 'assets/**/*' dist/assets/",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
     "generate-schemas": "tsx --env-file ./.env src/generateSchemas.ts",
     "install-playwright-browser": "yarn dlx playwright install chromium",
     "media": "tsx --env-file ./.env src/cli.ts",
@@ -43,6 +45,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@total-typescript/ts-reset": "^0.5.1",
     "@types/cli-progress": "^3.11.0",
     "@types/ffmpeg-static": "^3.0.3",
