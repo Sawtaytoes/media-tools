@@ -118,19 +118,18 @@ describe("POST /sequences/run", () => {
     expect(job?.error).toMatch(/missing/i)
   })
 
-  test("fails the umbrella job and stops further steps when a step references an unknown command", async () => {
+  test("rejects unknown command names with a 400 before any job is created", async () => {
+    // The schema enumerates valid command names (`z.enum(commandNames)`)
+    // so unknown commands are caught at validation time rather than
+    // running the umbrella job and hitting the runner's defensive
+    // unknown-command branch. Earlier validation = clearer failure mode
+    // for API consumers.
     const response = await post("/sequences/run", {
       steps: [
         { command: "doesNotExist", params: {} },
         { command: "makeDirectory", params: { filePath: "/should-not-run" } },
       ],
     })
-    const { jobId } = await response.json() as { jobId: string }
-
-    await flushAfter(20)
-
-    const job = getJob(jobId)
-    expect(job?.status).toBe("failed")
-    expect(job?.error).toMatch(/doesNotExist/)
+    expect(response.status).toBe(400)
   })
 })

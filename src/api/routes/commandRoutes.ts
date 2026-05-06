@@ -25,6 +25,7 @@ import { keepLanguages, keepLanguagesDefaultProps } from "../../app-commands/kee
 import { mergeTracks, mergeTracksDefaultProps } from "../../app-commands/mergeTracks.js"
 import { moveFiles } from "../../app-commands/moveFiles.js"
 import { nameAnimeEpisodes } from "../../app-commands/nameAnimeEpisodes.js"
+import { nameAnimeEpisodesAniDB } from "../../app-commands/nameAnimeEpisodesAniDB.js"
 import { nameSpecialFeatures } from "../../app-commands/nameSpecialFeatures.js"
 import { nameTvShowEpisodes } from "../../app-commands/nameTvShowEpisodes.js"
 import { remuxToMkv } from "../../app-commands/remuxToMkv.js"
@@ -74,7 +75,7 @@ const startCommandJob = ({
   )
 }
 
-const commandNames = [
+export const commandNames = [
   "makeDirectory",
   "changeTrackLanguages",
   "computeDefaultSubtitleRules",
@@ -98,6 +99,7 @@ const commandNames = [
   "mergeTracks",
   "moveFiles",
   "nameAnimeEpisodes",
+  "nameAnimeEpisodesAniDB",
   "nameSpecialFeatures",
   "nameTvShowEpisodes",
   "remuxToMkv",
@@ -281,6 +283,12 @@ export const commandConfigs: Record<CommandName, CommandConfig> = {
     getObservable: (body) => nameAnimeEpisodes({ malId: body.malId, searchTerm: body.searchTerm, seasonNumber: body.seasonNumber, sourcePath: body.sourcePath }),
     schema: schemas.nameAnimeEpisodesRequestSchema,
     summary: "Rename anime episode files based on metadata",
+    tags: ["Naming Operations"],
+  },
+  nameAnimeEpisodesAniDB: {
+    getObservable: (body) => nameAnimeEpisodesAniDB({ anidbId: body.anidbId, searchTerm: body.searchTerm, seasonNumber: body.seasonNumber, sourcePath: body.sourcePath }),
+    schema: schemas.nameAnimeEpisodesAniDBRequestSchema,
+    summary: "Rename anime episode files using AniDB metadata (better OVA/special coverage than MAL)",
     tags: ["Naming Operations"],
   },
   nameSpecialFeatures: {
