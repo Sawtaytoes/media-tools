@@ -170,8 +170,10 @@ test.describe("Sequence Builder", () => {
     await page.getByPlaceholder("Search commands…").fill("moveFiles")
     await page.getByRole("button", { name: /^moveFiles\s/ }).click()
 
-    // Click the FIRST inline (+) Add divider — the one between the two steps.
-    await page.getByRole("button", { name: "➕ Add" }).first().click()
+    // Click the divider between the two steps. Layout is:
+    //   [divider 0 — before step 1] [step 1] [divider 1 — between] [step 2] [divider 2 — after]
+    // so the between-steps one is at index 1.
+    await page.getByRole("button", { name: "➕ Add" }).nth(1).click()
 
     // Three step cards now, middle one empty.
     const stepCards = page.locator('[id^="step-"]')

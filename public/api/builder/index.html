@@ -31,7 +31,7 @@
 
   <!-- Header -->
   <div class="shrink-0 flex items-center justify-between px-4 py-3 border-b border-slate-700 bg-slate-900 z-10">
-    <h1 class="font-semibold text-slate-100">Sequence Builder</h1>
+    <h1 class="text-lg font-bold tracking-tight text-slate-100">Sequence Builder</h1>
     <div class="flex items-center gap-2">
       <button onclick="addPicked()" title="Append an empty step"
         class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium">Add Step</button>
@@ -68,7 +68,7 @@
           <path d="m14.25 4.5-4.5 15" />
         </svg>
       </button>
-      <a href="/" class="ml-2 text-xs text-slate-400 hover:text-slate-300">Jobs ↗</a>
+      <a href="/" id="jobs-link" class="ml-2 text-xs text-slate-400 hover:text-slate-300">Jobs ↗</a>
     </div>
   </div>
 
@@ -591,6 +591,18 @@ function updateUrl() {
   }
   const query = params.toString()
   history.replaceState(null, '', window.location.pathname + (query ? '?' + query : ''))
+  updateJobsLinkHref()
+}
+
+// Threads the current `?seq=` through the Jobs nav link so the user can
+// hop over to /jobs and back without losing their in-progress sequence.
+// Also called once at init so the initial restore-from-URL state lands
+// on the link before the user does anything.
+function updateJobsLinkHref() {
+  const link = document.getElementById('jobs-link')
+  if (!link) return
+  const seq = new URLSearchParams(window.location.search).get('seq')
+  link.href = '/' + (seq ? `?seq=${encodeURIComponent(seq)}` : '')
 }
 
 // Debounced URL persistence. updateUrl() is expensive per call (yaml dump
@@ -915,7 +927,7 @@ function renderPathVarCard(pv, isFirst) {
   const labelHtml = isFirst
     ? `<span class="text-xs font-medium text-slate-300">${esc(pv.label)}</span>`
     : `<input type="text" value="${esc(pv.label)}" oninput="setPathLabel('${pv.id}',this.value)"
-        class="text-xs font-medium text-slate-300 bg-transparent border-b border-slate-600 focus:outline-none focus:border-blue-500 w-28 min-w-0" />`
+        class="text-xs font-medium text-slate-300 bg-transparent border-b border-slate-600 focus:outline-none focus:border-blue-500 w-64 min-w-0" />`
   const deleteBtn = !isFirst
     ? `<button onclick="removePath('${pv.id}')" title="Remove path variable"
         class="ml-auto text-xs text-slate-500 hover:text-red-400 w-5 h-5 flex items-center justify-center rounded hover:bg-slate-700">✕</button>`
@@ -982,6 +994,17 @@ function renderInsertDivider(index) {
   </div>`
 }
 
+// Visual terminator after the last step so the user can see at a glance
+// where the sequence ends — without it, the inline "+ Add" divider made
+// the bottom of the list feel like there was more to scroll. Styled like
+// a Path card (dashed border, faint color) but explicitly non-interactive.
+function renderSequenceEndCard() {
+  return `<div class="col-span-full bg-slate-800/30 rounded-xl border border-dashed border-slate-700 px-4 py-2.5 flex items-center justify-center gap-2 select-none">
+    <span class="text-slate-600">⏹</span>
+    <span class="text-xs font-medium text-slate-500">End of Sequence</span>
+  </div>`
+}
+
 let lastRenderedStepIds = new Set()
 
 function renderAll() {
@@ -992,14 +1015,24 @@ function renderAll() {
   paths.forEach((pv, i) => parts.push(renderPathVarCard(pv, i === 0)))
 
   if (!steps.length) {
-    parts.push('<p class="text-slate-500 text-xs text-center mt-4">No steps yet — click <span class="text-slate-300">Add Step</span> in the header to start.</p>')
+    parts.push(`<div class="flex flex-col items-center gap-2 mt-4">
+      <p class="text-slate-500 text-xs">No steps yet.</p>
+      <button onclick="addPicked()" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded font-medium">
+        + Add your first step
+      </button>
+    </div>`)
   } else {
+    // Leading divider so there's an inline `+ Add` between the paths
+    // section and the first step, mirroring the dividers between steps.
+    parts.push(renderInsertDivider(0))
     steps.forEach((s, i) => {
       parts.push(renderStep(s, i))
       // Insert dividers between steps and after the last one (so the user has
       // an inline affordance to append at the end without scrolling to the footer).
       parts.push(renderInsertDivider(i + 1))
     })
+    // Visual terminator so the bottom of the list is unambiguous.
+    parts.push(renderSequenceEndCard())
   }
 
   const previousIds = lastRenderedStepIds
@@ -2938,6 +2971,7 @@ document.addEventListener('click', (event) => {
 initPaths()
 restoreFromUrl()
 renderAll()
+updateJobsLinkHref()
 </script>
 </body>
 </html>
