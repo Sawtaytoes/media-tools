@@ -575,39 +575,46 @@ function makeStep(command = null) {
 
 // Wraps renderAll in document.startViewTransition (Chromium 111+) so existing
 // cards smoothly slide to their new positions when a step is added, inserted,
-// removed, or moved. Falls back to plain renderAll on older browsers.
+// removed, or moved. Returns a promise that resolves once the transition has
+// finished (or once the synchronous render has completed in the fallback path),
+// so callers can do post-render work like scrollIntoView without fighting the
+// transition's snapshot.
 function renderAllAnimated() {
   if (typeof document.startViewTransition === 'function') {
-    document.startViewTransition(() => renderAll())
-  } else {
-    renderAll()
+    const transition = document.startViewTransition(() => renderAll())
+    return transition.finished.catch(() => {})
   }
+  renderAll()
+  return Promise.resolve()
 }
 
 // Both add paths drop in an empty step (command: null). The user picks
 // the command from the per-step dropdown; auto-linking the main source
 // field to the previous step's output happens in changeCommand at that
 // moment.
-function addPicked() {
+async function addPicked() {
   const step = makeStep(null)
   steps.push(step)
-  renderAllAnimated()
+  await renderAllAnimated()
   scrollStepIntoView(step.id)
 }
 
-function insertAt(index) {
+async function insertAt(index) {
   const step = makeStep(null)
   steps.splice(index, 0, step)
-  renderAllAnimated()
+  await renderAllAnimated()
   scrollStepIntoView(step.id)
 }
 
 function scrollStepIntoView(stepId) {
-  // The card is in the DOM as soon as renderAllAnimated returns (the View
-  // Transition only buffers the *visual* transition). Smooth-scrolling now
-  // runs concurrently with the transition, which lands the card centered
-  // by the time the animation finishes.
   const card = document.getElementById(`step-${stepId}`)
+  if (card) {
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+}
+
+function scrollPathVarIntoView(pathVarId) {
+  const card = document.querySelector(`[data-path-var="${pathVarId}"]`)
   if (card) {
     card.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
@@ -709,7 +716,7 @@ function renderPathVarCard(pv, isFirst) {
     ? `<button onclick="removePath('${pv.id}')" title="Remove path variable"
         class="ml-auto text-xs text-slate-500 hover:text-red-400 w-5 h-5 flex items-center justify-center rounded hover:bg-slate-700">✕</button>`
     : ''
-  return `<div class="col-span-full bg-slate-800/40 rounded-xl border border-dashed border-slate-600 px-4 py-3">
+  return `<div data-path-var="${pv.id}" class="col-span-full bg-slate-800/40 rounded-xl border border-dashed border-slate-600 px-4 py-3">
     <div class="flex items-center gap-2 mb-2">
       <span class="text-slate-500 text-xs shrink-0">📁</span>
       ${labelHtml}
@@ -752,8 +759,11 @@ function removePath(pvId) {
 }
 
 function addPath() {
-  paths.push({ id: 'path_' + randomHex(), label: 'Path ' + paths.length, value: '' })
+  const newPath = { id: 'path_' + randomHex(), label: 'Path ' + paths.length, value: '' }
+  paths.push(newPath)
   renderAll()
+  // Defer one frame so layout is current before scroll.
+  requestAnimationFrame(() => scrollPathVarIntoView(newPath.id))
 }
 
 function renderInsertDivider(index) {
