@@ -126,8 +126,9 @@ export const parseDvdCompareReleasesHtml = (
 ): DvdCompareRelease[] => {
   // Each release is rendered as:
   //   <input type="checkbox" name="N" ...> <a href="#N">label <span>[year]</span></a>
-  // We only want numeric-named checkboxes (skips the hidden "sel" input etc).
-  const pattern = /<input[^>]*type=["']checkbox["'][^>]*name=["'](\d+)["'][^>]*>\s*<a[^>]*>([\s\S]*?)<\/a>/g
+  // Lookaheads make this attribute-order agnostic; we still require a digit-only
+  // name so the hidden "sel" input and the submit button get filtered out.
+  const pattern = /<input(?=[^>]*\btype=["']checkbox["'])(?=[^>]*\bname=["'](\d+)["'])[^>]*>\s*<a[^>]*>([\s\S]*?)<\/a>/g
   const releases: DvdCompareRelease[] = []
   let match: RegExpExecArray | null
 
@@ -140,15 +141,75 @@ export const parseDvdCompareReleasesHtml = (
   return releases
 }
 
+export type DvdCompareReleasesDebug = {
+  checkboxCount: number
+  htmlLength: number
+  httpStatus: number
+  pageTitle: string
+  snippet: string
+  url: string
+}
+
+export type DvdCompareReleasesResult = {
+  debug: DvdCompareReleasesDebug
+  releases: DvdCompareRelease[]
+}
+
+const buildReleasesDebug = (
+  url: string,
+  httpStatus: number,
+  html: string,
+): DvdCompareReleasesDebug => {
+  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
+  const pageTitle = (
+    titleMatch
+    ? decodeHtmlEntities(titleMatch[1]).replace(/\s+/g, " ").trim()
+    : ""
+  )
+  const checkboxCount = (
+    html.match(/<input[^>]*\btype=["']checkbox["']/gi)
+    ?? []
+  ).length
+
+  // Snippet around the form (or first 600 chars if no form is found)
+  const formIndex = html.indexOf("film.php")
+  const start = formIndex >= 0 ? Math.max(0, formIndex - 100) : 0
+  const snippet = html.slice(start, start + 800)
+
+  return {
+    checkboxCount,
+    htmlLength: html.length,
+    httpStatus,
+    pageTitle,
+    snippet,
+    url,
+  }
+}
+
 export const listDvdCompareReleases = (
   dvdCompareId: number,
-): Observable<DvdCompareRelease[]> => (
+): Observable<DvdCompareReleasesResult> => (
   from((async () => {
-    const response = await fetch(
-      `${DVDCOMPARE_BASE}/comparisons/film.php?fid=${dvdCompareId}&sel=on`
-    )
+    const url = `${DVDCOMPARE_BASE}/comparisons/film.php?fid=${dvdCompareId}&sel=on`
+    const response = await fetch(url)
     const html = await response.text()
-    return parseDvdCompareReleasesHtml(html)
+    const releases = parseDvdCompareReleasesHtml(html)
+    const debug = buildReleasesDebug(url, response.status, html)
+
+    if (releases.length === 0) {
+      console.info(
+        "[listDvdCompareReleases] no releases parsed",
+        JSON.stringify({
+          url,
+          httpStatus: debug.httpStatus,
+          htmlLength: debug.htmlLength,
+          pageTitle: debug.pageTitle,
+          checkboxCount: debug.checkboxCount,
+        }),
+      )
+    }
+
+    return { debug, releases }
   })())
   .pipe(
     catchNamedError(listDvdCompareReleases),

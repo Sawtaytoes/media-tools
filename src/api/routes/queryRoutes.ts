@@ -167,8 +167,8 @@ queryRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    const releases = await lastValueFrom(listDvdCompareReleases(body.dvdCompareId))
-    return context.json({ releases }, 200)
+    const result = await lastValueFrom(listDvdCompareReleases(body.dvdCompareId))
+    return context.json(result, 200)
   },
 )
 

@@ -195,6 +195,15 @@ describe(parseDvdCompareReleasesHtml.name, () => {
       { hash: "7", label: "Tom & Jerry Special Edition" },
     ])
   })
+
+  test("matches checkboxes with reversed attribute order (name before type)", () => {
+    const html = `<input name="9" type="checkbox" checked=""> <a href="#9">Reversed Attribute Order</a>`
+
+    expect(parseDvdCompareReleasesHtml(html))
+    .toEqual([
+      { hash: "9", label: "Reversed Attribute Order" },
+    ])
+  })
 })
 
 describe(displayDvdCompareVariant.name, () => {

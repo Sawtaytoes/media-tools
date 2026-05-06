@@ -345,7 +345,17 @@ export const dvdCompareReleaseSchema = z.object({
   label: z.string().describe("Release package description"),
 })
 
+export const dvdCompareReleasesDebugSchema = z.object({
+  checkboxCount: z.number().describe("Total <input type=\"checkbox\"> elements on the fetched page (regardless of name attribute)"),
+  htmlLength: z.number().describe("Byte length of the response body"),
+  httpStatus: z.number().describe("HTTP status of the page fetch"),
+  pageTitle: z.string().describe("Text content of the <title> tag"),
+  snippet: z.string().describe("Up to 800 chars of HTML around the release form (or the start of the page)"),
+  url: z.string().describe("URL we fetched"),
+})
+
 export const listDvdCompareReleasesResponseSchema = z.object({
+  debug: dvdCompareReleasesDebugSchema.describe("Diagnostic info for empty-result debugging"),
   releases: z.array(dvdCompareReleaseSchema).describe("Release packages available for the film"),
 })
 

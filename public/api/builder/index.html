@@ -1544,7 +1544,22 @@ function renderLookupReleaseView() {
   if (lookupState.loading) {
     body = '<p class="text-xs text-slate-500 text-center py-4">Loading releases…</p>'
   } else if (!lookupState.releases || lookupState.releases.length === 0) {
-    body = '<p class="text-xs text-slate-500 text-center py-4">No release packages found.</p>'
+    const debug = lookupState.releasesDebug
+    const debugBlock = debug
+      ? `<details class="mt-3 text-xs text-slate-400">
+          <summary class="cursor-pointer text-amber-400 hover:text-amber-300 select-none">▸ Debug</summary>
+          <div class="mt-2 space-y-1 font-mono">
+            <div><span class="text-slate-500">URL:</span> <a class="text-blue-400 hover:text-blue-300 underline break-all" href="${esc(debug.url)}" target="_blank" rel="noopener">${esc(debug.url)}</a></div>
+            <div><span class="text-slate-500">HTTP status:</span> ${debug.httpStatus}</div>
+            <div><span class="text-slate-500">HTML length:</span> ${debug.htmlLength}</div>
+            <div><span class="text-slate-500">Page title:</span> ${esc(debug.pageTitle || '(empty)')}</div>
+            <div><span class="text-slate-500">Checkbox count:</span> ${debug.checkboxCount}</div>
+            <div class="pt-1"><span class="text-slate-500">HTML snippet:</span></div>
+            <pre class="text-[11px] text-slate-300 bg-slate-950 rounded px-2 py-1.5 max-h-48 overflow-auto whitespace-pre-wrap break-all">${esc(debug.snippet || '')}</pre>
+          </div>
+        </details>`
+      : ''
+    body = `<p class="text-xs text-slate-500 text-center py-4">No release packages found.</p>${debugBlock}`
   } else {
     lookupState._activeOptions = lookupState.releases.map((r) => () => lookupSelectRelease(r.hash, r.label))
     body = lookupState.releases.map((r, index) => `<button onclick="lookupSelectReleaseByIndex(${index})"
@@ -1626,6 +1641,7 @@ async function lookupSelectVariant(fid, variant) {
   lookupState.selectedVariant = variant ?? null
   lookupState.stage = 'release'
   lookupState.releases = null
+  lookupState.releasesDebug = null
   lookupState.loading = true
   renderLookupModal()
   try {
@@ -1636,6 +1652,10 @@ async function lookupSelectVariant(fid, variant) {
     })
     const data = await resp.json()
     lookupState.releases = data.releases ?? []
+    lookupState.releasesDebug = data.debug ?? null
+    if (lookupState.releases.length === 0) {
+      console.warn('[listDvdCompareReleases] no releases', data.debug)
+    }
   } catch (err) {
     lookupState.releases = []
     console.error('listDvdCompareReleases failed', err)
