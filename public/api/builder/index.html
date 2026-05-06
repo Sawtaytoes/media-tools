@@ -1080,7 +1080,7 @@ function renderPathVarCard(pv, isFirst) {
   const labelHtml = isFirst
     ? `<span class="text-xs font-medium text-slate-300">${esc(pv.label)}</span>`
     : `<input type="text" value="${esc(pv.label)}" oninput="setPathLabel('${pv.id}',this.value)"
-        class="text-xs font-medium text-slate-300 bg-transparent border-b border-slate-600 focus:outline-none focus:border-blue-500 w-64 min-w-0" />`
+        class="text-xs font-medium text-slate-300 bg-transparent border-b border-slate-600 focus:outline-none focus:border-blue-500 flex-1 min-w-0" />`
   const deleteBtn = !isFirst
     ? `<button onclick="removePath('${pv.id}')" title="Remove path variable"
         class="ml-auto text-xs text-slate-500 hover:text-red-400 w-5 h-5 flex items-center justify-center rounded hover:bg-slate-700">✕</button>`
@@ -1235,6 +1235,9 @@ function renderStep(step, index) {
       <button onclick="runStep('${step.id}')" ${step.command ? '' : 'disabled'}
         title="Run this step only"
         class="w-6 h-6 flex items-center justify-center rounded text-emerald-400 hover:text-emerald-300 hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent text-xs">▶</button>
+      ${step.status === 'running' && step.jobId ? `<button onclick="cancelStep('${step.id}')"
+        title="Cancel this step"
+        class="w-6 h-6 flex items-center justify-center rounded text-amber-400 hover:text-amber-300 hover:bg-slate-700 text-xs">⏹</button>` : ''}
       <button onclick="moveStep('${step.id}',-1)" ${isFirst ? 'disabled' : ''}
         class="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700 disabled:opacity-30 text-xs">↑</button>
       <button onclick="moveStep('${step.id}',1)" ${isLast ? 'disabled' : ''}
@@ -1255,6 +1258,7 @@ function renderStatusBadge(status) {
     running:   'bg-blue-950 text-blue-400 animate-pulse',
     completed: 'bg-emerald-950 text-emerald-400',
     failed:    'bg-red-950 text-red-400',
+    cancelled: 'bg-slate-700 text-slate-300',
   }
   return `<span class="status-badge shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${map[status] ?? ''}">${esc(status)}</span>`
 }
@@ -1718,6 +1722,21 @@ function loadYaml() {
 
 // ─── Run sequence ─────────────────────────────────────────────────────────────
 
+// User-clicked Cancel on a running step: hits DELETE /jobs/:id. The SSE
+// done event ({ done: true, status: 'cancelled' }) will arrive on the
+// existing /jobs/:id/logs stream and waitForJob() / runOneStep flips
+// step.status accordingly. 204 responses (race with natural completion)
+// are silent — the SSE stream still tells us the truth.
+async function cancelStep(stepId) {
+  const step = steps.find((s) => s.id === stepId)
+  if (!step?.jobId) return
+  try {
+    await fetch(`/jobs/${step.jobId}`, { method: 'DELETE' })
+  } catch (err) {
+    console.error('cancelStep failed', err)
+  }
+}
+
 // Submit a single step and wait for its job to finish. Mutates the step's
 // status / error / results / jobId / runtimeOutputFolderName fields.
 // Returns true on success, false on failure.
@@ -1940,7 +1959,10 @@ function waitForJob(jobId, stepId) {
           if (step && data.outputs && typeof data.outputs === 'object') {
             step.outputs = data.outputs
           }
-          if (data.status === 'completed') resolve()
+          // Resolve with the final status string so the caller can
+          // distinguish 'completed' from 'cancelled'. Only an actual
+          // failure rejects.
+          if (data.status === 'completed' || data.status === 'cancelled') resolve(data.status)
           else reject(`Job ended with status: ${data.status}`)
         } else if (data.type === 'prompt') {
           showPromptModal(jobId, data)
