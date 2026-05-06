@@ -17,6 +17,7 @@ import { hasSurroundSound } from "../../app-commands/hasSurroundSound.js"
 import { hasWrongDefaultTrack } from "../../app-commands/hasWrongDefaultTrack.js"
 import { isMissingSubtitles } from "../../app-commands/isMissingSubtitles.js"
 import { deleteFilesByExtension } from "../../app-commands/deleteFilesByExtension.js"
+import { deleteFolder } from "../../app-commands/deleteFolder.js"
 import { modifySubtitleMetadata } from "../../app-commands/modifySubtitleMetadata.js"
 import { keepLanguages, keepLanguagesDefaultProps } from "../../app-commands/keepLanguages.js"
 import { mergeTracks, mergeTracksDefaultProps } from "../../app-commands/mergeTracks.js"
@@ -84,6 +85,7 @@ const commandNames = [
   "hasWrongDefaultTrack",
   "isMissingSubtitles",
   "deleteFilesByExtension",
+  "deleteFolder",
   "modifySubtitleMetadata",
   "keepLanguages",
   "mergeTracks",
@@ -203,6 +205,12 @@ const commandConfigs: Record<CommandName, CommandConfig> = {
     getObservable: (body) => deleteFilesByExtension({ extensions: body.extensions, isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, sourcePath: body.sourcePath }),
     schema: schemas.deleteFilesByExtensionRequestSchema,
     summary: "Delete files that match one or more extensions",
+    tags: ["File Operations"],
+  },
+  deleteFolder: {
+    getObservable: (body) => deleteFolder({ confirm: body.confirm, folderPath: body.folderPath }),
+    schema: schemas.deleteFolderRequestSchema,
+    summary: "Recursively delete a folder (DESTRUCTIVE — requires confirm: true)",
     tags: ["File Operations"],
   },
   modifySubtitleMetadata: {

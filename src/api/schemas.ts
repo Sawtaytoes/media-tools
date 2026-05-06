@@ -112,6 +112,11 @@ export const deleteFilesByExtensionRequestSchema = z.object({
   extensions: z.array(z.string()).min(1).describe("List of file extensions to delete (with or without leading dot), e.g. ['.srt', 'idx']").openapi({ example: [".srt", "idx"] }),
 })
 
+export const deleteFolderRequestSchema = z.object({
+  folderPath: z.string().describe("Folder path to delete recursively"),
+  confirm: z.literal(true).describe("Required safety guard: must be the literal value true. Without it the request is rejected so a misclick can't nuke a directory."),
+})
+
 const setScriptInfoRuleSchema = z.object({
   type: z.literal("setScriptInfo"),
   key: z.string()

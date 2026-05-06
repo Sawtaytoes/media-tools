@@ -188,6 +188,15 @@ const COMMANDS = {
       { name: "recursiveDepth", type: "number", label: "Recursive Depth", default: 0 },
     ]
   },
+  deleteFolder: {
+    summary: "Recursively delete a folder and all its contents (DESTRUCTIVE — requires Confirm)",
+    tag: "File Operations",
+    outputFolderName: null,
+    fields: [
+      { name: "folderPath", type: "path", label: "Folder to Delete", required: true },
+      { name: "confirm", type: "boolean", label: "Confirm: I understand this will recursively delete the folder", required: true },
+    ]
+  },
   splitChapters: {
     summary: "Split media files by chapter markers",
     tag: "File Operations",

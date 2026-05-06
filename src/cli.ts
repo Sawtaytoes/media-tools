@@ -9,6 +9,7 @@ import { getAudioOffsetsCommand } from "./cli-commands/getAudioOffsetsCommand.js
 import { getSubtitleMetadataCommand } from "./cli-commands/getSubtitleMetadataCommand.js"
 import { hasBetterAudioCommand } from "./cli-commands/hasBetterAudioCommand.js"
 import { deleteFilesByExtensionCommand } from "./cli-commands/deleteFilesByExtensionCommand.js"
+import { deleteFolderCommand } from "./cli-commands/deleteFolderCommand.js"
 import { hasBetterVersionCommand } from "./cli-commands/hasBetterVersionCommand.js"
 import { hasDuplicateMusicFilesCommand } from "./cli-commands/hasDuplicateMusicFilesCommand.js"
 import { hasImaxEnhancedAudioCommand } from "./cli-commands/hasImaxEnhancedAudioCommand.js"
@@ -75,6 +76,7 @@ yargs(
 .command(getAudioOffsetsCommand)
 .command(getSubtitleMetadataCommand)
 .command(deleteFilesByExtensionCommand)
+.command(deleteFolderCommand)
 .command(hasBetterAudioCommand)
 .command(hasBetterVersionCommand)
 .command(hasDuplicateMusicFilesCommand)
