@@ -122,6 +122,14 @@ export const deleteFolderRequestSchema = z.object({
   confirm: z.literal(true).describe("Required safety guard: must be the literal value true. Without it the request is rejected so a misclick can't nuke a directory."),
 })
 
+export const remuxToMkvRequestSchema = z.object({
+  sourcePath: z.string().describe("Directory containing files to remux."),
+  extensions: z.array(z.string()).min(1).describe("List of file extensions to remux (with or without leading dot), e.g. ['.ts', '.m2ts']").openapi({ example: [".ts"] }),
+  isRecursive: z.boolean().default(false).describe("Recursively scan subdirectories."),
+  recursiveDepth: z.number().default(0).describe("Maximum recursion depth when isRecursive is set (0 = default depth of 2)."),
+  isSourceDeletedOnSuccess: z.boolean().default(false).describe("Delete each source file after its remux completes successfully."),
+})
+
 const setScriptInfoRuleSchema = z.object({
   type: z.literal("setScriptInfo"),
   key: z.string()

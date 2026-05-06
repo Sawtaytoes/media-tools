@@ -26,6 +26,7 @@ import { moveFiles } from "../../app-commands/moveFiles.js"
 import { nameAnimeEpisodes } from "../../app-commands/nameAnimeEpisodes.js"
 import { nameSpecialFeatures } from "../../app-commands/nameSpecialFeatures.js"
 import { nameTvShowEpisodes } from "../../app-commands/nameTvShowEpisodes.js"
+import { remuxToMkv } from "../../app-commands/remuxToMkv.js"
 import { renameDemos } from "../../app-commands/renameDemos.js"
 import { renameMovieClipDownloads } from "../../app-commands/renameMovieClipDownloads.js"
 import { reorderTracks, reorderTracksDefaultProps } from "../../app-commands/reorderTracks.js"
@@ -95,6 +96,7 @@ const commandNames = [
   "nameAnimeEpisodes",
   "nameSpecialFeatures",
   "nameTvShowEpisodes",
+  "remuxToMkv",
   "renameDemos",
   "renameMovieClipDownloads",
   "reorderTracks",
@@ -264,6 +266,12 @@ const commandConfigs: Record<CommandName, CommandConfig> = {
     schema: schemas.nameTvShowEpisodesRequestSchema,
     summary: "Rename TV show episode files based on metadata",
     tags: ["Naming Operations"],
+  },
+  remuxToMkv: {
+    getObservable: (body) => remuxToMkv({ extensions: body.extensions, isRecursive: body.isRecursive, isSourceDeletedOnSuccess: body.isSourceDeletedOnSuccess, recursiveDepth: body.recursiveDepth, sourcePath: body.sourcePath }),
+    schema: schemas.remuxToMkvRequestSchema,
+    summary: "Pass-through container remux of every matching file into an .mkv sibling using mkvmerge",
+    tags: ["File Operations"],
   },
   renameDemos: {
     getObservable: (body) => renameDemos({ isRecursive: body.isRecursive, sourcePath: body.sourcePath }),

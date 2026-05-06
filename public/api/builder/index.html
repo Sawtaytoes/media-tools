@@ -220,6 +220,18 @@ const COMMANDS = {
       { name: "chapterSplits", type: "stringArray", label: "Chapter Splits", required: true, placeholder: "ch1, ch2" },
     ]
   },
+  remuxToMkv: {
+    summary: "Pass-through container remux into .mkv siblings (no track changes)",
+    tag: "File Operations",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "extensions", type: "stringArray", label: "Extensions", required: true, placeholder: ".ts, .m2ts" },
+      { name: "isRecursive", type: "boolean", label: "Recursive", default: false },
+      { name: "recursiveDepth", type: "number", label: "Recursive Depth", default: 0 },
+      { name: "isSourceDeletedOnSuccess", type: "boolean", label: "Delete source on per-file success", default: false },
+    ]
+  },
   // Audio Operations
   getAudioOffsets: {
     summary: "Calculate audio sync offsets between files",
