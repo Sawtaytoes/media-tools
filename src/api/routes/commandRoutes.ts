@@ -282,7 +282,7 @@ export const commandConfigs: Record<CommandName, CommandConfig> = {
   nameAnimeEpisodes: {
     getObservable: (body) => nameAnimeEpisodes({ malId: body.malId, searchTerm: body.searchTerm, seasonNumber: body.seasonNumber, sourcePath: body.sourcePath }),
     schema: schemas.nameAnimeEpisodesRequestSchema,
-    summary: "Rename anime episode files based on metadata",
+    summary: "Rename anime episode files using MyAnimeList metadata",
     tags: ["Naming Operations"],
   },
   nameAnimeEpisodesAniDB: {
