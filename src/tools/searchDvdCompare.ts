@@ -1,10 +1,8 @@
 import { platform } from "node:os"
 
-import puppeteer from "puppeteer"
+import { chromium, type Browser } from "playwright"
 import {
   from,
-  map,
-  mergeMap,
   type Observable,
 } from "rxjs"
 
@@ -35,8 +33,8 @@ export type DvdCompareRelease = {
 
 const DVDCOMPARE_BASE = "https://www.dvdcompare.net"
 
-const launchBrowser = () => (
-  puppeteer.launch({
+const launchBrowser = (): Promise<Browser> => (
+  chromium.launch({
     args: platform() === "win32" ? [] : ["--no-sandbox"],
     headless: true,
   })
@@ -294,189 +292,63 @@ export const searchDvdCompare = ({
   url,
 }: {
   url: string,
-}): (
-  Observable<
-    string
-  >
-) => (
-  from(launchBrowser())
+}): Observable<string> => (
+  from((async () => {
+    const browser = await launchBrowser()
+    try {
+      const page = await browser.newPage()
+      // Append &sel=on before the hash so DVDCompare lands on the
+      // unchecked-by-default release-picker form regardless of the user's
+      // saved cookie state.
+      const fullUrl = url.replace(/(.+)(#.+)/, "$1&sel=on$2")
+      await page.goto(fullUrl)
+
+      const releasePackagesForm = page.locator('form[action^="film.php"]')
+      if ((await releasePackagesForm.count()) === 0) {
+        throw new Error("No release packages to choose from.")
+      }
+
+      // The hash on the inbound URL (e.g. "#3") names the checkbox to tick.
+      // Default to "1" when the URL has no hash.
+      const urlHash = new URL(url).hash.replace(/#(.+)/, "$1") || "1"
+      const releasePackageCheckbox = (
+        releasePackagesForm
+        .locator(`input[type="checkbox"][name="${urlHash}"]`)
+      )
+      if ((await releasePackageCheckbox.count()) === 0) {
+        throw new Error("Incorrect or no release package selected.")
+      }
+
+      await releasePackageCheckbox.check()
+
+      // Submitting the form triggers a navigation. waitForLoadState pairs
+      // with the click in Playwright; the older Puppeteer flow used a
+      // separate waitForNavigation call.
+      await Promise.all([
+        page.waitForLoadState("networkidle"),
+        releasePackagesForm.locator('[type="submit"]').click(),
+      ])
+
+      const extrasLabel = (
+        page
+        .locator('xpath=.//div[contains(@class, "label") and contains(text(), "Extras")]')
+        .first()
+      )
+      if ((await extrasLabel.count()) === 0) {
+        throw new Error("No extras for this release.")
+      }
+
+      return await extrasLabel.evaluate((element) => (
+        element?.parentElement?.querySelector(".description")?.textContent
+        || element?.parentElement?.parentElement?.querySelector(".description")?.textContent
+        || ""
+      ))
+    }
+    finally {
+      await browser.close()
+    }
+  })())
   .pipe(
-    mergeMap((
-      browser,
-    ) => (
-      from(
-        browser
-        .newPage()
-      )
-      .pipe(
-        mergeMap((
-          page,
-        ) => (
-          from(
-            page
-            .goto(
-              url
-              .replace(
-                /(.+)(#.+)/,
-                `$1&sel=on$2`
-              )
-            )
-          )
-          .pipe(
-            // mergeMap(async () => {
-            //   const uncheckAllElementHandler = (
-            //     await (
-            //       page
-            //       .$(
-            //         '[href$="&sel=on"]'
-            //       )
-            //     )
-            //   )
-
-            //   if (!uncheckAllElementHandler) {
-            //     throw "No 'Uncheck All' button."
-            //   }
-
-            //   await (
-            //     uncheckAllElementHandler
-            //     .click()
-            //   )
-
-            //   await (
-            //     page
-            //     .waitForNavigation()
-            //   )
-            // }),
-            mergeMap(async () => {
-              const releasePackagesFormElementHandler = (
-                await (
-                  page
-                  .$(
-                    'form[action^="film.php"]'
-                  )
-                )
-              )
-
-              if (!releasePackagesFormElementHandler) {
-                throw "No release packages to choose from."
-              }
-
-              const urlHash = (
-                (
-                  new URL(
-                    url
-                  )
-                  .hash
-                  .replace(
-                    /#(.+)/,
-                    "$1",
-                  )
-                )
-                || "1"
-              )
-
-              const releasePackageCheckboxElementHandler = (
-                await (
-                  releasePackagesFormElementHandler
-                  .$(
-                    `input[type="checkbox"][name="${urlHash}"]`
-                  )
-                )
-              )
-
-              if (!releasePackageCheckboxElementHandler) {
-                throw "Incorrect or no release package selected."
-              }
-
-              await (
-                releasePackageCheckboxElementHandler
-                .click()
-              )
-
-              await (
-                releasePackagesFormElementHandler
-                .$(
-                  '[type="submit"]'
-                )
-                .then((
-                  submitButtonElementHandler
-                ) => (
-                  submitButtonElementHandler
-                  ?.click()
-                ))
-              )
-
-              await (
-                page
-                .waitForNavigation()
-              )
-            }),
-            mergeMap(async () => {
-              const extrasElementHandler = (
-                await (
-                  page
-                  .$$(
-                    'xpath/.//div[contains(@class, "label") and contains(text(), "Extras")]'
-                  )
-                )
-              )
-
-              if (
-                (
-                  extrasElementHandler
-                  .length
-                )
-                === 0
-              ) {
-                throw "No extras for this release."
-              }
-
-              return (
-                extrasElementHandler
-                [0]
-                .evaluate((
-                  element,
-                ) => (
-                  (
-                    element
-                    ?.parentElement
-                    ?.querySelector(
-                      '.description'
-                    )
-                    ?.textContent
-                  )
-                  || (
-                    element
-                    ?.parentElement
-                    ?.parentElement
-                    ?.querySelector(
-                      '.description'
-                    )
-                    ?.textContent
-                  )
-                  || ""
-                ))
-              )
-            }),
-            mergeMap((
-              extrasText,
-            ) => (
-              from(
-                browser
-                .close()
-              )
-              .pipe(
-                map(() => (
-                  extrasText
-                ))
-              )
-            )),
-          )
-        )),
-      )
-    )),
-    catchNamedError(
-      searchDvdCompare
-    ),
+    catchNamedError(searchDvdCompare),
   )
 )

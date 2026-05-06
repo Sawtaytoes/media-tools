@@ -1,9 +1,7 @@
 import { platform } from "node:os"
-import puppeteer from "puppeteer"
+import { chromium } from "playwright"
 import {
   from,
-  map,
-  mergeMap,
   type Observable,
 } from "rxjs"
 
@@ -59,96 +57,33 @@ export const getParentText = (
 
 export const uhdDiscForumPostId = "739745"
 
-export const getUhdDiscForumPostData = (): (
-  Observable<
-    UhdDiscForumPostGroup[]
-  >
-) => (
-  from(
-    puppeteer
-    .launch({
-      args: (
-        platform() === "win32"
-        ? []
-        : ["--no-sandbox"] // TODO; Remove this with a better solution: https://stackoverflow.com/a/53975412/1624862.
-      ),
+export const getUhdDiscForumPostData = (): Observable<UhdDiscForumPostGroup[]> => (
+  from((async () => {
+    const browser = await chromium.launch({
+      args: platform() === "win32" ? [] : ["--no-sandbox"],
       headless: true,
     })
-  )
+    try {
+      const page = await browser.newPage()
+      await page.goto(
+        `https://www.criterionforum.org/forum/viewtopic.php?p=${uhdDiscForumPostId}#p${uhdDiscForumPostId}`,
+      )
+
+      const forumPostContent = page.locator(
+        `#post_content${uhdDiscForumPostId} > .content`,
+      )
+      if ((await forumPostContent.count()) === 0) {
+        throw new Error("No forum post available.")
+      }
+
+      const html = await forumPostContent.evaluate((element) => element.innerHTML)
+      return processUhdDiscForumPost(html)
+    }
+    finally {
+      await browser.close()
+    }
+  })())
   .pipe(
-    mergeMap((
-      browser,
-    ) => (
-      from(
-        browser
-        .newPage()
-      )
-      .pipe(
-        mergeMap((
-          page,
-        ) => (
-          from(
-            page
-            .goto(
-              // "https://www.criterionforum.org/forum/viewtopic.php?t=17181#p739745"
-              `https://www.criterionforum.org/forum/viewtopic.php?p=${uhdDiscForumPostId}#p${uhdDiscForumPostId}`
-            )
-          )
-          .pipe(
-            mergeMap(async () => {
-              const forumPostContentHandler = (
-                await (
-                  page
-                  .$(
-                    `#post_content${uhdDiscForumPostId} > .content`
-                  )
-                )
-              )
-
-              if (!forumPostContentHandler) {
-                throw "No forum post available."
-              }
-
-              const formPostContent = (
-                await (
-                  forumPostContentHandler
-                  .evaluate((
-                    element,
-                  ) => (
-                    (
-                      element
-                      ?.innerHTML
-                    )
-                    || ""
-                  ))
-                )
-              )
-
-              return (
-                processUhdDiscForumPost(
-                  formPostContent
-                )
-              )
-            }),
-            mergeMap((
-              uhdDiscForumPostGroups,
-            ) => (
-              from(
-                browser
-                .close()
-              )
-              .pipe(
-                map(() => (
-                  uhdDiscForumPostGroups
-                ))
-              )
-            )),
-          )
-        )),
-      )
-    )),
-    catchNamedError(
-      getUhdDiscForumPostData
-    ),
+    catchNamedError(getUhdDiscForumPostData),
   )
 )
