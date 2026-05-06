@@ -137,8 +137,9 @@ PORT=8080 CLI_SERVER_PORT=8081 yarn server     # custom port
 1. `POST /jobs/<command>` — creates a job, starts it immediately, returns `{ jobId, logsUrl }` with HTTP 202.
 2. `GET /jobs/:id/logs` — SSE stream. Each event is JSON:
    - `{ "line": "..." }` — a log line from stdout/stderr.
-   - `{ "done": true, "status": "completed" | "failed" }` — terminal event.
+   - `{ "done": true, "status": "completed" | "failed" | "cancelled" }` — terminal event.
 3. `GET /jobs/:id` — poll job state at any time.
+4. `DELETE /jobs/:id` — cancel a running job. Tears down the RxJS subscription and tree-kills the child process(es). Idempotent: 202 with the cancelled job body when actioned, 204 No Content when the job is already in a terminal state, 404 when the id is unknown.
 
 ### Endpoints
 

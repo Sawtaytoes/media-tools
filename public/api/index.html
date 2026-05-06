@@ -63,6 +63,20 @@
   .status.running  { background: #1e3a5f; color: #60a5fa; animation: pulse 2s infinite; }
   .status.completed { background: #064e3b; color: #34d399; }
   .status.failed   { background: #7f1d1d; color: #f87171; }
+  .status.cancelled { background: #334155; color: #cbd5e1; }
+
+  .cancel-btn {
+    background: transparent;
+    border: 1px solid #b45309;
+    color: #fbbf24;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    margin-left: 8px;
+  }
+  .cancel-btn:hover { background: #78350f33; }
+  .cancel-btn:disabled { opacity: 0.4; cursor: default; }
 
   @keyframes pulse {
     0%, 100% { opacity: 1; }
@@ -155,9 +169,30 @@ function renderJob(job) {
   const header = makeEl("div", "job-header");
   const cmd = makeEl("div", "command");
   cmd.textContent = job.commandName ?? job.command ?? "unknown";
+  const right = makeEl("div");
+  right.style.display = "flex";
+  right.style.alignItems = "center";
+  if (job.status === "running") {
+    const cancelBtn = makeEl("button", "cancel-btn");
+    cancelBtn.textContent = "⏹ Cancel";
+    cancelBtn.title = "Cancel this job (DELETE /jobs/" + job.id + ")";
+    cancelBtn.onclick = async () => {
+      cancelBtn.disabled = true;
+      try {
+        // The /jobs/stream SSE will deliver the cancelled status update
+        // and upsertJob() will re-render this card automatically.
+        await fetch(`/jobs/${job.id}`, { method: "DELETE" });
+      } catch (err) {
+        console.error("cancel failed", err);
+        cancelBtn.disabled = false;
+      }
+    };
+    right.append(cancelBtn);
+  }
   const badge = makeEl("div", `status ${job.status}`);
   badge.textContent = job.status;
-  header.append(cmd, badge);
+  right.append(badge);
+  header.append(cmd, right);
 
   const meta = makeEl("div", "meta");
   const started = job.startedAt ? new Date(job.startedAt).toLocaleString() : "—";

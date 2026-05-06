@@ -126,6 +126,7 @@
         <span id="api-run-jobid" class="text-xs text-slate-500 font-mono"></span>
       </div>
       <div class="flex items-center gap-3">
+        <button onclick="cancelApiRun()" id="api-run-cancel-btn" class="hidden text-xs text-amber-400 hover:text-amber-300">⏹ Cancel</button>
         <button onclick="copyApiRunLogs()" id="api-run-copy-btn" class="text-xs text-blue-400 hover:text-blue-300">Copy logs</button>
         <button onclick="closeApiRunModal()" class="text-xs text-slate-400 hover:text-slate-200">✕ Close</button>
       </div>
@@ -1772,14 +1773,16 @@ async function runOneStep(step) {
   if (outputFolderName) step.runtimeOutputFolderName = outputFolderName
 
   try {
-    await waitForJob(jobId, step.id)
-    step.status = 'completed'
+    const finalStatus = await waitForJob(jobId, step.id)
+    step.status = finalStatus  // 'completed' or 'cancelled'
   } catch (error) {
     step.status = 'failed'
     step.error = String(error)
   }
   updateStepUI(step)
-  return step.status !== 'failed'
+  // Both cancelled and failed should stop the sequence — only completed
+  // is "success" for purposes of advancing.
+  return step.status === 'completed'
 }
 
 async function runSequence() {
@@ -1847,8 +1850,11 @@ async function runViaApi() {
 }
 
 let apiRunEventSource = null
+// Tracked so the modal's Cancel button can DELETE the umbrella job.
+let apiRunCurrentJobId = null
 
 function openApiRunModal({ jobId, status }) {
+  apiRunCurrentJobId = jobId ?? null
   document.getElementById('api-run-jobid').textContent = jobId ? `job ${jobId}` : ''
   setApiRunStatus(status)
   document.getElementById('api-run-logs').textContent = ''
@@ -1862,7 +1868,19 @@ function closeApiRunModal(event) {
     apiRunEventSource.close()
     apiRunEventSource = null
   }
+  apiRunCurrentJobId = null
   document.getElementById('run-api-btn').disabled = false
+}
+
+async function cancelApiRun() {
+  if (!apiRunCurrentJobId) return
+  try {
+    await fetch(`/jobs/${apiRunCurrentJobId}`, { method: 'DELETE' })
+    // Server-side cancelJob completes the SSE subject — tailApiRunLogs's
+    // done handler will arrive with status 'cancelled' and flip the UI.
+  } catch (err) {
+    console.error('cancelApiRun failed', err)
+  }
 }
 
 function setApiRunStatus(status) {
@@ -1874,7 +1892,11 @@ function setApiRunStatus(status) {
     running:   'bg-amber-700 text-amber-100',
     completed: 'bg-emerald-700 text-emerald-100',
     failed:    'bg-red-700 text-red-100',
+    cancelled: 'bg-slate-600 text-slate-100',
   }[status] ?? 'bg-slate-700 text-slate-300')
+  // Cancel button is only relevant while the umbrella job is in flight.
+  const cancelBtn = document.getElementById('api-run-cancel-btn')
+  if (cancelBtn) cancelBtn.classList.toggle('hidden', status !== 'running')
 }
 
 function tailApiRunLogs(jobId, onDone) {
