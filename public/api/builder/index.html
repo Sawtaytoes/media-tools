@@ -931,7 +931,7 @@ function setParamJson(id, field, raw) {
 
 // ─── YAML ─────────────────────────────────────────────────────────────────────
 
-function buildParams(step) {
+function buildParams(step, { resolveLinks = false } = {}) {
   const cmd = COMMANDS[step.command]
   const out = {}
   for (const field of cmd.fields) {
@@ -940,7 +940,11 @@ function buildParams(step) {
     if (field.type === 'path') {
       const srcId = step.links?.[field.name]
       if (srcId) {
-        if (typeof srcId === 'string') {
+        if (resolveLinks) {
+          // For API calls, every link must be a real path string.
+          const lv = linkedVal(step, field.name)
+          if (lv !== null) val = lv
+        } else if (typeof srcId === 'string') {
           val = '@' + srcId  // path var reference — store as @id, not resolved value
         } else {
           const lv = linkedVal(step, field.name)
@@ -1108,7 +1112,7 @@ async function runSequence() {
     step.status = 'running'
     updateStepUI(step)
 
-    const params = buildParams(step)
+    const params = buildParams(step, { resolveLinks: true })
 
     let resp
     try {
