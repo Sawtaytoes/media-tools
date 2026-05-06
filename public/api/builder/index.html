@@ -2930,6 +2930,33 @@ function formatStepResults(commandName, results) {
     return results.flat().map(item => `${item?.offsetInMilliseconds}ms`).join('\n')
   }
 
+  // Rename/move pairs — both fields present? Render as 'from → to' per
+  // line. Covers moveFiles ({ source, destination }) and the upcoming
+  // nameSpecialFeatures result shape ({ oldName, newName }) without
+  // having to maintain a per-command branch.
+  const renameLikeFields = [
+    ['source', 'destination'],
+    ['oldName', 'newName'],
+    ['from', 'to'],
+  ]
+  const renameField = renameLikeFields.find(([fromKey, toKey]) => (
+    results.every((item) => (
+      item && typeof item === 'object'
+      && typeof item[fromKey] === 'string'
+      && typeof item[toKey] === 'string'
+    ))
+  ))
+  if (renameField) {
+    const [fromKey, toKey] = renameField
+    return results.map((item) => `${item[fromKey]} → ${item[toKey]}`).join('\n')
+  }
+
+  // Plain string list — render one per line so paths and filenames
+  // wrap cleanly instead of getting JSON-quoted on a single row.
+  if (results.every((item) => typeof item === 'string')) {
+    return results.join('\n')
+  }
+
   // Generic fallback — pretty JSON, but unwrap a single array result
   const value = results.length === 1 ? results[0] : results
   try {

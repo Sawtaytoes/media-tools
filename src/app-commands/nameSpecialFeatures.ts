@@ -336,28 +336,40 @@ export const nameSpecialFeatures = ({
           )),
           // Existing duplicate-counter logic — handles same-name
           // collisions across renames (e.g. multiple "Trailer" extras).
+          // Each rename emits a { oldName, newName } record once it
+          // settles, so the builder's Results panel can render the
+          // mapping instead of a wall of nulls. Names are extension-less
+          // (createRenameFileOrFolder adds the extension internally).
           scan(
             (
               { previousFilenameCount },
               { fileInfo, renamedFilename },
-            ) => ({
-              previousFilenameCount: {
-                ...previousFilenameCount,
-                [renamedFilename]: getNextFilenameCount(
-                  previousFilenameCount[renamedFilename],
+            ) => {
+              const finalName = (
+                renamedFilename in previousFilenameCount
+                ? `(${getNextFilenameCount(previousFilenameCount[renamedFilename])}) ${renamedFilename}`
+                : renamedFilename
+              )
+              return {
+                previousFilenameCount: {
+                  ...previousFilenameCount,
+                  [renamedFilename]: getNextFilenameCount(
+                    previousFilenameCount[renamedFilename],
+                  ),
+                },
+                renameFileObservable: (
+                  fileInfo.renameFile(finalName)
+                  .pipe(
+                    map(() => ({ oldName: fileInfo.filename, newName: finalName })),
+                  )
                 ),
-              },
-              renameFileObservable: (
-                fileInfo.renameFile(
-                  renamedFilename in previousFilenameCount
-                  ? `(${getNextFilenameCount(previousFilenameCount[renamedFilename])}) ${renamedFilename}`
-                  : renamedFilename,
-                )
-              ),
-            }),
+              }
+            },
             {
               previousFilenameCount: {} as Record<string, number>,
-              renameFileObservable: new Observable() as Observable<void>,
+              renameFileObservable: (
+                new Observable() as Observable<{ oldName: string, newName: string }>
+              ),
             },
           ),
           map(({ renameFileObservable }) => renameFileObservable),
