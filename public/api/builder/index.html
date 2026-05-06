@@ -529,6 +529,7 @@ function restoreFromUrl() {
 
 function mainSrcField(commandName) {
   const cmd = COMMANDS[commandName]
+  if (!cmd) return null
   for (const n of ['sourcePath','sourceFilesPath','mediaFilesPath']) {
     if (cmd.fields.some(f => f.name === n)) return n
   }
@@ -537,7 +538,9 @@ function mainSrcField(commandName) {
 }
 
 function stepOutput(step) {
+  if (!step.command) return ''
   const cmd = COMMANDS[step.command]
+  if (!cmd) return ''
   const msf = mainSrcField(step.command)
   let src = msf ? (getLinkedValue(step, msf) ?? step.params[msf] ?? '') : ''
   src = src.replace(/[\\/]$/, '')
@@ -575,41 +578,42 @@ function makeStep(command = null) {
 
 // Wraps renderAll in document.startViewTransition (Chromium 111+) so existing
 // cards smoothly slide to their new positions when a step is added, inserted,
-// removed, or moved. Returns a promise that resolves once the transition has
-// finished (or once the synchronous render has completed in the fallback path),
-// so callers can do post-render work like scrollIntoView without fighting the
-// transition's snapshot.
-function renderAllAnimated() {
+// removed, or moved. Optional afterRender runs *inside* the transition's
+// update callback (after the DOM mutation, before the after-snapshot), so
+// post-render work like scrollIntoView is captured by the snapshot and the
+// transition's crossfade includes the scroll motion as one smooth animation.
+function renderAllAnimated(afterRender) {
   if (typeof document.startViewTransition === 'function') {
-    const transition = document.startViewTransition(() => renderAll())
-    return transition.finished.catch(() => {})
+    document.startViewTransition(() => {
+      renderAll()
+      if (afterRender) afterRender('instant')
+    })
+  } else {
+    renderAll()
+    if (afterRender) afterRender('smooth')
   }
-  renderAll()
-  return Promise.resolve()
 }
 
 // Both add paths drop in an empty step (command: null). The user picks
 // the command from the per-step dropdown; auto-linking the main source
 // field to the previous step's output happens in changeCommand at that
 // moment.
-async function addPicked() {
+function addPicked() {
   const step = makeStep(null)
   steps.push(step)
-  await renderAllAnimated()
-  scrollStepIntoView(step.id)
+  renderAllAnimated((behavior) => scrollStepIntoView(step.id, behavior))
 }
 
-async function insertAt(index) {
+function insertAt(index) {
   const step = makeStep(null)
   steps.splice(index, 0, step)
-  await renderAllAnimated()
-  scrollStepIntoView(step.id)
+  renderAllAnimated((behavior) => scrollStepIntoView(step.id, behavior))
 }
 
-function scrollStepIntoView(stepId) {
+function scrollStepIntoView(stepId, behavior = 'smooth') {
   const card = document.getElementById(`step-${stepId}`)
   if (card) {
-    card.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    card.scrollIntoView({ behavior, block: 'center' })
   }
 }
 
@@ -967,12 +971,16 @@ function renderPathField(step, field, stepIndex) {
     `<option value="${pv.id}"${linkedStepId === pv.id ? ' selected' : ''}>${esc(pv.label)}${pv.value ? ' → ' + pv.value : ''}</option>`
   ).join('')
 
-  // Build previous step options
-  const prevOptions = steps.slice(0, stepIndex).map((s, i) => {
-    const out = stepOutput(s)
-    const label = `Step ${i + 1}: ${s.command}${out ? ' → ' + out : ''}`
-    return `<option value="${s.id}"${linkedStepId === s.id ? ' selected' : ''}>${esc(label)}</option>`
-  }).join('')
+  // Build previous step options. Empty steps (command: null) have nothing
+  // to link to, so they're excluded.
+  const prevOptions = steps.slice(0, stepIndex)
+    .map((s, i) => ({ step: s, displayIndex: i + 1 }))
+    .filter(({ step: s }) => s.command !== null)
+    .map(({ step: s, displayIndex }) => {
+      const out = stepOutput(s)
+      const label = `Step ${displayIndex}: ${s.command}${out ? ' → ' + out : ''}`
+      return `<option value="${s.id}"${linkedStepId === s.id ? ' selected' : ''}>${esc(label)}</option>`
+    }).join('')
 
   return `<div>
     <div class="flex items-center gap-2 mb-1">
