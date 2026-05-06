@@ -563,6 +563,17 @@ function makeStep(command) {
   return { id: ++stepCounter, command, params, links: {}, status: null, error: null }
 }
 
+// Wraps renderAll in document.startViewTransition (Chromium 111+) so existing
+// cards smoothly slide to their new positions when a step is added, inserted,
+// removed, or moved. Falls back to plain renderAll on older browsers.
+function renderAllAnimated() {
+  if (typeof document.startViewTransition === 'function') {
+    document.startViewTransition(() => renderAll())
+  } else {
+    renderAll()
+  }
+}
+
 function addPicked() {
   const sel = document.getElementById('cmd-pick')
   if (!sel.value) return
@@ -577,7 +588,7 @@ function addPicked() {
     }
   }
   steps.push(step)
-  renderAll()
+  renderAllAnimated()
 }
 
 function insertAt(index) {
@@ -599,7 +610,7 @@ function insertAt(index) {
     }
   }
   steps.splice(index, 0, step)
-  renderAll()
+  renderAllAnimated()
 }
 
 function removeStep(id) {
@@ -613,7 +624,7 @@ function removeStep(id) {
         if (source === id) delete step.links[field]
       }
     }
-    renderAll()
+    renderAllAnimated()
   }
   const card = document.getElementById(`step-${id}`)
   if (card) {
@@ -637,12 +648,7 @@ function moveStep(id, dir) {
       if (sourceIndex >= stepIndex) delete step.links[field]
     }
   })
-  // Smoothly crossfade card positions when supported (Chromium 111+).
-  if (typeof document.startViewTransition === 'function') {
-    document.startViewTransition(() => renderAll())
-  } else {
-    renderAll()
-  }
+  renderAllAnimated()
 }
 
 // ─── Param handlers ───────────────────────────────────────────────────────────
@@ -755,7 +761,7 @@ function renderInsertDivider(index) {
     <div class="flex-1 h-px bg-slate-700/50 group-hover:bg-slate-600 transition-colors"></div>
     <button onclick="insertAt(${index})" title="Insert step here"
       class="flex items-center gap-1 px-2.5 py-0.5 mx-1 text-xs text-slate-600 hover:text-blue-400 rounded-full border border-transparent hover:border-blue-500/40 hover:bg-slate-800 transition-all whitespace-nowrap">
-      (+) insert
+      ➕ Add
     </button>
     <div class="flex-1 h-px bg-slate-700/50 group-hover:bg-slate-600 transition-colors"></div>
   </div>`
