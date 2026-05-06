@@ -1824,28 +1824,46 @@ function applyPathPickerSelection(entry) {
   // Always use the server-reported separator (set in runPathLookup) — the
   // user might have typed forward slashes on a Windows server, but the
   // joined path should still be backslash-separated for that filesystem.
-  // Falls back to '/' only if the server didn't supply one for any reason.
   const separator = pathPickerState.separator || '/'
   const base = parentPath.endsWith('/') || parentPath.endsWith('\\')
     ? parentPath.slice(0, -1)
     : parentPath
-  // No trailing separator. The user picked a directory and may want it as
-  // the final value (e.g., a source path); if they want to drill in, they
-  // type the separator themselves and the picker reopens via oninput.
-  const newValue = `${base}${separator}${entry.name}`
+  // Append a trailing separator so the picker re-runs against the new
+  // directory and shows its children — the user can keep clicking to
+  // drill in. Pressing Escape commits the displayed path with the
+  // trailing separator stripped (handled in pathPickerKeydown), so the
+  // final stored value is the directory itself.
+  const newValue = `${base}${separator}${entry.name}${separator}`
   inputElement.value = newValue
   if (target.mode === 'step') {
     setParam(target.stepId, target.fieldName, newValue)
   } else {
     setPathValue(target.pathVarId, newValue)
   }
-  closePathPicker()
+  schedulePathLookup(inputElement, target, newValue)
+  inputElement.focus()
 }
 
-function pathPickerKeydown(event, inputElement, target) {
+function pathPickerKeydown(event) {
   if (!pathPickerState) return
   if (event.key === 'Escape') {
     event.preventDefault()
+    // Treat Escape as "commit the parent directory" — strip any trailing
+    // separator that auto-drill appended so the stored value is the
+    // directory itself rather than a path ending in '/' or '\\'. Click-to-
+    // drill remains available because the picker reopens on the next
+    // keystroke via schedulePathLookup.
+    const { inputElement, target } = pathPickerState
+    const current = inputElement.value
+    const trimmed = current.replace(/[\\/]+$/, '')
+    if (trimmed !== current) {
+      inputElement.value = trimmed
+      if (target.mode === 'step') {
+        setParam(target.stepId, target.fieldName, trimmed || undefined)
+      } else {
+        setPathValue(target.pathVarId, trimmed)
+      }
+    }
     closePathPicker()
     return
   }
