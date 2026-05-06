@@ -2486,6 +2486,25 @@ function updateStepUI(step) {
     errEl.remove()
   }
 
+  // "Nothing changed" affordance: a step that finished cleanly but emitted
+  // no results would otherwise show only the status badge, leaving the user
+  // to wonder whether anything happened. Render a neutral banner so it's
+  // explicit. Skipped while running, on failure, or when results came back.
+  let emptyEl = card.querySelector('.step-empty')
+  const hasResults = step.results && step.results.length > 0
+  const isCompletedEmpty = step.status === 'completed' && !hasResults && !step.error
+  if (isCompletedEmpty) {
+    if (!emptyEl) {
+      const fieldsEl = card.querySelector('.space-y-2')
+      if (fieldsEl) {
+        fieldsEl.insertAdjacentHTML('beforebegin',
+          `<p class="step-empty text-xs text-slate-400 bg-slate-800/40 rounded px-2 py-1 mb-2 font-mono italic">Step completed — no items reported. Check the logs above for what (if anything) ran.</p>`)
+      }
+    }
+  } else if (emptyEl) {
+    emptyEl.remove()
+  }
+
   // Once the step stops running, swap the live-tail <pre> for a
   // collapsible <details> holding the FULL log + a copy button. Collapsed
   // by default on success (logs are usually noise once results arrive),
