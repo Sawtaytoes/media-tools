@@ -8,7 +8,6 @@ import {
   filter,
   map,
   tap,
-  toArray,
 } from "rxjs"
 
 import { type AssModificationRule } from "../tools/assTypes.js"
@@ -91,10 +90,13 @@ export const modifySubtitleMetadata = ({
             fileInfo.fullPath,
           )
         }),
+        // Emit a per-file record so the API job's `results` is a useful
+        // list of modified files instead of an array of nulls (writeFile
+        // resolves void, which JSON-serializes to null).
+        map(() => ({ filePath: fileInfo.fullPath })),
       )
     )),
     concatAll(),
-    toArray(),
     catchNamedError(modifySubtitleMetadata),
   )
   )

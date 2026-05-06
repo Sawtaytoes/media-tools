@@ -51,4 +51,29 @@ describe(modifySubtitleMetadata.name, () => {
       expect(emissions).toEqual([])
     })
   ))
+
+  test("emits a { filePath } record per modified file so job.results is useful, not [null, null, …]", async () => (
+    captureConsoleMessage("info", async () => {
+      vol.fromJSON({
+        "G:\\Work\\episode-02.ass": MINIMAL_ASS,
+      })
+
+      const emissions = await firstValueFrom(
+        modifySubtitleMetadata({
+          isRecursive: false,
+          rules: [{ type: "setScriptInfo", key: "ScriptType", value: "v4.00+" }],
+          sourcePath: "G:\\Work",
+        })
+        .pipe(toArray()),
+      )
+
+      // One record per .ass file in the directory (episode-01 from the
+      // outer beforeEach + episode-02 from above), not nulls.
+      expect(emissions).toEqual(expect.arrayContaining([
+        { filePath: "G:\\Work\\episode-01.ass" },
+        { filePath: "G:\\Work\\episode-02.ass" },
+      ]))
+      expect(emissions).toHaveLength(2)
+    })
+  ))
 })
