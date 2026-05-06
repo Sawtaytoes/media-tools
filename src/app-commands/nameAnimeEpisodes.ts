@@ -16,7 +16,7 @@ import {
   zip,
 } from "rxjs"
 
-import { logAndSwallow } from "../tools/logAndSwallow.js"
+import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { cleanupFilename } from "../tools/cleanupFilename.js"
 import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
 import { getUserSearchInput } from "../tools/getUserSearchInput.js"
@@ -292,7 +292,7 @@ export const nameAnimeEpisodes = ({
         renamedFilename
       )
     )),
-    logAndSwallow(
+    logAndRethrow(
       nameAnimeEpisodes
     )
   )

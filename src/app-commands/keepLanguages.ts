@@ -8,7 +8,7 @@ import {
   toArray,
 } from "rxjs"
 
-import { logAndSwallow } from "../tools/logAndSwallow.js"
+import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
 import { getTrackLanguages } from "../tools/getTrackLanguages.js"
 import { type Iso6392LanguageCode } from "../tools/iso6392LanguageCodes.js"
@@ -215,7 +215,7 @@ export const keepLanguages = ({
     )),
     concatAll(),
     toArray(),
-    logAndSwallow(
+    logAndRethrow(
       keepLanguages
     ),
   )

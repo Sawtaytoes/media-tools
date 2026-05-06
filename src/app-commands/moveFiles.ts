@@ -9,7 +9,7 @@ import {
   toArray,
 } from "rxjs"
 
-import { logAndSwallow } from "../tools/logAndSwallow.js"
+import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { getFiles } from "../tools/getFiles.js"
 import { logInfo } from "../tools/logMessage.js"
 import { makeDirectory } from "../tools/makeDirectory.js"
@@ -62,6 +62,6 @@ export const moveFiles = ({
         concatMap(() => from(moves)),
       )
     )),
-    logAndSwallow(moveFiles),
+    logAndRethrow(moveFiles),
   )
 )

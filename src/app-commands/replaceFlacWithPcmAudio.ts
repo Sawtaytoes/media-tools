@@ -9,7 +9,7 @@ import {
   toArray,
 } from "rxjs"
 
-import { logAndSwallow } from "../tools/logAndSwallow.js"
+import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { convertFlacToPcmAudio, convertFlacToPcmAudioDefaultProps } from "../cli-spawn-operations/convertFlacToPcmAudio.js"
 import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
 import {
@@ -138,7 +138,7 @@ export const replaceFlacWithPcmAudio = ({
     )),
     concatAll(),
     toArray(),
-    logAndSwallow(
+    logAndRethrow(
       replaceFlacWithPcmAudio
     ),
   )

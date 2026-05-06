@@ -15,7 +15,7 @@ import {
 } from "rxjs"
 
 import { canonicalizeMovieTitle, type MovieIdentity } from "../tools/canonicalizeMovieTitle.js"
-import { logAndSwallow } from "../tools/logAndSwallow.js"
+import { logAndRethrow } from "../tools/logAndRethrow.js"
 import {
   getIsSimilarTimecode,
   getSpecialFeatureFromTimecode,
@@ -438,7 +438,7 @@ export const nameSpecialFeatures = ({
       mergeAll(),
       // Rename everything by calling the mapped function.
       mergeAll(),
-      logAndSwallow(nameSpecialFeatures),
+      logAndRethrow(nameSpecialFeatures),
     )
   )
 }

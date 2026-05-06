@@ -6,7 +6,7 @@ import {
   map,
 } from "rxjs"
 
-import { logAndSwallow } from "../tools/logAndSwallow.js"
+import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
 import {
   getMkvInfo,
@@ -126,7 +126,7 @@ export const changeTrackLanguages = ({
         )
       )),
       concatAll(),
-      logAndSwallow(
+      logAndRethrow(
         changeTrackLanguages
       ),
     )

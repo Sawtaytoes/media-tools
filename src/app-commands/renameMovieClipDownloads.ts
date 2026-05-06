@@ -5,7 +5,7 @@ import {
   toArray,
 } from 'rxjs'
 import { getFiles } from '../tools/getFiles.js';
-import { logAndSwallow } from '../tools/logAndSwallow.js';
+import { logAndRethrow } from '../tools/logAndRethrow.js';
 
 
 export const renameMovieClipDownloads = ({
@@ -55,7 +55,7 @@ export const renameMovieClipDownloads = ({
     ) => (
       renameFile()
     )),
-    logAndSwallow(
+    logAndRethrow(
       renameMovieClipDownloads
     ),
   )

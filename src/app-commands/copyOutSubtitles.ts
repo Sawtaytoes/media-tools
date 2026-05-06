@@ -8,7 +8,7 @@ import {
   toArray,
 } from "rxjs"
 
-import { logAndSwallow } from "../tools/logAndSwallow.js"
+import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { extractSubtitles, extractSubtitlesDefaultProps } from "../cli-spawn-operations/extractSubtitles.js"
 import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
 import { getMkvInfo } from "../tools/getMkvInfo.js"
@@ -106,6 +106,6 @@ export const copyOutSubtitles = ({
     )),
     concatAll(),
     toArray(),
-    logAndSwallow(copyOutSubtitles),
+    logAndRethrow(copyOutSubtitles),
   )
 )

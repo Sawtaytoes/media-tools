@@ -13,7 +13,7 @@ import {
 } from "rxjs"
 
 import type { AnidbAnime } from "../types/anidb.js"
-import { logAndSwallow } from "../tools/logAndSwallow.js"
+import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { cleanupFilename } from "../tools/cleanupFilename.js"
 import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
 import { getFiles } from "../tools/getFiles.js"
@@ -138,6 +138,6 @@ export const nameAnimeEpisodesAniDB = ({
     mergeAll(),
     mergeAll(),
     mergeMap(({ fileInfo, renamedFilename }) => fileInfo.renameFile(renamedFilename)),
-    logAndSwallow(nameAnimeEpisodesAniDB),
+    logAndRethrow(nameAnimeEpisodesAniDB),
   )
 )

@@ -7,7 +7,7 @@ import {
   toArray,
 } from "rxjs"
 
-import { logAndSwallow } from "../tools/logAndSwallow.js"
+import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { getAudioOffset, getAudioOffsetDefaultProps } from "../cli-spawn-operations/getAudioOffset.js"
 import { getFiles } from "../tools/getFiles.js"
 import { logInfo } from "../tools/logMessage.js"
@@ -120,7 +120,7 @@ export const getAudioOffsets = ({
         toArray(),
       )
     )),
-    logAndSwallow(
+    logAndRethrow(
       getAudioOffsets
     ),
   )

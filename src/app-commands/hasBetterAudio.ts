@@ -8,7 +8,7 @@ import {
   tap,
 } from "rxjs"
 
-import { logAndSwallow } from "../tools/logAndSwallow.js"
+import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
 import {
   getMediaInfo,
@@ -249,7 +249,7 @@ export const hasBetterAudio = ({
       )
     )),
     concatAll(),
-    logAndSwallow(
+    logAndRethrow(
       hasBetterAudio
     ),
   )

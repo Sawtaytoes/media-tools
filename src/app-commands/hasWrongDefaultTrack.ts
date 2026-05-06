@@ -13,7 +13,7 @@ import {
   toArray,
 } from "rxjs"
 
-import { logAndSwallow } from "../tools/logAndSwallow.js"
+import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
 import { getMkvInfo } from "../tools/getMkvInfo.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
@@ -119,7 +119,7 @@ export const hasWrongDefaultTrack = ({
     )),
     concatAll(),
     toArray(),
-    logAndSwallow(
+    logAndRethrow(
       hasWrongDefaultTrack
     ),
   )

@@ -12,7 +12,7 @@ import {
   tap,
 } from "rxjs"
 
-import { logAndSwallow } from "../tools/logAndSwallow.js"
+import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { filterIsAudioFile } from "../tools/filterIsAudioFile.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 
@@ -113,7 +113,7 @@ export const hasDuplicateMusicFiles = ({
         directoryWithDuplicates,
       )
     }),
-    logAndSwallow(
+    logAndRethrow(
       hasDuplicateMusicFiles
     ),
   )

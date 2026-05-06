@@ -15,7 +15,7 @@ import {
   toArray,
 } from "rxjs"
 
-import { logAndSwallow } from "../tools/logAndSwallow.js"
+import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
 import {
   getAspectRatioData,
@@ -483,7 +483,7 @@ export const storeAspectRatioData = ({
         map(() => ({ jsonFilePath })),
       )
     )),
-    logAndSwallow(
+    logAndRethrow(
       storeAspectRatioData
     ),
   )

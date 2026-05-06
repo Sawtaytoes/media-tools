@@ -10,7 +10,7 @@ import {
   tap,
 } from "rxjs"
 
-import { logAndSwallow } from "../tools/logAndSwallow.js"
+import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
 import {
   getMediaInfo,
@@ -81,7 +81,7 @@ export const isMissingSubtitles = ({
       cpus()
       .length
     ),
-    logAndSwallow(
+    logAndRethrow(
       isMissingSubtitles
     ),
   )

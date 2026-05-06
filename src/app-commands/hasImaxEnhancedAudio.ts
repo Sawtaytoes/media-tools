@@ -8,7 +8,7 @@ import {
   tap,
 } from "rxjs"
 
-import { logAndSwallow } from "../tools/logAndSwallow.js"
+import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { getMediaInfo } from "../tools/getMediaInfo.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 
@@ -84,7 +84,7 @@ export const hasImaxEnhancedAudio = ({
         }),
       )
     )),
-    logAndSwallow(
+    logAndRethrow(
       hasImaxEnhancedAudio
     ),
   )

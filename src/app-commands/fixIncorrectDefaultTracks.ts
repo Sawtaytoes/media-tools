@@ -4,7 +4,7 @@ import {
   toArray,
 } from "rxjs"
 
-import { logAndSwallow } from "../tools/logAndSwallow.js"
+import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 import { setOnlyFirstTracksAsDefault } from "../cli-spawn-operations/setOnlyFirstTracksAsDefault.js"
@@ -40,7 +40,7 @@ export const fixIncorrectDefaultTracks = ({
         })),
       )
     )),
-    logAndSwallow(
+    logAndRethrow(
       fixIncorrectDefaultTracks
     ),
   )

@@ -27,16 +27,15 @@ describe(deleteFolder.name, () => {
     await expect(stat("G:\\Work\\episode-01.mkv")).resolves.toBeDefined()
   })
 
-  test("refuses to run and emits no values when confirm is false", async () => (
+  test("refuses to run and emits a propagated error when confirm is false", async () => (
     captureConsoleMessage("error", async () => {
-      // logAndSwallow swallows the thrown error into EMPTY, so the observable
-      // completes with no emitted values. firstValueFrom-on-EMPTY rejects with
-      // a NoElementsError; toArray() resolves to [] which is the cleaner check.
-      const emissions = await firstValueFrom(
+      // logAndRethrow re-emits the thrown error so the runner can mark the
+      // job as failed instead of silently no-opping. The destructive
+      // command's refusal must be loud, not invisible.
+      await expect(firstValueFrom(
         deleteFolder({ confirm: false, folderPath: "G:\\Work\\TEMP\\AUDIO-OFFSETS" })
         .pipe(toArray()),
-      )
-      expect(emissions).toEqual([])
+      )).rejects.toThrow(/confirm: true/i)
 
       // Folder must still be intact — confirm: false is a hard stop.
       await expect(stat("G:\\Work\\TEMP\\AUDIO-OFFSETS")).resolves.toBeDefined()
@@ -46,12 +45,12 @@ describe(deleteFolder.name, () => {
 
   test("logs the refusal reason when confirm is omitted from the call", async () => (
     captureConsoleMessage("error", async (consoleSpy) => {
-      await firstValueFrom(
+      await expect(firstValueFrom(
         // @ts-expect-error — deliberately calling without confirm to exercise
         // the runtime guard that protects CLI / direct callers.
         deleteFolder({ folderPath: "G:\\Work\\TEMP\\AUDIO-OFFSETS" })
         .pipe(toArray()),
-      )
+      )).rejects.toThrow(/confirm: true/i)
 
       const errorOutput = consoleSpy.mock.calls.flat().join(" ")
       expect(errorOutput).toMatch(/confirm: true/i)

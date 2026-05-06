@@ -94,6 +94,12 @@ export const remuxToMkv = ({
                 )
               )
             }),
+            // Per-file inner pipe: log + swallow so a single bad file (e.g. an
+            // existing same-named .mkv collision) is skipped while the outer
+            // concatMap continues with the rest of the directory. NOT a
+            // terminal handler — the OUTER observable has no catch, so a
+            // failure outside this concatMap (e.g. getFiles itself ENOENT)
+            // still propagates to the runner.
             logAndSwallow(remuxToMkv),
           )
         )

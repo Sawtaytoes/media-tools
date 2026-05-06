@@ -15,7 +15,7 @@ import {
   toArray,
 } from "rxjs"
 
-import { logAndSwallow } from "../tools/logAndSwallow.js"
+import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
 import { FALLBACK_TIMECODE, getChapters } from "../cli-spawn-operations/getChapters.js"
 import { insertIntoArray } from "../tools/insertIntoArray.js"
@@ -275,7 +275,7 @@ export const mergeOrderedChapters = ({
     )),
     concatAll(),
     toArray(),
-    logAndSwallow(
+    logAndRethrow(
       mergeOrderedChapters
     ),
   )

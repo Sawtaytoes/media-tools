@@ -5,7 +5,7 @@ import {
   toArray,
 } from "rxjs"
 
-import { logAndSwallow } from "../tools/logAndSwallow.js"
+import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 import { setDisplayWidthMkvPropEdit } from "../cli-spawn-operations/setDisplayWidthMkvPropEdit.js"
 import { logInfo } from "../tools/logMessage.js"
@@ -57,7 +57,7 @@ export const setDisplayWidth = ({
       )
     )),
     toArray(),
-    logAndSwallow(
+    logAndRethrow(
       setDisplayWidth
     ),
   )

@@ -8,7 +8,7 @@ import {
   tap,
 } from "rxjs"
 
-import { logAndSwallow } from "../tools/logAndSwallow.js"
+import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 import { logInfo } from "../tools/logMessage.js"
 
@@ -65,6 +65,6 @@ export const deleteFilesByExtension = ({
         map(() => fileInfo.fullPath),
       )
     )),
-    logAndSwallow(deleteFilesByExtension),
+    logAndRethrow(deleteFilesByExtension),
   )
 }

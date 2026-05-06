@@ -7,7 +7,7 @@ import {
   toArray,
 } from "rxjs"
 
-import { logAndSwallow } from "../tools/logAndSwallow.js"
+import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { getFiles } from "../tools/getFiles.js"
 import { logInfo } from "../tools/logMessage.js"
 import { replaceAttachmentsMkvMerge, replaceAttachmentsMkvMergeDefaultProps } from "../cli-spawn-operations/replaceAttachmentsMkvMerge.js"
@@ -112,7 +112,7 @@ export const replaceAttachments = ({
         toArray(),
       )
     )),
-    logAndSwallow(
+    logAndRethrow(
       replaceAttachments
     ),
   )

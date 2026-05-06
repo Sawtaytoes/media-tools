@@ -4,7 +4,7 @@ import {
   buildDefaultSubtitleModificationRules,
   type SubtitleModificationRule,
 } from "../tools/buildDefaultSubtitleModificationRules.js"
-import { logAndSwallow } from "../tools/logAndSwallow.js"
+import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { getSubtitleMetadata } from "./getSubtitleMetadata.js"
 
 // Reads every .ass file's [Script Info] / [V4+ Styles] metadata via
@@ -28,6 +28,6 @@ export const computeDefaultSubtitleRules = ({
   })
   .pipe(
     map((metadata) => buildDefaultSubtitleModificationRules(metadata)),
-    logAndSwallow(computeDefaultSubtitleRules),
+    logAndRethrow(computeDefaultSubtitleRules),
   )
 )

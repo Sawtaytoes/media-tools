@@ -3,7 +3,7 @@ import {
   mergeMap,
 } from "rxjs"
 
-import { logAndSwallow } from "../tools/logAndSwallow.js"
+import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { getDemoName } from "../tools/getDemoName.js"
 import { getMediaInfo } from "../tools/getMediaInfo.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
@@ -53,7 +53,7 @@ export const renameDemos = ({
         )),
       )
     )),
-    logAndSwallow(
+    logAndRethrow(
       renameDemos
     )
   )

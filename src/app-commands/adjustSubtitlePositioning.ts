@@ -8,7 +8,7 @@ import {
   toArray,
 } from "rxjs"
 
-import { logAndSwallow } from "../tools/logAndSwallow.js"
+import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { filterIsSubtitlesFile } from "../tools/filterIsSubtitlesFile.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 import { logInfo } from "../tools/logMessage.js"
@@ -137,7 +137,7 @@ export const adjustSubtitlePositions = ({
     )),
     concatAll(),
     toArray(),
-    logAndSwallow(
+    logAndRethrow(
       adjustSubtitlePositions
     ),
   )
