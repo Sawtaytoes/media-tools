@@ -120,7 +120,6 @@ const applySetStyleFields = (
     sections: assFile.sections.map((section) => {
       if (section.sectionType !== "formatted") return section
 
-      console.log('hi 4', section)
       const hasStyleEntries = section.entries.some(
         (e) => e.entryType === "Style",
       )
