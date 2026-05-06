@@ -7,7 +7,14 @@ import {
 
 import { logError, logInfo } from "../tools/logMessage.js"
 import { withJobContext } from "./logCapture.js"
-import { completeSubject, createSubject, getJob, updateJob } from "./jobStore.js"
+import {
+  completeSubject,
+  createSubject,
+  getJob,
+  registerJobSubscription,
+  unregisterJobSubscription,
+  updateJob,
+} from "./jobStore.js"
 import {
   resolveSequenceParams,
   type SequencePath,
@@ -119,6 +126,10 @@ export const runSequenceJob = (
       const subscription: Subscription = stepObservable
       .pipe(
         catchError((err) => {
+          // cancelJob already wrote the terminal state and tore down the
+          // chain; the catchError reaching here is fallout — don't clobber.
+          if (getJob(jobId)?.status === "cancelled") return EMPTY
+
           logError("SEQUENCE", `Step ${stepId}: ${String(err)}`)
           updateJob(jobId, { error: String(err) })
           finalize("failed")
@@ -143,10 +154,19 @@ export const runSequenceJob = (
         },
         complete: () => {
           subscription.unsubscribe()
-          // If this step's catchError already finalized as failed, the job
-          // status will be 'failed' — bail without recording outputs and
-          // without advancing.
-          if (getJob(jobId)?.status === "failed") return
+          unregisterJobSubscription(jobId)
+
+          // If this step's catchError already finalized as failed, or the
+          // umbrella was cancelled mid-step, bail without recording
+          // outputs and without advancing the recursion.
+          //
+          // TODO: refactor this runner to compose with concatMap so a
+          // single subscription cascades — then cancelJob unsubscribing
+          // the parent would automatically tear down the in-flight step.
+          // For now we track the current step's subscription on the
+          // umbrella job and rely on cancelJob to unsubscribe it directly.
+          const status = getJob(jobId)?.status
+          if (status === "failed" || status === "cancelled") return
 
           const outputs = (
             config.extractOutputs
@@ -164,6 +184,12 @@ export const runSequenceJob = (
           runStep(stepIndex + 1)
         },
       })
+
+      // Register the current step's subscription on the umbrella job so
+      // cancelJob(jobId) can tear it down. Each step overwrites the
+      // previous step's slot — the umbrella's "live" subscription is
+      // always the in-flight step.
+      registerJobSubscription(jobId, subscription)
     }
 
     runStep(0)
