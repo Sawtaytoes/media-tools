@@ -33,6 +33,13 @@
   <div class="shrink-0 flex items-center justify-between px-4 py-3 border-b border-slate-700 bg-slate-900 z-10">
     <h1 class="font-semibold text-slate-100">Sequence Builder</h1>
     <div class="flex items-center gap-2">
+      <button onclick="addPath()" title="Add a path variable"
+        class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-slate-100 px-3 py-1.5 rounded font-medium border border-slate-700 hover:border-slate-600">+ Path</button>
+      <button id="run-btn" onclick="runSequence()" title="Run the entire sequence"
+        class="text-xs bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white px-3 py-1.5 rounded font-medium">
+        ▶ Run Sequence
+      </button>
+      <span class="w-px h-6 bg-slate-700 mx-1"></span>
       <button onclick="toggleLoad()" id="load-btn" title="Load YAML"
         class="w-7 h-7 flex items-center justify-center rounded text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 transition-colors">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
@@ -73,16 +80,13 @@
   </div>
 
   <!-- Step list -->
-  <div id="steps-el" class="flex-1 overflow-y-auto p-4 grid gap-3 auto-rows-min grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 content-start"></div>
+  <div class="flex-1 overflow-y-auto">
+    <div id="steps-el" class="max-w-3xl mx-auto px-4 py-4 flex flex-col gap-3"></div>
+  </div>
 
   <!-- Footer toolbar -->
-  <div class="shrink-0 flex flex-wrap items-center gap-2 px-4 py-3 border-t border-slate-700 bg-slate-900">
-    <button onclick="addPicked()" class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium shrink-0">+ Add</button>
-    <button onclick="addPath()" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded font-medium shrink-0" title="Add a path variable">+ Path</button>
-    <button id="run-btn" onclick="runSequence()"
-      class="ml-auto text-xs bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white px-4 py-1.5 rounded font-medium shrink-0">
-      ▶ Run Sequence
-    </button>
+  <div class="shrink-0 flex items-center gap-2 px-4 py-3 border-t border-slate-700 bg-slate-900">
+    <button onclick="addPicked()" class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium">+ Add Step</button>
   </div>
 
 </div>
@@ -752,11 +756,13 @@ function renderAll() {
   paths.forEach((pv, i) => parts.push(renderPathVarCard(pv, i === 0)))
 
   if (!steps.length) {
-    parts.push('<p class="col-span-full text-slate-500 text-xs text-center mt-4">No steps yet — select a command below to add one</p>')
+    parts.push('<p class="text-slate-500 text-xs text-center mt-4">No steps yet — click <span class="text-slate-300">+ Add Step</span> below to start.</p>')
   } else {
     steps.forEach((s, i) => {
       parts.push(renderStep(s, i))
-      if (i < steps.length - 1) parts.push(renderInsertDivider(i + 1))
+      // Insert dividers between steps and after the last one (so the user has
+      // an inline affordance to append at the end without scrolling to the footer).
+      parts.push(renderInsertDivider(i + 1))
     })
   }
 
@@ -810,6 +816,9 @@ function renderStep(step, index) {
     </select>
     ${statusBadge}
     <div class="flex items-center gap-1 shrink-0">
+      <button onclick="runStep(${step.id})" ${step.command ? '' : 'disabled'}
+        title="Run this step only"
+        class="w-6 h-6 flex items-center justify-center rounded text-emerald-400 hover:text-emerald-300 hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent text-xs">▶</button>
       <button onclick="moveStep(${step.id},-1)" ${isFirst ? 'disabled' : ''}
         class="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700 disabled:opacity-30 text-xs">↑</button>
       <button onclick="moveStep(${step.id},1)" ${isLast ? 'disabled' : ''}
@@ -1174,6 +1183,51 @@ function loadYaml() {
 
 // ─── Run sequence ─────────────────────────────────────────────────────────────
 
+// Submit a single step and wait for its job to finish. Mutates the step's
+// status / error / results / jobId / runtimeOutputFolderName fields.
+// Returns true on success, false on failure.
+async function runOneStep(step) {
+  step.status = 'running'
+  updateStepUI(step)
+
+  const params = buildParams(step, { resolveLinks: true })
+
+  let response
+  try {
+    response = await fetch(`/commands/${step.command}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    })
+  } catch (error) {
+    step.status = 'failed'
+    step.error = error.message
+    updateStepUI(step)
+    return false
+  }
+
+  if (!response.ok) {
+    step.status = 'failed'
+    step.error = `HTTP ${response.status}: ${await response.text()}`
+    updateStepUI(step)
+    return false
+  }
+
+  const { jobId, outputFolderName } = await response.json()
+  step.jobId = jobId
+  if (outputFolderName) step.runtimeOutputFolderName = outputFolderName
+
+  try {
+    await waitForJob(jobId, step.id)
+    step.status = 'completed'
+  } catch (error) {
+    step.status = 'failed'
+    step.error = String(error)
+  }
+  updateStepUI(step)
+  return step.status !== 'failed'
+}
+
 async function runSequence() {
   const runnableSteps = steps.filter(step => step.command !== null)
   if (running || !runnableSteps.length) return
@@ -1189,48 +1243,28 @@ async function runSequence() {
   }
 
   for (const step of runnableSteps) {
-    step.status = 'running'
-    updateStepUI(step)
-
-    const params = buildParams(step, { resolveLinks: true })
-
-    let resp
-    try {
-      resp = await fetch(`/commands/${step.command}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(params),
-      })
-    } catch (e) {
-      step.status = 'failed'
-      step.error = e.message
-      updateStepUI(step)
-      break
-    }
-
-    if (!resp.ok) {
-      step.status = 'failed'
-      step.error = `HTTP ${resp.status}: ${await resp.text()}`
-      updateStepUI(step)
-      break
-    }
-
-    const { jobId, outputFolderName } = await resp.json()
-    step.jobId = jobId
-
-    // If the API returned an outputFolderName that differs, store it (for future chaining refinement)
-    if (outputFolderName) step.runtimeOutputFolderName = outputFolderName
-
-    try {
-      await waitForJob(jobId, step.id)
-      step.status = 'completed'
-    } catch (e) {
-      step.status = 'failed'
-      step.error = String(e)
-    }
-    updateStepUI(step)
-    if (step.status === 'failed') break
+    const success = await runOneStep(step)
+    if (!success) break
   }
+
+  running = false
+  document.getElementById('run-btn').disabled = false
+}
+
+async function runStep(stepId) {
+  if (running) return
+  const step = steps.find(s => s.id === stepId)
+  if (!step || !step.command) return
+  running = true
+  stepLogs.clear()
+  document.getElementById('run-btn').disabled = true
+
+  step.status = 'pending'
+  step.error = null
+  step.results = null
+  updateStepUI(step)
+
+  await runOneStep(step)
 
   running = false
   document.getElementById('run-btn').disabled = false
