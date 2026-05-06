@@ -2488,18 +2488,25 @@ function updateStepUI(step) {
 
   // "Nothing changed" affordance: a step that finished cleanly but emitted
   // no results would otherwise show only the status badge, leaving the user
-  // to wonder whether anything happened. Render a neutral banner so it's
-  // explicit. Skipped while running, on failure, or when results came back.
+  // to wonder whether anything happened. Render an info banner so it's
+  // explicit. Tailor the trailing hint: if logs exist, point at them; if
+  // not (the step matched nothing and never spawned a process), say so.
   let emptyEl = card.querySelector('.step-empty')
   const hasResults = step.results && step.results.length > 0
+  const hasLogs = Array.isArray(step.logs) && step.logs.length > 0
   const isCompletedEmpty = step.status === 'completed' && !hasResults && !step.error
   if (isCompletedEmpty) {
+    const detail = hasLogs
+      ? 'No items reported — see logs above for detail.'
+      : 'No matching files (or no work needed for this step).'
     if (!emptyEl) {
       const fieldsEl = card.querySelector('.space-y-2')
       if (fieldsEl) {
         fieldsEl.insertAdjacentHTML('beforebegin',
-          `<p class="step-empty text-xs text-slate-400 bg-slate-800/40 rounded px-2 py-1 mb-2 font-mono italic">Step completed — no items reported. Check the logs above for what (if anything) ran.</p>`)
+          `<p class="step-empty text-xs text-sky-300 bg-sky-950/40 rounded px-2 py-1 mb-2 font-mono">Step completed — ${detail}</p>`)
       }
+    } else {
+      emptyEl.textContent = `Step completed — ${detail}`
     }
   } else if (emptyEl) {
     emptyEl.remove()
