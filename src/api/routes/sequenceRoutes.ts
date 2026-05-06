@@ -236,7 +236,12 @@ sequenceRoutes.openapi(
     }
 
     const job = createJob({
-      commandName: "__sequence__",
+      // 'sequence' is not a registered command (the registry lives in
+      // commandRoutes.commandNames; sequences come in via this separate
+      // /sequences/run endpoint), so there's no collision risk in using
+      // the bare name. The previous '__sequence__' was a defensive
+      // namespacing artifact that just rendered ugly in the /jobs UI.
+      commandName: "sequence",
       params: parsed,
     })
 

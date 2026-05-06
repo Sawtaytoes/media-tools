@@ -141,6 +141,23 @@
     overflow-x: auto;
   }
 
+  .log-pane {
+    margin-top: 8px;
+    background: #020617;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: #cbd5e1;
+    max-height: 320px;
+    overflow-y: auto;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .log-pane > div { word-break: break-word; white-space: pre-wrap; }
+  .log-pane .log-empty { color: #64748b; font-style: italic; }
+
   #status-bar {
     max-width: 900px;
     margin: 0 auto 12px;
@@ -165,6 +182,59 @@ function makeEl(tag, className) {
   const el = document.createElement(tag);
   if (className) el.className = className;
   return el;
+}
+
+// /jobs/stream pushes whole-job updates without `logs` (jobStore strips
+// them to keep the firehose lean). For sequence jobs we want the live
+// log lines visible in-card so the user can see which step is running
+// — so we open a per-job /jobs/:id/logs EventSource and accumulate
+// lines client-side. Lifetime: opens on first render of a sequence
+// job, closes when the SSE sends `{ done: true }`. The maps survive
+// across upsertJob's whole-card replacements.
+const logsByJobId = new Map();
+const logEventSourcesByJobId = new Map();
+
+function appendLogLine(jobId, line) {
+  const lines = logsByJobId.get(jobId) ?? [];
+  lines.push(line);
+  logsByJobId.set(jobId, lines);
+  // Direct DOM append on the currently-mounted pane (the card may have
+  // been swapped by a status-change upsertJob since we opened the ES).
+  const pane = document.querySelector(`[data-id="${jobId}"] .log-pane`);
+  if (pane) {
+    const empty = pane.querySelector(".log-empty");
+    if (empty) empty.remove();
+    const node = document.createElement("div");
+    node.textContent = line;
+    pane.append(node);
+    pane.scrollTop = pane.scrollHeight;
+  }
+}
+
+function ensureLogStream(jobId, jobStatus) {
+  if (logEventSourcesByJobId.has(jobId)) return;
+  // Skip already-completed jobs that already have their lines in the
+  // map (e.g. from a prior open) — re-opening would just replay.
+  // Terminal jobs WITHOUT a cached log array still need a one-shot
+  // fetch to populate, which the SSE handles by replaying buffered
+  // logs and emitting done immediately. So we always open.
+  const es = new EventSource(`/jobs/${jobId}/logs`);
+  logEventSourcesByJobId.set(jobId, es);
+  es.onmessage = (event) => {
+    let data;
+    try { data = JSON.parse(event.data); }
+    catch { return; }
+    if (typeof data.line === "string") {
+      appendLogLine(jobId, data.line);
+    } else if (data.done) {
+      es.close();
+      logEventSourcesByJobId.delete(jobId);
+    }
+  };
+  es.onerror = () => {
+    es.close();
+    logEventSourcesByJobId.delete(jobId);
+  };
 }
 
 function renderJob(job) {
@@ -244,6 +314,45 @@ function renderJob(job) {
       details.append(result);
     }
     card.append(details);
+  }
+
+  // Live log pane for sequence jobs — running ones stream in via the
+  // per-job SSE; terminal ones get their buffered lines replayed once.
+  // Open by default while running so the user can watch state without
+  // an extra click; closed by default afterwards to keep the list
+  // scannable. Replays existing accumulated lines on every render so
+  // upsertJob's whole-card replacement doesn't lose scrollback.
+  // Terminal jobs open the SSE lazily on first disclosure-toggle so a
+  // page reload with N old sequence jobs doesn't blast N parallel SSE
+  // requests up front.
+  if (job.commandName === "sequence") {
+    const details = makeEl("details");
+    if (job.status === "running") details.open = true;
+    const summary = makeEl("summary");
+    summary.textContent = "Logs";
+    const pane = makeEl("div", "log-pane");
+    const lines = logsByJobId.get(job.id);
+    if (lines && lines.length) {
+      for (const line of lines) {
+        const node = document.createElement("div");
+        node.textContent = line;
+        pane.append(node);
+      }
+    } else {
+      const empty = makeEl("div", "log-empty");
+      empty.textContent = "Waiting for log lines…";
+      pane.append(empty);
+    }
+    details.append(summary, pane);
+    card.append(details);
+    queueMicrotask(() => { pane.scrollTop = pane.scrollHeight; });
+    if (job.status === "running") {
+      ensureLogStream(job.id, job.status);
+    } else {
+      details.addEventListener("toggle", () => {
+        if (details.open) ensureLogStream(job.id, job.status);
+      }, { once: true });
+    }
   }
 
   return card;
