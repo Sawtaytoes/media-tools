@@ -19,9 +19,9 @@ import { logInfo } from "../tools/logMessage.js"
 // Use case: chained operations like mergeTracks output to <work>/SUBTITLED.
 // Without this command, chaining another step that also has an outputFolderName
 // produces <work>/SUBTITLED/REORDERED, and so on — folder nesting accumulates.
-// Running copyOutputBack between steps flattens the structure: <work> always
+// Running flattenOutput between steps flattens the structure: <work> always
 // holds the latest cumulative result.
-export const copyOutputBack = ({
+export const flattenOutput = ({
   sourcePath,
 }: {
   sourcePath: string,
@@ -53,7 +53,7 @@ export const copyOutputBack = ({
           map(() => sourcePath),
         )
       )),
-      catchNamedError(copyOutputBack),
+      catchNamedError(flattenOutput),
     )
   )
 }
