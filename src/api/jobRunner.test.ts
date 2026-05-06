@@ -8,6 +8,7 @@ import {
   resetStore,
 } from "./jobStore.js"
 import { runJob } from "./jobRunner.js"
+import { logAndRethrow } from "../tools/logAndRethrow.js"
 
 // runJob is async in effect (RxJS subscriptions resolve on the microtask queue).
 const flushMicrotasks = () => new Promise<void>((r) => setTimeout(r, 0))
@@ -94,6 +95,26 @@ describe(runJob.name, () => {
     await flushMicrotasks()
 
     expect(getJob(job.id)?.status).toBe("cancelled")
+  })
+
+  test("a logAndRethrow-piped error reaches the runner and marks the job failed", async () => {
+    // Defends against accidentally re-introducing EMPTY as the catchError
+    // return at the operator level. If logAndRethrow ever turns back into
+    // a swallow, this test fails because complete fires instead of error
+    // and the job ends up "completed" with the boom message logged but
+    // never surfaced.
+    const job = createJob({ commandName: "hasBetterAudio" })
+
+    runJob(
+      job.id,
+      throwError(() => new Error("operator-level boom"))
+      .pipe(logAndRethrow("testCommand")),
+    )
+
+    await flushMicrotasks()
+
+    expect(getJob(job.id)?.status).toBe("failed")
+    expect(getJob(job.id)?.error).toContain("operator-level boom")
   })
 
   test("preserves cancelled status when the upstream observable later errors", async () => {

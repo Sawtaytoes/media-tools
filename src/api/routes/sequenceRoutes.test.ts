@@ -120,6 +120,43 @@ describe("POST /sequences/run", () => {
     expect(job?.error).toMatch(/missing/i)
   })
 
+  test("fails the umbrella job and stops the recursion when a step's command observable errors", async () => {
+    // Regression for the "completed but had errors" bug: catchNamedError
+    // returned EMPTY, swallowing errors before they reached the runner's
+    // catchError handler. After splitting into logAndRethrow (outer
+    // terminal pipes) and logAndSwallow (inner per-file pipes), an
+    // app-command's error must propagate up to the umbrella status and
+    // halt the recursive runStep advance.
+    //
+    // deleteFolder's confirm:false path is a clean way to drive a real
+    // command observable to error: the runtime guard throws before any
+    // I/O, the observable emits an error notification, the runner's
+    // catchError marks the job failed, and the next step never starts.
+    vol.fromJSON({
+      "/work/keep-me": "data",
+    })
+
+    const response = await post("/sequences/run", {
+      steps: [
+        { id: "refuse", command: "deleteFolder", params: { folderPath: "/work", confirm: false } },
+        { id: "should-not-run", command: "makeDirectory", params: { filePath: "/never-created" } },
+      ],
+    })
+    const { jobId } = await response.json() as { jobId: string }
+
+    await flushAfter(50)
+
+    const job = getJob(jobId)
+    expect(job?.status).toBe("failed")
+    expect(job?.error).toMatch(/confirm: true/i)
+
+    // Second step must not have advanced — the recursion guard sees
+    // status === "failed" and bails before runStep(stepIndex + 1).
+    expect(vol.existsSync("/never-created")).toBe(false)
+    // Original folder is preserved (refusal happens before any rm).
+    expect(vol.existsSync("/work/keep-me")).toBe(true)
+  })
+
   test("flattens single array emissions into named outputs so { linkedTo, output } resolves to a flat list", async () => {
     // Regression: sequenceRunner used to push() each emission, while
     // jobRunner concat()s them — so an observable emitting a single
