@@ -131,6 +131,14 @@
   </div>
 </div>
 
+<!-- Command picker popover -->
+<div id="cmd-picker-popover" class="hidden fixed z-40 bg-slate-900 border border-slate-600 rounded-lg shadow-xl flex flex-col" style="width:340px;max-height:400px">
+  <input id="cmd-picker-input" type="text" placeholder="Search commands…"
+    oninput="cmdPickerFilter(this.value)" onkeydown="cmdPickerKeydown(event)"
+    class="bg-slate-800 text-slate-200 text-sm rounded-t-lg px-3 py-2 border-b border-slate-700 focus:outline-none placeholder-slate-500">
+  <div id="cmd-picker-list" class="overflow-y-auto py-1"></div>
+</div>
+
 <script>
 // ─── Command definitions ──────────────────────────────────────────────────────
 
@@ -787,17 +795,9 @@ function renderStep(step, index) {
   const statusBadge = step.status ? renderStatusBadge(step.status) : ''
   const isFirst = index === 0, isLast = index === steps.length - 1
 
-  const placeholderOption = step.command === null
-    ? '<option value="" selected disabled>— pick a command —</option>'
-    : ''
-  const groupOptions = TAG_ORDER.map(tag => {
-    const cmds = Object.entries(COMMANDS).filter(([,c]) => c.tag === tag)
-    if (!cmds.length) return ''
-    return `<optgroup label="${esc(tag)}">${cmds.map(([name,c]) =>
-      `<option value="${esc(name)}"${step.command === name ? ' selected' : ''}>${esc(name)}</option>`
-    ).join('')}</optgroup>`
-  }).join('')
-  const cmdOptions = placeholderOption + groupOptions
+  const triggerLabel = step.command
+    ? `<span class="font-mono">${esc(step.command)}</span><span class="text-[10px] text-slate-500 ml-2 truncate">${esc(cmd.tag)}</span>`
+    : `<span class="text-slate-400 italic">— pick a command —</span>`
 
   const body = cmd
     ? `<p class="text-xs text-slate-500 mb-2">${esc(cmd.summary)}</p>
@@ -810,10 +810,11 @@ function renderStep(step, index) {
 <div id="step-${step.id}" style="view-transition-name: step-${step.id}" class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
   <div class="flex items-center gap-2 px-3 py-2 border-b border-slate-700 bg-slate-800/80">
     <span class="text-xs font-mono text-slate-500 shrink-0 w-5 text-center">${index + 1}</span>
-    <select onchange="changeCommand(${step.id}, this.value)"
-      class="flex-1 min-w-0 bg-slate-700 text-slate-200 text-xs rounded px-2 py-1 border border-slate-600 focus:outline-none focus:border-blue-500">
-      ${cmdOptions}
-    </select>
+    <button onclick="openCmdPicker(${step.id}, this)" data-cmd-picker-trigger
+      class="flex-1 min-w-0 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded px-2 py-1 border border-slate-600 focus:outline-none focus:border-blue-500 text-left flex items-center gap-2 cursor-pointer">
+      <span class="flex-1 min-w-0 truncate flex items-center">${triggerLabel}</span>
+      <span class="text-slate-400 shrink-0">▾</span>
+    </button>
     ${statusBadge}
     <div class="flex items-center gap-1 shrink-0">
       <button onclick="runStep(${step.id})" ${step.command ? '' : 'disabled'}
@@ -1366,6 +1367,114 @@ const LOOKUP_TITLES = {
   tvdb: 'Look up TVDB ID',
   dvdcompare: 'Look up DVDCompare Film ID',
 }
+
+// ─── Command-picker popover (autocomplete replacement for the per-step <select>) ───
+
+let cmdPickerState = null
+// shape: { stepId: number, query: string, filtered: [{name, tag}], activeIndex: number }
+
+function openCmdPicker(stepId, anchorEl) {
+  const step = steps.find(s => s.id === stepId)
+  if (!step) return
+  cmdPickerState = { stepId, query: '', activeIndex: 0, filtered: [] }
+
+  const popover = document.getElementById('cmd-picker-popover')
+  const rect = anchorEl.getBoundingClientRect()
+  const popoverWidth = 340
+  let left = rect.left
+  if (left + popoverWidth > window.innerWidth - 8) left = window.innerWidth - popoverWidth - 8
+  if (left < 8) left = 8
+  popover.style.left = `${left}px`
+  popover.style.top = `${rect.bottom + 4}px`
+  popover.classList.remove('hidden')
+
+  const input = document.getElementById('cmd-picker-input')
+  input.value = ''
+  cmdPickerFilter('')
+  setTimeout(() => input?.focus(), 0)
+}
+
+function closeCmdPicker() {
+  document.getElementById('cmd-picker-popover')?.classList.add('hidden')
+  cmdPickerState = null
+}
+
+function cmdPickerFilter(query) {
+  if (!cmdPickerState) return
+  cmdPickerState.query = query
+  cmdPickerState.activeIndex = 0
+  cmdPickerRender()
+}
+
+function cmdPickerRender() {
+  if (!cmdPickerState) return
+  const list = document.getElementById('cmd-picker-list')
+  const query = cmdPickerState.query.trim().toLowerCase()
+  const allCommands = TAG_ORDER.flatMap(tag =>
+    Object.entries(COMMANDS)
+      .filter(([, command]) => command.tag === tag)
+      .map(([name]) => ({ name, tag }))
+  )
+  const filtered = query
+    ? allCommands.filter(c => c.name.toLowerCase().includes(query) || c.tag.toLowerCase().includes(query))
+    : allCommands
+  cmdPickerState.filtered = filtered
+  if (cmdPickerState.activeIndex >= filtered.length) cmdPickerState.activeIndex = 0
+
+  list.innerHTML = filtered.length === 0
+    ? '<p class="text-xs text-slate-500 text-center py-4">No commands match.</p>'
+    : filtered.map((command, index) => {
+        const active = index === cmdPickerState.activeIndex
+        return `<button onmousedown="event.preventDefault()" onclick="cmdPickerSelect('${esc(command.name)}')" data-cmd-idx="${index}"
+          class="w-full text-left px-3 py-1.5 flex items-center gap-2 ${active ? 'bg-blue-700 text-white' : 'text-slate-200 hover:bg-slate-800'}">
+          <span class="font-mono text-xs flex-1 min-w-0 truncate">${esc(command.name)}</span>
+          <span class="text-[10px] ${active ? 'text-blue-200' : 'text-slate-500'} shrink-0">${esc(command.tag)}</span>
+        </button>`
+      }).join('')
+
+  const activeEl = list.querySelector(`[data-cmd-idx="${cmdPickerState.activeIndex}"]`)
+  activeEl?.scrollIntoView({ block: 'nearest' })
+}
+
+function cmdPickerSelect(commandName) {
+  if (!cmdPickerState) return
+  const stepId = cmdPickerState.stepId
+  closeCmdPicker()
+  changeCommand(stepId, commandName)
+}
+
+function cmdPickerKeydown(event) {
+  if (!cmdPickerState) return
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    closeCmdPicker()
+    return
+  }
+  if (!cmdPickerState.filtered?.length) return
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    cmdPickerState.activeIndex = (cmdPickerState.activeIndex + 1) % cmdPickerState.filtered.length
+    cmdPickerRender()
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    cmdPickerState.activeIndex = (cmdPickerState.activeIndex - 1 + cmdPickerState.filtered.length) % cmdPickerState.filtered.length
+    cmdPickerRender()
+  } else if (event.key === 'Enter') {
+    event.preventDefault()
+    const command = cmdPickerState.filtered[cmdPickerState.activeIndex]
+    if (command) cmdPickerSelect(command.name)
+  }
+}
+
+// Click-outside dismissal — capture phase so we run before the document-level
+// keydown / Escape handler from the lookup modal grabs it.
+document.addEventListener('mousedown', (event) => {
+  if (!cmdPickerState) return
+  const popover = document.getElementById('cmd-picker-popover')
+  if (popover.contains(event.target)) return
+  if (event.target.closest('[data-cmd-picker-trigger]')) return
+  closeCmdPicker()
+}, true)
 
 function openLookup(lookupType, stepId, fieldName) {
   lookupState = {
