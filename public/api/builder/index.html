@@ -633,15 +633,34 @@ function stepOutput(step) {
   return src
 }
 
+// Three link representations live in step.links[fieldName]:
+//   1. A path-variable reference: stored as a bare string (the path's id).
+//   2. A step's folder output (the legacy auto-link to the previous step's
+//      output folder): stored as { linkedTo: stepId, output: 'folder' }.
+//   3. A step's named runtime output (the new C.2 form):
+//      stored as { linkedTo: stepId, output: 'someName' } — resolved against
+//      that step's runtime `outputs` map populated when its job completed.
 function getLinkedValue(step, fieldName) {
-  const srcId = step.links?.[fieldName]
-  if (!srcId) return null
-  if (typeof srcId === 'string') {
-    const pv = paths.find(p => p.id === srcId)
+  const link = step.links?.[fieldName]
+  if (!link) return null
+
+  // Path-variable link.
+  if (typeof link === 'string') {
+    const pv = paths.find(p => p.id === link)
     return pv?.value || null
   }
-  const src = steps.find(s => s.id === srcId)
-  return src ? stepOutput(src) : null
+
+  // Step-output link.
+  if (link && typeof link === 'object' && typeof link.linkedTo === 'string') {
+    const src = steps.find(s => s.id === link.linkedTo)
+    if (!src) return null
+    if (link.output === 'folder' || !link.output) {
+      return stepOutput(src)
+    }
+    return src.outputs?.[link.output] ?? null
+  }
+
+  return null
 }
 
 // ─── Step CRUD ────────────────────────────────────────────────────────────────
@@ -709,10 +728,14 @@ function removeStep(id) {
     const removeIndex = steps.findIndex(s => s.id === id)
     if (removeIndex < 0) return
     steps.splice(removeIndex, 1)
-    // Remove any links pointing to removed step
+    // Remove any links pointing to the removed step. Path-variable links
+    // are bare strings (the path id), so they never match a step id; only
+    // object-form step links can dangle here.
     for (const step of steps) {
       for (const [field, source] of Object.entries(step.links)) {
-        if (source === id) delete step.links[field]
+        if (source && typeof source === 'object' && source.linkedTo === id) {
+          delete step.links[field]
+        }
       }
     }
     renderAllAnimated()
@@ -731,12 +754,15 @@ function moveStep(id, dir) {
   const toIndex = fromIndex + dir
   if (toIndex < 0 || toIndex >= steps.length) return
   ;[steps[fromIndex], steps[toIndex]] = [steps[toIndex], steps[fromIndex]]
-  // Clear any links that now point to a step at or after the linking step's position
+  // Clear any step-output links that now point to a step at or after the
+  // linking step's position (a step can only consume outputs of steps that
+  // ran before it). Path-variable links are bare strings — they never go
+  // stale since paths sit outside the step ordering.
   steps.forEach((step, stepIndex) => {
     for (const [field, source] of Object.entries(step.links)) {
-      if (typeof source === 'string') continue  // path var link — never goes stale
-      const sourceIndex = steps.findIndex(s => s.id === source)
-      if (sourceIndex >= stepIndex) delete step.links[field]
+      if (!source || typeof source !== 'object' || !source.linkedTo) continue
+      const sourceIndex = steps.findIndex(s => s.id === source.linkedTo)
+      if (sourceIndex < 0 || sourceIndex >= stepIndex) delete step.links[field]
     }
   })
   renderAllAnimated()
@@ -783,13 +809,24 @@ function promotePathToPathVar(stepId, fieldName, rawValue) {
   renderAll()
 }
 
-function setLink(id, field, srcIdStr) {
+function setLink(id, field, choice) {
   const step = steps.find(s => s.id === id)
   if (!step) return
-  if (srcIdStr) {
-    // Numeric string = step ID; non-numeric string = path var ID
-    step.links[field] = /^\d+$/.test(srcIdStr) ? Number(srcIdStr) : srcIdStr
+  if (!choice) {
+    delete step.links[field]
+  } else if (choice.startsWith('path:')) {
+    step.links[field] = choice.slice('path:'.length)
+  } else if (choice.startsWith('step:')) {
+    // Encoded form is "step:<stepId>:<output>". `output` may be the
+    // sentinel 'folder' (the synthesized folder path) or any named runtime
+    // output declared by that step's command.
+    const after = choice.slice('step:'.length)
+    const sep = after.indexOf(':')
+    const stepId = sep >= 0 ? after.slice(0, sep) : after
+    const output = sep >= 0 ? after.slice(sep + 1) : 'folder'
+    step.links[field] = { linkedTo: stepId, output }
   } else {
+    // Unknown encoding — drop the link rather than guessing.
     delete step.links[field]
   }
   // Update the linked input
@@ -1077,11 +1114,22 @@ function renderFields(step, stepIndex) {
 
 function renderPathField(step, field, stepIndex) {
   const val = step.params[field.name] ?? ''
-  const linkedStepId = step.links[field.name]
-  const computed = linkedStepId ? (getLinkedValue(step, field.name) ?? '') : null
+  const link = step.links[field.name]
+  const computed = link ? (getLinkedValue(step, field.name) ?? '') : null
+
+  // The select encodes both kinds of link in its option values so setLink
+  // can disambiguate without guessing: "path:<id>" for path-variable refs,
+  // "step:<id>:<output>" for step outputs (output = 'folder' for the
+  // legacy auto-folder link).
+  const isLinkedPath = (pvId) => typeof link === 'string' && link === pvId
+  const isLinkedStepFolder = (stepId) => (
+    link && typeof link === 'object' &&
+    link.linkedTo === stepId &&
+    (link.output === 'folder' || !link.output)
+  )
 
   const pathVarOptions = paths.map(pv =>
-    `<option value="${pv.id}"${linkedStepId === pv.id ? ' selected' : ''}>${esc(pv.label)}${pv.value ? ' → ' + pv.value : ''}</option>`
+    `<option value="path:${pv.id}"${isLinkedPath(pv.id) ? ' selected' : ''}>${esc(pv.label)}${pv.value ? ' → ' + pv.value : ''}</option>`
   ).join('')
 
   // Build previous step options. Empty steps (command: null) have nothing
@@ -1092,7 +1140,7 @@ function renderPathField(step, field, stepIndex) {
     .map(({ step: s, displayIndex }) => {
       const out = stepOutput(s)
       const label = `Step ${displayIndex}: ${s.command}${out ? ' → ' + out : ''}`
-      return `<option value="${s.id}"${linkedStepId === s.id ? ' selected' : ''}>${esc(label)}</option>`
+      return `<option value="step:${s.id}:folder"${isLinkedStepFolder(s.id) ? ' selected' : ''}>${esc(label)}</option>`
     }).join('')
 
   return `<div>
@@ -1133,7 +1181,9 @@ function changeCommand(id, command) {
       const stepIndex = steps.findIndex(s => s.id === id)
       const prevStep = stepIndex > 0 ? steps[stepIndex - 1] : null
       if (prevStep && prevStep.command) {
-        step.links[msf] = prevStep.id
+        // Step-output link uses the object form; the legacy auto-link
+        // points at the synthesized folder output (output: 'folder').
+        step.links[msf] = { linkedTo: prevStep.id, output: 'folder' }
       } else if (paths.length) {
         step.links[msf] = paths[0].id
       }
@@ -1162,19 +1212,23 @@ function buildParams(step, { resolveLinks = false } = {}) {
   for (const field of cmd.fields) {
     let val = step.params[field.name]
 
-    if (field.type === 'path') {
-      const srcId = step.links?.[field.name]
-      if (srcId) {
-        if (resolveLinks) {
-          // For API calls, every link must be a real path string.
-          const linkedValue = getLinkedValue(step, field.name)
-          if (linkedValue !== null) val = linkedValue
-        } else if (typeof srcId === 'string') {
-          val = '@' + srcId  // path var reference — store as @id, not resolved value
-        } else {
-          const linkedValue = getLinkedValue(step, field.name)
-          if (linkedValue !== null) val = linkedValue
-        }
+    // A field might carry a link regardless of declared `type` — e.g. a
+    // future array-of-rules field that consumes a previous step's named
+    // output. So check for links on every field, not just paths.
+    const link = step.links?.[field.name]
+    if (link) {
+      if (resolveLinks) {
+        // For per-step API calls, every link must be resolved to its real
+        // value (string path, rules array, etc.) so the request body
+        // ships a literal — the route handlers know nothing about links.
+        const linkedValue = getLinkedValue(step, field.name)
+        if (linkedValue !== null) val = linkedValue
+      } else if (typeof link === 'string') {
+        val = '@' + link  // path-var reference — preserve symbolically in YAML
+      } else if (link && typeof link === 'object' && link.linkedTo) {
+        // Step-output reference — preserve symbolically in YAML so the
+        // server-side runner can resolve it at sequence-execution time.
+        val = { linkedTo: link.linkedTo, output: link.output || 'folder' }
       }
     }
 
@@ -1307,12 +1361,25 @@ function loadYamlFromText(text) {
     for (const field of cmd.fields) {
       const v = item.params?.[field.name]
       if (v !== undefined) {
-        if (field.type === 'path' && typeof v === 'string' && v.startsWith('@')) {
+        if (typeof v === 'string' && v.startsWith('@')) {
+          // Path-variable reference — restore as a string link if the path
+          // exists, otherwise keep the literal so the user can fix it.
           const pvId = v.slice(1)
           if (paths.find(p => p.id === pvId)) {
-            step.links[field.name] = pvId  // restore path var link
+            step.links[field.name] = pvId
           } else {
-            step.params[field.name] = v    // unknown @ref — treat as literal
+            step.params[field.name] = v
+          }
+        } else if (
+          v && typeof v === 'object' && !Array.isArray(v) &&
+          typeof v.linkedTo === 'string'
+        ) {
+          // Step-output reference — restore as the object form. We do not
+          // verify that the referenced step+output exist here; that happens
+          // at run/resolve time so partial sequences keep loading.
+          step.links[field.name] = {
+            linkedTo: v.linkedTo,
+            output: v.output || 'folder',
           }
         } else {
           step.params[field.name] = v

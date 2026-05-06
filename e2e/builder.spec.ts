@@ -216,4 +216,38 @@ test.describe("Sequence Builder", () => {
     await expect(page.locator('[id^="step-"]')).toHaveCount(1)
     await expect(page.locator('[id^="step-"]').first()).toContainText("copyFiles")
   })
+
+  test("auto-linked step-output renders as { linkedTo, output: folder } in the YAML and survives reload", async ({ page }) => {
+    // Two consecutive steps — when the second is given a command, its
+    // main source field auto-links to the previous step's folder output.
+    await page.getByRole("button", { name: "Add Step" }).click()
+    await page.getByText("— pick a command —").click()
+    await page.getByPlaceholder("Search commands…").fill("copyFiles")
+    await page.getByRole("button", { name: /^copyFiles\s/ }).click()
+
+    await page.getByRole("button", { name: "Add Step" }).click()
+    await page.getByText("— pick a command —").last().click()
+    await page.getByPlaceholder("Search commands…").fill("moveFiles")
+    await page.getByRole("button", { name: /^moveFiles\s/ }).click()
+
+    await page.getByRole("button", { name: "View YAML" }).click()
+
+    const modal = page.locator("#yaml-modal")
+    await expect(modal).toBeVisible()
+
+    // YAML must include the new object form for the auto-linked second step.
+    // Single-line form is what jsyaml.dump produces at flowLevel: 3.
+    const yamlText = await modal.locator("#yaml-out").innerText()
+    expect(yamlText).toMatch(/linkedTo:\s*step\d+/)
+    expect(yamlText).toMatch(/output:\s*folder/)
+
+    // Close the modal and reload — the link must round-trip through the URL.
+    await page.keyboard.press("Escape")
+    await page.reload()
+    await page.getByRole("button", { name: "View YAML" }).click()
+
+    const reloadedYaml = await page.locator("#yaml-modal #yaml-out").innerText()
+    expect(reloadedYaml).toMatch(/linkedTo:\s*step\d+/)
+    expect(reloadedYaml).toMatch(/output:\s*folder/)
+  })
 })
