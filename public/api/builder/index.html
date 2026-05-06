@@ -1560,7 +1560,7 @@ function renderLookupReleaseView() {
     const debug = lookupState.releasesDebug
     const debugBlock = debug
       ? `<details class="mt-3 text-xs text-slate-400">
-          <summary class="cursor-pointer text-amber-400 hover:text-amber-300 select-none">▸ Debug</summary>
+          <summary class="cursor-pointer text-amber-400 hover:text-amber-300 select-none">Debug</summary>
           <div class="mt-2 space-y-1 font-mono">
             <div><span class="text-slate-500">URL:</span> <a class="text-blue-400 hover:text-blue-300 underline break-all" href="${esc(debug.url)}" target="_blank" rel="noopener">${esc(debug.url)}</a></div>
             <div><span class="text-slate-500">HTTP status:</span> ${debug.httpStatus}</div>

@@ -135,18 +135,25 @@ const stripTagsAndCollapse = (html: string): string => (
 export const parseDvdCompareReleasesHtml = (
   html: string,
 ): DvdCompareRelease[] => {
-  // Each release is rendered as:
-  //   <input type="checkbox" name="N" ...> <a href="#N">label <span>[year]</span></a>
-  // Lookaheads make this attribute-order agnostic; we still require a digit-only
-  // name so the hidden "sel" input and the submit button get filtered out.
-  const pattern = /<input(?=[^>]*\btype=["']checkbox["'])(?=[^>]*\bname=["'](\d+)["'])[^>]*>\s*<a[^>]*>([\s\S]*?)<\/a>/g
+  // DVDCompare renders releases as a flat sequence:
+  //   <input type=checkbox name=N> Label text <span class="disc-release-year">[YYYY]</span></a><br>
+  // Notes captured here:
+  //   - Attribute values may be quoted OR unquoted ("\\?" makes the quote optional).
+  //   - The wrapping <a> may be missing on the unselected page (only the stray
+  //     closing </a> from a sibling element remains); stripTagsAndCollapse
+  //     cleans that up.
+  //   - Attribute order is irrelevant (we use lookaheads).
+  //   - We capture from the input's > up to the next <br> OR <input> OR end of
+  //     string, and only accept digit-only names so the hidden "sel" input and
+  //     the submit button get filtered out.
+  const pattern = /<input\b(?=[^>]*\btype\s*=\s*["']?checkbox\b)(?=[^>]*\bname\s*=\s*["']?(\d+)\b)[^>]*>([\s\S]*?)(?=<br\b|<input\b|$)/gi
   const releases: DvdCompareRelease[] = []
   let match: RegExpExecArray | null
 
   while ((match = pattern.exec(html)) !== null) {
     const hash = match[1]
     const label = stripTagsAndCollapse(match[2])
-    releases.push({ hash, label })
+    if (label) releases.push({ hash, label })
   }
 
   return releases

@@ -204,6 +204,28 @@ describe(parseDvdCompareReleasesHtml.name, () => {
       { hash: "9", label: "Reversed Attribute Order" },
     ])
   })
+
+  test("parses the unselected film page format (unquoted attrs, no <a> wrapping the label)", () => {
+    // Real-world HTML from the unchecked view of a DVDCompare film page —
+    // attributes are unquoted, the label sits directly after <input>, and a
+    // stray closing </a> is left in the markup.
+    const html = `<form action="film.php?fid=74759" method="post">
+        <a href="film.php?fid=74759">Check/Show All</a><br>
+        <a href="film.php?fid=74759&sel=on">Uncheck/Hide All</a><p>
+
+        <input type=checkbox name=1> Blu-ray ALL America - Arrow Films - Limited Edition <span class="disc-release-year">[2026]</span></a><br><input type=checkbox name=2> Blu-ray ALL Canada - Arrow Films - Limited Edition <span class="disc-release-year">[2026]</span></a><br><input type=checkbox name=3> Blu-ray ALL United Kingdom - Arrow Films - Limited Edition <span class="disc-release-year">[2026]</span></a><br>
+        <br>
+        <input type=hidden name=sel value=on>
+        <input type=submit name=submit value="Apply Filter">
+      </form>`
+
+    expect(parseDvdCompareReleasesHtml(html))
+    .toEqual([
+      { hash: "1", label: "Blu-ray ALL America - Arrow Films - Limited Edition [2026]" },
+      { hash: "2", label: "Blu-ray ALL Canada - Arrow Films - Limited Edition [2026]" },
+      { hash: "3", label: "Blu-ray ALL United Kingdom - Arrow Films - Limited Edition [2026]" },
+    ])
+  })
 })
 
 describe(displayDvdCompareVariant.name, () => {
