@@ -491,6 +491,16 @@ const COMMANDS = {
       { name: "seasonNumber", type: "number", label: "Season Number", default: 1 },
     ]
   },
+  nameAnimeEpisodesAniDB: {
+    summary: "Rename anime episode files using AniDB metadata (better OVA/special coverage than MAL)",
+    tag: "Naming Operations",
+    outputFolderName: null,
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "anidbId", type: "number", label: "AniDB Anime ID (aid)", placeholder: "7206", required: true },
+      { name: "seasonNumber", type: "number", label: "Season Number", default: 1 },
+    ]
+  },
   nameSpecialFeatures: {
     summary: "Rename special features (and the main movie file) based on DVDCompare timecodes — title canonicalized via TMDB",
     tag: "Naming Operations",

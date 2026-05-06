@@ -225,6 +225,13 @@ export const nameAnimeEpisodesRequestSchema = z.object({
   malId: z.number().optional().describe("MyAnimeList ID — when provided, skips the interactive search and uses this ID directly"),
 })
 
+export const nameAnimeEpisodesAniDBRequestSchema = z.object({
+  sourcePath: z.string().describe("Source directory path"),
+  searchTerm: z.string().optional().describe("Anime title to search for (DDG fallback when no anidbId)"),
+  seasonNumber: z.number().default(1).describe("Season number"),
+  anidbId: z.number().optional().describe("AniDB anime id (aid) — when provided, skips the interactive search and uses this aid directly"),
+})
+
 export const nameSpecialFeaturesRequestSchema = z.object({
   sourcePath: z.string().describe("Source directory path"),
   url: z.string().optional().describe("Direct DVDCompare.net URL (overrides dvdCompareId and searchTerm)"),
