@@ -811,8 +811,8 @@ function stepOutput(step) {
   if (!cmd) {
     return ''
   }
-  const msf = mainSrcField(step.command)
-  let src = msf ? (getLinkedValue(step, msf) ?? step.params[msf] ?? '') : ''
+  const mainSourceField = mainSrcField(step.command)
+  let src = mainSourceField ? (getLinkedValue(step, mainSourceField) ?? step.params[mainSourceField] ?? '') : ''
   src = src.replace(/[\\/]$/, '')
 
   // 'parentOfSource': the command writes its output into dirname(source),
@@ -822,11 +822,30 @@ function stepOutput(step) {
     return src ? src.replace(/[\\/][^\\/]*$/, '') : ''
   }
 
-  if (cmd.outputFolderName) return src ? src + '/' + cmd.outputFolderName : cmd.outputFolderName
+  if (cmd.outputFolderName) {
+    // Match the OS native separator the source uses so a Windows path
+    // like "G:\\Anime\\Show" + outputFolderName joins as
+    // "G:\\Anime\\Show\\KEEP-LANG", not the mixed-slash
+    // "G:\\Anime\\Show/KEEP-LANG".
+    const separator = src.includes('\\') ? '\\' : '/'
+    return src ? src + separator + cmd.outputFolderName : cmd.outputFolderName
+  }
 
+  // destinationPath / destinationFilesPath may be linked to a path-var or
+  // an upstream step; use getLinkedValue so the dropdown shows the
+  // resolved destination instead of falling back to `src` for linked
+  // fields. (copyFiles in particular hits this — it has no
+  // outputFolderName, so the dropdown previously displayed the source
+  // path when destinationPath was linked.)
   const hasField = n => cmd.fields.some(f => f.name === n)
-  if (hasField('destinationPath') && step.params.destinationPath) return step.params.destinationPath
-  if (hasField('destinationFilesPath') && step.params.destinationFilesPath) return step.params.destinationFilesPath
+  if (hasField('destinationPath')) {
+    const destination = getLinkedValue(step, 'destinationPath') ?? step.params.destinationPath
+    if (destination) return destination
+  }
+  if (hasField('destinationFilesPath')) {
+    const destination = getLinkedValue(step, 'destinationFilesPath') ?? step.params.destinationFilesPath
+    if (destination) return destination
+  }
   return src
 }
 
