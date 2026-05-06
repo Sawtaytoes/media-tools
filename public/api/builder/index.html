@@ -33,8 +33,10 @@
   <div class="shrink-0 flex items-center justify-between px-4 py-3 border-b border-slate-700 bg-slate-900 z-10">
     <h1 class="font-semibold text-slate-100">Sequence Builder</h1>
     <div class="flex items-center gap-2">
+      <button onclick="addPicked()" title="Append an empty step"
+        class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium">Add Step</button>
       <button onclick="addPath()" title="Add a path variable"
-        class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-slate-100 px-3 py-1.5 rounded font-medium border border-slate-700 hover:border-slate-600">+ Path</button>
+        class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-slate-100 px-3 py-1.5 rounded font-medium border border-slate-700 hover:border-slate-600">Add Path</button>
       <button id="run-btn" onclick="runSequence()" title="Run the entire sequence"
         class="text-xs bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white px-3 py-1.5 rounded font-medium">
         ▶ Run Sequence
@@ -84,10 +86,6 @@
     <div id="steps-el" class="max-w-3xl mx-auto px-4 py-4 flex flex-col gap-3"></div>
   </div>
 
-  <!-- Footer toolbar -->
-  <div class="shrink-0 flex items-center gap-2 px-4 py-3 border-t border-slate-700 bg-slate-900">
-    <button onclick="addPicked()" class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium">+ Add Step</button>
-  </div>
 
 </div>
 
@@ -779,7 +777,7 @@ function renderAll() {
   paths.forEach((pv, i) => parts.push(renderPathVarCard(pv, i === 0)))
 
   if (!steps.length) {
-    parts.push('<p class="text-slate-500 text-xs text-center mt-4">No steps yet — click <span class="text-slate-300">+ Add Step</span> below to start.</p>')
+    parts.push('<p class="text-slate-500 text-xs text-center mt-4">No steps yet — click <span class="text-slate-300">Add Step</span> in the header to start.</p>')
   } else {
     steps.forEach((s, i) => {
       parts.push(renderStep(s, i))
