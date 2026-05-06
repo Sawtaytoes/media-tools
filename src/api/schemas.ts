@@ -134,6 +134,7 @@ export const nameMoviesRequestSchema = z.object({
   editionLabel: z.string().optional().describe("Explicit Plex edition label, e.g. \"Director's Cut\". When set, the DVDCompare lookup is skipped."),
   dvdCompareId: z.number().optional().describe("DVDCompare film ID. Combined with dvdCompareReleaseHash to derive the edition from the release label."),
   dvdCompareReleaseHash: z.string().optional().describe("DVDCompare release hash (the integer at the end of a release URL — e.g. \"1\", \"2\")."),
+  isMkvTitleSet: z.boolean().default(false).describe("Also write the resolved 'Title (Year)' into each .mkv's segment-level title via mkvpropedit so Plex/Emby surface it in the file metadata."),
 })
 
 export const remuxToMkvRequestSchema = z.object({

@@ -80,8 +80,13 @@ vi.mock("../tools/searchDvdCompare.js", () => ({
   lookupDvdCompareRelease: vi.fn(),
 }))
 
+vi.mock("../cli-spawn-operations/setMkvSegmentTitleMkvPropEdit.js", () => ({
+  setMkvSegmentTitleMkvPropEdit: vi.fn(),
+}))
+
 const { lookupMovieDbById } = await import("../tools/searchMovieDb.js")
 const { lookupDvdCompareRelease } = await import("../tools/searchDvdCompare.js")
+const { setMkvSegmentTitleMkvPropEdit } = await import("../cli-spawn-operations/setMkvSegmentTitleMkvPropEdit.js")
 
 const mockMovie = (movie: { name: string } | null) => {
   vi.mocked(lookupMovieDbById).mockReturnValue(of(movie))
@@ -210,6 +215,59 @@ describe(nameMovies.name, () => {
       await expect(stat("G:\\Movies\\Some Folder\\rip.mkv")).resolves.toBeDefined()
     })
   ))
+
+  test("does not invoke mkvpropedit by default (isMkvTitleSet: false)", async () => {
+    mockMovie({ name: "Inception (2010)" })
+    vi.mocked(setMkvSegmentTitleMkvPropEdit).mockReturnValue(of("ok") as ReturnType<typeof setMkvSegmentTitleMkvPropEdit>)
+
+    await firstValueFrom(
+      nameMovies({
+        sourcePath: "G:\\Movies\\Some Folder",
+        movieDbId: 27205,
+      })
+      .pipe(toArray()),
+    )
+
+    expect(vi.mocked(setMkvSegmentTitleMkvPropEdit)).not.toHaveBeenCalled()
+  })
+
+  test("invokes mkvpropedit on each renamed .mkv with 'Title (Year)' when isMkvTitleSet is true", async () => {
+    mockMovie({ name: "Inception (2010)" })
+    vi.mocked(setMkvSegmentTitleMkvPropEdit).mockReturnValue(of("ok") as ReturnType<typeof setMkvSegmentTitleMkvPropEdit>)
+
+    await firstValueFrom(
+      nameMovies({
+        sourcePath: "G:\\Movies\\Some Folder",
+        movieDbId: 27205,
+        isMkvTitleSet: true,
+      })
+      .pipe(toArray()),
+    )
+
+    expect(vi.mocked(setMkvSegmentTitleMkvPropEdit)).toHaveBeenCalledOnce()
+    expect(vi.mocked(setMkvSegmentTitleMkvPropEdit)).toHaveBeenCalledWith({
+      filePath: "G:\\Movies\\Some Folder\\Inception (2010).mkv",
+      title: "Inception (2010)",
+    })
+  })
+
+  test("skips mkvpropedit on non-.mkv files even when isMkvTitleSet is true", async () => {
+    vol.reset()
+    vol.fromJSON({ "G:\\Movies\\Some Folder\\rip.mp4": "video" })
+    mockMovie({ name: "Inception (2010)" })
+    vi.mocked(setMkvSegmentTitleMkvPropEdit).mockReturnValue(of("ok") as ReturnType<typeof setMkvSegmentTitleMkvPropEdit>)
+
+    await firstValueFrom(
+      nameMovies({
+        sourcePath: "G:\\Movies\\Some Folder",
+        movieDbId: 27205,
+        isMkvTitleSet: true,
+      })
+      .pipe(toArray()),
+    )
+
+    expect(vi.mocked(setMkvSegmentTitleMkvPropEdit)).not.toHaveBeenCalled()
+  })
 
   test("emits nothing and leaves the directory alone when no video files are present", async () => (
     captureConsoleMessage("info", async () => {

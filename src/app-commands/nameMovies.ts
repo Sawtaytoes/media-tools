@@ -1,6 +1,8 @@
+import { extname, join } from "node:path"
 import {
   combineLatest,
   concatMap,
+  defer,
   EMPTY,
   from,
   map,
@@ -10,6 +12,7 @@ import {
   type Observable,
 } from "rxjs"
 
+import { setMkvSegmentTitleMkvPropEdit } from "../cli-spawn-operations/setMkvSegmentTitleMkvPropEdit.js"
 import { catchNamedError } from "../tools/catchNamedError.js"
 import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
@@ -40,6 +43,10 @@ export type NameMoviesProps = {
   dvdCompareId?: number
   dvdCompareReleaseHash?: string
   editionLabel?: string
+  // When true, also write the resolved title into the MKV file's
+  // segment-level "title" property via mkvpropedit so Plex/Emby surface
+  // it in the file's metadata view. Off by default — opt in per run.
+  isMkvTitleSet?: boolean
 }
 
 const PLEX_INVALID_FILENAME_CHARS_REGEX = /[<>:"/\\|?*\x00-\x1f]/gu
@@ -90,6 +97,7 @@ export const nameMovies = ({
   dvdCompareId,
   dvdCompareReleaseHash,
   editionLabel,
+  isMkvTitleSet = false,
   movieDbId,
   sourcePath,
 }: NameMoviesProps): Observable<string> => {
@@ -128,6 +136,7 @@ export const nameMovies = ({
         const title = yearMatch ? yearMatch[1].trim() : movie.name
         const year = yearMatch ? yearMatch[2] : ""
         const baseName = buildPlexBaseName({ title, year, edition })
+        const segmentTitle = year ? `${title} (${year})` : title
         logInfo("NAME MOVIES", `Plex name: ${baseName}`)
 
         return (
@@ -149,10 +158,29 @@ export const nameMovies = ({
               // pass the bare base name (no .mkv) and let it stitch.
               const partSuffix = total > 1 ? ` - pt${index + 1}` : ""
               const renamedBase = `${baseName}${partSuffix}`
-              return (
-                fileInfo
-                .renameFile(renamedBase)
-                .pipe(map(() => renamedBase))
+              const renamedFullPath = join(sourcePath, `${renamedBase}${extname(fileInfo.fullPath)}`)
+
+              const renamed$ = fileInfo.renameFile(renamedBase).pipe(map(() => renamedBase))
+
+              if (!isMkvTitleSet) return renamed$
+
+              // After the rename lands, write the MKV segment-level title.
+              // Only meaningful for .mkv containers — mkvpropedit refuses
+              // anything else, so skip non-MKV files quietly.
+              const isMkvFile = extname(fileInfo.fullPath).toLowerCase() === ".mkv"
+              if (!isMkvFile) return renamed$
+
+              return renamed$.pipe(
+                concatMap((emitted) => (
+                  defer(() => of(emitted))
+                  .pipe(
+                    concatMap(() => setMkvSegmentTitleMkvPropEdit({
+                      filePath: renamedFullPath,
+                      title: segmentTitle,
+                    })),
+                    map(() => emitted),
+                  )
+                )),
               )
             }),
           )

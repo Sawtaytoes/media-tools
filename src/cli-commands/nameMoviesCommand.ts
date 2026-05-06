@@ -56,6 +56,16 @@ const builder = (yargs: Argv) => (
       type: "string",
     },
   )
+  .option(
+    "isMkvTitleSet",
+    {
+      boolean: true,
+      default: false,
+      describe: "Also write the resolved 'Title (Year)' into each .mkv's segment-level title via mkvpropedit.",
+      nargs: 0,
+      type: "boolean",
+    },
+  )
 )
 
 type Args = InferArgvOptions<ReturnType<typeof builder>>
@@ -71,6 +81,7 @@ export const nameMoviesCommand: CommandModule<{}, Args> = {
       dvdCompareId: argv.dvdCompareId,
       dvdCompareReleaseHash: argv.dvdCompareReleaseHash,
       editionLabel: argv.editionLabel,
+      isMkvTitleSet: argv.isMkvTitleSet,
       movieDbId: argv.movieDbId,
       sourcePath: argv.sourcePath,
     })

@@ -286,7 +286,7 @@ export const commandConfigs: Record<CommandName, CommandConfig> = {
     tags: ["Naming Operations"],
   },
   nameMovies: {
-    getObservable: (body) => nameMovies({ dvdCompareId: body.dvdCompareId, dvdCompareReleaseHash: body.dvdCompareReleaseHash, editionLabel: body.editionLabel, movieDbId: body.movieDbId, sourcePath: body.sourcePath }),
+    getObservable: (body) => nameMovies({ dvdCompareId: body.dvdCompareId, dvdCompareReleaseHash: body.dvdCompareReleaseHash, editionLabel: body.editionLabel, isMkvTitleSet: body.isMkvTitleSet, movieDbId: body.movieDbId, sourcePath: body.sourcePath }),
     schema: schemas.nameMoviesRequestSchema,
     summary: "Rename a movie folder's files to Plex's `Title (Year) {edition-...}.mkv` format using TMDB + DVDCompare metadata",
     tags: ["Naming Operations"],
