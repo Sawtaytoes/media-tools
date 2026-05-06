@@ -16,6 +16,31 @@ export type TvdbResult = {
   year?: string
 }
 
+// Subset of TVDB's SearchResult — only the fields we read. Defined locally
+// so the mapping helper can be tested with synthetic inputs without
+// importing the generated openapi types.
+export type TvdbRawResult = {
+  image_url?: string
+  name?: string
+  status?: string
+  tvdb_id?: string
+  year?: string
+}
+
+export const mapTvdbSearchResults = (
+  rawData: TvdbRawResult[] | null | undefined,
+): TvdbResult[] => (
+  (rawData ?? [])
+  .map((entry) => ({
+    imageUrl: entry.image_url,
+    name: entry.name ?? "",
+    status: entry.status,
+    tvdbId: Number(entry.tvdb_id),
+    year: entry.year,
+  }))
+  .filter((result) => result.tvdbId > 0 && result.name)
+)
+
 export const searchTvdb = (
   searchTerm: string,
 ): Observable<TvdbResult[]> => (
@@ -37,17 +62,7 @@ export const searchTvdb = (
         )
       )
     )),
-    map(({ data }) => (
-      (data?.data ?? [])
-      .map((entry) => ({
-        imageUrl: entry.image_url,
-        name: entry.name ?? "",
-        status: entry.status,
-        tvdbId: Number(entry.tvdb_id),
-        year: entry.year,
-      }))
-      .filter((result) => result.tvdbId > 0 && result.name)
-    )),
+    map(({ data }) => mapTvdbSearchResults(data?.data)),
   )
 )
 

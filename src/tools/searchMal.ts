@@ -15,6 +15,34 @@ export type MalResult = {
   name: string
 }
 
+// Subset of mal-scraper's SearchResultsDataModel — only the fields we read.
+// Defining it locally means the mapping helper can be tested with synthetic
+// inputs without dragging in mal-scraper's type definitions.
+export type MalRawResult = {
+  id: string
+  image_url?: string
+  name: string
+  payload?: {
+    aired?: string
+    media_type?: string
+  }
+  thumbnail_url?: string
+}
+
+export const mapMalSearchResults = (
+  rawResults: MalRawResult[],
+): MalResult[] => (
+  rawResults
+  .map((result) => ({
+    airDate: result.payload?.aired,
+    imageUrl: result.thumbnail_url ?? result.image_url,
+    malId: Number(result.id),
+    mediaType: result.payload?.media_type,
+    name: result.name,
+  }))
+  .filter((result) => result.malId > 0)
+)
+
 export const searchMal = (
   searchTerm: string,
 ): Observable<MalResult[]> => (
@@ -26,17 +54,7 @@ export const searchMal = (
     )
   )
   .pipe(
-    map((results) => (
-      results
-      .map((result) => ({
-        airDate: result.payload?.aired,
-        imageUrl: result.thumbnail_url ?? result.image_url,
-        malId: Number(result.id),
-        mediaType: result.payload?.media_type,
-        name: result.name,
-      }))
-      .filter((result) => result.malId > 0)
-    )),
+    map(mapMalSearchResults),
   )
 )
 
