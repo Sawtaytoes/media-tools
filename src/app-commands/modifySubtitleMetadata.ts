@@ -4,6 +4,7 @@ import {
   concatAll,
   concatMap,
   defer,
+  EMPTY,
   filter,
   map,
   tap,
@@ -37,7 +38,18 @@ export const modifySubtitleMetadata = ({
   recursiveDepth,
   rules,
   sourcePath,
-}: ModifySubtitleMetadataProps) => (
+}: ModifySubtitleMetadataProps) => {
+  // No-op fast path so the YAML pipeline can always include a
+  // modifySubtitleMetadata step. The conditional 'do we have rules to
+  // apply?' decision lives in whatever produces the rules array (e.g.
+  // computeDefaultSubtitleRules) — not in branching encoded in the
+  // sequence YAML.
+  if (!rules || rules.length === 0) {
+    logInfo("MODIFY SUBTITLE METADATA", "No rules provided — skipping (no-op).")
+    return EMPTY
+  }
+
+  return (
   getFilesAtDepth({
     depth: (
       isRecursive
@@ -85,4 +97,5 @@ export const modifySubtitleMetadata = ({
     toArray(),
     catchNamedError(modifySubtitleMetadata),
   )
-)
+  )
+}
