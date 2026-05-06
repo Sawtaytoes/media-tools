@@ -26,6 +26,7 @@ import { mergeOrderedChaptersCommand } from "./cli-commands/mergeOrderedChapters
 import { mergeTracksCommand } from "./cli-commands/mergeTracksCommand.js"
 import { moveFilesCommand } from "./cli-commands/moveFilesCommand.js"
 import { nameAnimeEpisodesCommand } from "./cli-commands/nameAnimeEpisodesCommand.js"
+import { nameMoviesCommand } from "./cli-commands/nameMoviesCommand.js"
 import { nameSpecialFeaturesCommand } from "./cli-commands/nameSpecialFeaturesCommand.js"
 import { nameTvShowEpisodesCommand } from "./cli-commands/nameTvShowEpisodesCommand.js"
 import { remuxToMkvCommand } from "./cli-commands/remuxToMkvCommand.js"
@@ -97,6 +98,7 @@ yargs(
 .command(mergeTracksCommand)
 .command(moveFilesCommand)
 .command(nameAnimeEpisodesCommand)
+.command(nameMoviesCommand)
 .command(nameSpecialFeaturesCommand)
 .command(nameTvShowEpisodesCommand)
 .command(remuxToMkvCommand)

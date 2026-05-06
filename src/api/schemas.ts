@@ -128,6 +128,14 @@ export const computeDefaultSubtitleRulesRequestSchema = z.object({
   recursiveDepth: z.number().default(0).describe("Maximum recursion depth (0 = default depth of 2)."),
 })
 
+export const nameMoviesRequestSchema = z.object({
+  sourcePath: z.string().describe("Directory containing the movie file(s) to rename."),
+  movieDbId: z.number().int().positive().describe("TMDB movie ID (the integer in the URL: themoviedb.org/movie/<id>)."),
+  editionLabel: z.string().optional().describe("Explicit Plex edition label, e.g. \"Director's Cut\". When set, the DVDCompare lookup is skipped."),
+  dvdCompareId: z.number().optional().describe("DVDCompare film ID. Combined with dvdCompareReleaseHash to derive the edition from the release label."),
+  dvdCompareReleaseHash: z.string().optional().describe("DVDCompare release hash (the integer at the end of a release URL — e.g. \"1\", \"2\")."),
+})
+
 export const remuxToMkvRequestSchema = z.object({
   sourcePath: z.string().describe("Directory containing files to remux."),
   extensions: z.array(z.string()).min(1).describe("List of file extensions to remux (with or without leading dot), e.g. ['.ts', '.m2ts']").openapi({ example: [".ts"] }),
@@ -351,6 +359,19 @@ export const searchTvdbResponseSchema = z.object({
   error: z.string().nullable().optional().describe("Error message if the search failed (e.g. network/server error). When present, results is empty."),
 })
 
+export const searchMovieDbResultSchema = z.object({
+  imageUrl: z.string().optional().describe("Poster image URL"),
+  movieDbId: z.number().describe("TMDB movie ID"),
+  overview: z.string().optional().describe("Plot summary, when TMDB has one on file"),
+  title: z.string().describe("Movie title"),
+  year: z.string().describe("Release year (4-digit yyyy, or empty when TMDB has no release date)"),
+})
+
+export const searchMovieDbResponseSchema = z.object({
+  results: z.array(searchMovieDbResultSchema).describe("TMDB search results"),
+  error: z.string().nullable().optional().describe("Error message if the search failed (e.g. network/server error). When present, results is empty."),
+})
+
 export const searchDvdCompareResultSchema = z.object({
   baseTitle: z.string().describe("Movie title without variant or year suffix"),
   id: z.number().describe("DVDCompare film ID"),
@@ -398,6 +419,10 @@ export const lookupTvdbRequestSchema = z.object({
 
 export const lookupDvdCompareRequestSchema = z.object({
   dvdCompareId: z.number().describe("DVDCompare film ID"),
+})
+
+export const lookupMovieDbRequestSchema = z.object({
+  movieDbId: z.number().describe("TMDB movie ID"),
 })
 
 export const lookupDvdCompareReleaseRequestSchema = z.object({

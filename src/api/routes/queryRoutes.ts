@@ -12,6 +12,7 @@ import {
 } from "../../tools/searchDvdCompare.js"
 import { listDirectoryEntries } from "../../tools/listDirectoryEntries.js"
 import { lookupMalById, searchMal } from "../../tools/searchMal.js"
+import { lookupMovieDbById, searchMovieDb } from "../../tools/searchMovieDb.js"
 import { lookupTvdbById, searchTvdb } from "../../tools/searchTvdb.js"
 import * as schemas from "../schemas.js"
 
@@ -134,6 +135,42 @@ queryRoutes.openapi(
     } catch (err) {
       const message = messageFromError(err)
       console.error("[searchTvdb]", message)
+      return context.json({ results: [], error: message }, 200)
+    }
+  },
+)
+
+queryRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/queries/searchMovieDb",
+    summary: "Search The Movie Database (TMDB) for a film",
+    description: "Returns up to 20 movies matching the search term. Used by the builder to populate the movieDbId field for nameMovies. Requires TMDB_API_KEY in the environment.",
+    tags: ["Naming Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": { schema: schemas.searchTermRequestSchema },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: "TMDB search results",
+        content: {
+          "application/json": { schema: schemas.searchMovieDbResponseSchema },
+        },
+      },
+    },
+  }),
+  async (context) => {
+    const body = context.req.valid("json")
+    try {
+      const results = await lastValueFrom(searchMovieDb(body.searchTerm))
+      return context.json({ results, error: null }, 200)
+    } catch (err) {
+      const message = messageFromError(err)
+      console.error("[searchMovieDb]", message)
       return context.json({ results: [], error: message }, 200)
     }
   },
@@ -267,6 +304,36 @@ queryRoutes.openapi(
   async (context) => {
     const body = context.req.valid("json")
     const result = await lastValueFrom(lookupTvdbById(body.tvdbId))
+    return context.json({ name: result?.name ?? null }, 200)
+  },
+)
+
+queryRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/queries/lookupMovieDb",
+    summary: "Reverse-lookup a TMDB film by ID",
+    description: "Used by the builder when the user manually edits the TMDB ID — returns the formatted display name 'Title (Year)'.",
+    tags: ["Naming Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": { schema: schemas.lookupMovieDbRequestSchema },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: "Movie display name (or null if not found)",
+        content: {
+          "application/json": { schema: schemas.nameLookupResponseSchema },
+        },
+      },
+    },
+  }),
+  async (context) => {
+    const body = context.req.valid("json")
+    const result = await lastValueFrom(lookupMovieDbById(body.movieDbId))
     return context.json({ name: result?.name ?? null }, 200)
   },
 )
