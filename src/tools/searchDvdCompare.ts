@@ -325,9 +325,6 @@ export const searchDvdCompare = ({
 
       await releasePackageCheckbox.check()
 
-      // Submitting the form triggers a navigation. waitForLoadState pairs
-      // with the click in Playwright; the older Puppeteer flow used a
-      // separate waitForNavigation call.
       await Promise.all([
         page.waitForLoadState("networkidle"),
         releasePackagesForm.locator('[type="submit"]').click(),
