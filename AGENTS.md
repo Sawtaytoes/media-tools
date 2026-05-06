@@ -9,6 +9,10 @@ file renaming, subtitle merging, etc.) using mkvtoolnix, ffmpeg, and mediainfo.
 
 ## Key conventions
 
+### Package manager
+
+Use `yarn` and `yarn dlx`, not `npm` and `npx`. The repo's lockfile is `yarn.lock`; mixing the two desynchronizes installs. Examples: `yarn vitest run` (not `npx vitest run`), `yarn dlx <pkg>` (not `npx <pkg>`).
+
 ### Observable-first
 Every command module returns an `Observable`. Errors are handled via `catchNamedError`
 (which logs via `console.error` and returns `EMPTY` — they do not surface as observable
