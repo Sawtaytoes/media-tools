@@ -1,3 +1,4 @@
+import { join } from "node:path"
 import {
   concatAll,
   concatMap,
@@ -13,6 +14,7 @@ import { getTrackLanguages } from "../tools/getTrackLanguages.js"
 import { type Iso6392LanguageCode } from "../tools/iso6392LanguageCodes.js"
 import { keepSpecifiedLanguageTracks, keepSpecifiedLanguageTracksDefaultProps } from "../cli-spawn-operations/keepSpecifiedLanguageTracks.js"
 import { logInfo } from "../tools/logMessage.js"
+import { makeDirectory } from "../tools/makeDirectory.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 
 type KeepLanguagesRequiredProps = {
@@ -43,15 +45,21 @@ export const keepLanguages = ({
   sourcePath,
   subtitlesLanguages: selectedSubtitlesLanguages,
 }: KeepLanguagesProps) => (
-  getFilesAtDepth({
-    depth: (
-      isRecursive
-      ? 1
-      : 0
-    ),
-    sourcePath,
-  })
+  // Guarantee the output folder exists even when no files needed
+  // trimming. Downstream sequence steps that link via { linkedTo,
+  // output: 'folder' } resolve to <sourcePath>/<outputFolderName> and
+  // would ENOENT otherwise — flattenOutput/copyFiles/etc. all assume
+  // the folder is at least *present* (empty is fine — nothing to copy).
+  makeDirectory(join(sourcePath, outputFolderName))
   .pipe(
+    concatMap(() => getFilesAtDepth({
+      depth: (
+        isRecursive
+        ? 1
+        : 0
+      ),
+      sourcePath,
+    })),
     filterIsVideoFile(),
     map((
       fileInfo,
