@@ -4,9 +4,6 @@ import {
   filter,
   from,
   map,
-  mergeAll,
-  tap,
-  toArray,
 } from "rxjs"
 
 import { catchNamedError } from "../tools/catchNamedError.js"
@@ -85,36 +82,50 @@ export const changeTrackLanguages = ({
               )),
               concatMap((
                 track,
-              ) => (
-                updateTrackLanguage({
-                  filePath: (
-                    fileInfo
-                    .fullPath
-                  ),
-                  languageCode: (
-                    trackTypeLanguageCode
-                    [
-                      track
-                      .type
-                    ]!
-                  ),
-                  trackId: (
+              ) => {
+                const languageCode = (
+                  trackTypeLanguageCode
+                  [
                     track
-                    .properties
-                    .number
-                  ),
-                })
-              )),
+                    .type
+                  ]!
+                )
+                const trackId = (
+                  track
+                  .properties
+                  .number
+                )
+
+                return (
+                  updateTrackLanguage({
+                    filePath: (
+                      fileInfo
+                      .fullPath
+                    ),
+                    languageCode,
+                    trackId,
+                  })
+                  .pipe(
+                    // Emit a per-track record so job.results carries the
+                    // changes the run actually made — not a list of nulls
+                    // (runMkvPropEdit's path emission gets shadowed by the
+                    // outer toArray() void otherwise) and definitely not
+                    // a process.exit() that would bring down the API
+                    // server when this command runs from the API.
+                    map((updatedFilePath) => ({
+                      filePath: updatedFilePath,
+                      languageCode,
+                      trackId,
+                      trackType: track.type,
+                    })),
+                  )
+                )
+              }),
             )
           )),
         )
       )),
       concatAll(),
-      toArray(),
-      tap(() => {
-        process
-        .exit()
-      }),
       catchNamedError(
         changeTrackLanguages
       ),
