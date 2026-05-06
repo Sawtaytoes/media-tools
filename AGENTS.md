@@ -110,6 +110,10 @@ and calls `serve()`.
 3. Import and `.command(...)` the module in `src/cli.ts`
 4. Add a `app.post("/jobs/<commandName>", ...)` handler to `src/api/routes/commands.ts`
 
+## Sequence Runner DSL
+
+External API consumers should read the **Sequence Runner** section of [README.md](README.md) — that's the source of truth for how `paths`, `'@pathId'`, `linkedTo`/`output`, and the `/sequences/run` endpoint compose. The implementation lives in [src/api/resolveSequenceParams.ts](src/api/resolveSequenceParams.ts), [src/api/sequenceRunner.ts](src/api/sequenceRunner.ts), [src/api/routes/sequenceRoutes.ts](src/api/routes/sequenceRoutes.ts), and the per-command `extractOutputs` / `outputFolderName` / `outputComputation` declarations in [src/api/routes/commandRoutes.ts](src/api/routes/commandRoutes.ts). The canonical multi-step example is [examples/process-anime-subtitles.yaml](examples/process-anime-subtitles.yaml).
+
 ## CLI command modules (`src/cli-commands/`)
 
 Each yargs command lives in its own file. The pattern uses `InferArgvOptions<T>` to
