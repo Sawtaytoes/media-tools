@@ -104,4 +104,116 @@ test.describe("Sequence Builder", () => {
     await expect(page.locator("#path-picker-popover")).toBeHidden()
     await expect(basePathInput).toHaveValue("/mnt")
   })
+
+  test("Add Path creates a new path-variable card whose value lands in the YAML", async ({ page }) => {
+    await page.getByRole("button", { name: "Add Path" }).click()
+
+    // Two path-var cards exist now: Base Path + Path 1.
+    const pathVarCards = page.locator("[data-path-var]")
+    await expect(pathVarCards).toHaveCount(2)
+
+    // Fill the new card's value input — last input is the value (label is first).
+    const newPathValueInput = pathVarCards.nth(1).locator('input').last()
+    await newPathValueInput.fill("/data/anime")
+    await newPathValueInput.blur()
+
+    // YAML modal should reflect the new path's value.
+    await page.getByRole("button", { name: "View YAML" }).click()
+    await expect(page.locator("#yaml-out")).toContainText("/data/anime")
+  })
+
+  test("step reorder via the up arrow swaps adjacent steps", async ({ page }) => {
+    // Two distinct steps so we can tell them apart by command name.
+    await page.getByRole("button", { name: "Add Step" }).click()
+    await page.getByText("— pick a command —").click()
+    await page.getByPlaceholder("Search commands…").fill("copyFiles")
+    await page.getByRole("button", { name: /^copyFiles\s/ }).click()
+
+    await page.getByRole("button", { name: "Add Step" }).click()
+    await page.getByText("— pick a command —").click()
+    await page.getByPlaceholder("Search commands…").fill("moveFiles")
+    await page.getByRole("button", { name: /^moveFiles\s/ }).click()
+
+    // Order is now [copyFiles, moveFiles]. Move moveFiles up via its ↑.
+    const stepCards = page.locator('[id^="step-"]')
+    await expect(stepCards).toHaveCount(2)
+    await stepCards.nth(1).getByRole("button", { name: "↑" }).click()
+
+    // First card should now be moveFiles.
+    await expect(stepCards.nth(0)).toContainText("moveFiles")
+    await expect(stepCards.nth(1)).toContainText("copyFiles")
+  })
+
+  test("step delete via ✕ removes the card after the leave animation", async ({ page }) => {
+    await page.getByRole("button", { name: "Add Step" }).click()
+    const stepCards = page.locator('[id^="step-"]')
+    await expect(stepCards).toHaveCount(1)
+
+    await stepCards.first().getByRole("button", { name: "✕" }).click()
+
+    // The fade-out runs for 200ms before the splice; the empty-state hint
+    // returns once the card is gone. Default toBeVisible timeout (5s)
+    // covers the animation comfortably.
+    await expect(page.getByText(/No steps yet/)).toBeVisible()
+    await expect(stepCards).toHaveCount(0)
+  })
+
+  test("(+) Add divider inserts an empty step at the chosen position", async ({ page }) => {
+    // Two steps with distinct commands.
+    await page.getByRole("button", { name: "Add Step" }).click()
+    await page.getByText("— pick a command —").click()
+    await page.getByPlaceholder("Search commands…").fill("copyFiles")
+    await page.getByRole("button", { name: /^copyFiles\s/ }).click()
+
+    await page.getByRole("button", { name: "Add Step" }).click()
+    await page.getByText("— pick a command —").click()
+    await page.getByPlaceholder("Search commands…").fill("moveFiles")
+    await page.getByRole("button", { name: /^moveFiles\s/ }).click()
+
+    // Click the FIRST inline (+) Add divider — the one between the two steps.
+    await page.getByRole("button", { name: "➕ Add" }).first().click()
+
+    // Three step cards now, middle one empty.
+    const stepCards = page.locator('[id^="step-"]')
+    await expect(stepCards).toHaveCount(3)
+    await expect(stepCards.nth(0)).toContainText("copyFiles")
+    await expect(stepCards.nth(1)).toContainText("— pick a command —")
+    await expect(stepCards.nth(2)).toContainText("moveFiles")
+  })
+
+  test("typing a path into a step field auto-promotes it to a path variable on commit", async ({ page }) => {
+    await page.getByRole("button", { name: "Add Step" }).click()
+    await page.getByText("— pick a command —").click()
+    await page.getByPlaceholder("Search commands…").fill("copyFiles")
+    await page.getByRole("button", { name: /^copyFiles\s/ }).click()
+
+    // destinationPath has no auto-link (only the main source field does), so
+    // its manual input is visible and ready to take typed input.
+    const destinationPathInput = page.locator('input[data-field="destinationPath"].manual-input').first()
+    await destinationPathInput.fill("/data/output")
+    // Blur fires onchange → promotePathToPathVar.
+    await destinationPathInput.blur()
+
+    // Two path-var cards now: the original Base Path + the auto-created one
+    // holding "/data/output". The new card's input shows that value.
+    const pathVarCards = page.locator("[data-path-var]")
+    await expect(pathVarCards).toHaveCount(2)
+    await expect(pathVarCards.nth(1).locator('input[type="text"]').last()).toHaveValue("/data/output")
+  })
+
+  test("the URL captures sequence state and is restored on reload", async ({ page }) => {
+    await page.getByRole("button", { name: "Add Step" }).click()
+    await page.getByText("— pick a command —").click()
+    await page.getByPlaceholder("Search commands…").fill("copyFiles")
+    await page.getByRole("button", { name: /^copyFiles\s/ }).click()
+
+    // After picking a command, renderAll runs synchronously and updateUrl
+    // writes the ?seq= param. Verify the param is present, then reload.
+    await expect(page).toHaveURL(/\?seq=/)
+    await page.reload()
+
+    // Same step survives the round-trip via the URL state.
+    await expect(page.locator('[id^="step-"]')).toHaveCount(1)
+    await expect(page.locator('[id^="step-"]').first()).toContainText("copyFiles")
+  })
 })
