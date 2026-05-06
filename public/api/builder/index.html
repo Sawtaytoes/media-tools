@@ -1236,9 +1236,9 @@ function renderStep(step, index) {
       <button onclick="runStep('${step.id}')" ${step.command ? '' : 'disabled'}
         title="Run this step only"
         class="w-6 h-6 flex items-center justify-center rounded text-emerald-400 hover:text-emerald-300 hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent text-xs">▶</button>
-      ${step.status === 'running' && step.jobId ? `<button onclick="cancelStep('${step.id}')"
+      <button onclick="cancelStep('${step.id}')" data-step-cancel="${step.id}"
         title="Cancel this step"
-        class="w-6 h-6 flex items-center justify-center rounded text-amber-400 hover:text-amber-300 hover:bg-slate-700 text-xs">⏹</button>` : ''}
+        class="${step.status === 'running' && step.jobId ? '' : 'hidden'} w-6 h-6 flex items-center justify-center rounded text-amber-400 hover:text-amber-300 hover:bg-slate-700 text-xs">⏹</button>
       <button onclick="moveStep('${step.id}',-1)" ${isFirst ? 'disabled' : ''}
         class="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700 disabled:opacity-30 text-xs">↑</button>
       <button onclick="moveStep('${step.id}',1)" ${isLast ? 'disabled' : ''}
@@ -1771,6 +1771,9 @@ async function runOneStep(step) {
   const { jobId, outputFolderName } = await response.json()
   step.jobId = jobId
   if (outputFolderName) step.runtimeOutputFolderName = outputFolderName
+  // Re-render so the per-step Cancel button (which checks step.jobId) shows up
+  // — without this the button stays hidden until status flips terminal.
+  updateStepUI(step)
 
   try {
     const finalStatus = await waitForJob(jobId, step.id)
@@ -3096,6 +3099,15 @@ function updateStepUI(step) {
       const btns = card.querySelector('.flex.items-center.gap-1.shrink-0')
       if (btns) btns.insertAdjacentHTML('beforebegin', html)
     }
+  }
+
+  // Cancel button visibility — only meaningful when the step is running AND
+  // the job has been created. renderStep produces the button always (hidden
+  // by default) so we just toggle here, mirroring api-run-cancel-btn's
+  // visibility wiring.
+  const cancelBtn = card.querySelector(`[data-step-cancel="${step.id}"]`)
+  if (cancelBtn) {
+    cancelBtn.classList.toggle('hidden', !(step.status === 'running' && step.jobId))
   }
 
   // Update error
