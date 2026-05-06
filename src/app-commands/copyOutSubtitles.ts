@@ -19,8 +19,8 @@ import { logInfo } from "../tools/logMessage.js"
 // Image-format subtitle codecs. mkvextract can pull them but the
 // resulting binary file (e.g. .sup) isn't useful for downstream
 // modifySubtitleMetadata-style processing — it's pixels, not text.
-// Skip them by default so the rest of the file's tracks still extract
-// and the user gets a clear log line they can grep for.
+// Skip them so the rest of the file's tracks still extract and the
+// user gets a clear log line they can grep for.
 const IMAGE_SUBTITLE_CODECS = new Set<string>([
   "S_HDMV/PGS",
   "S_HDMV/TEXTST",
@@ -79,7 +79,10 @@ export const copyOutSubtitles = ({
                 if (IMAGE_SUBTITLE_CODECS.has(codecId)) {
                   logInfo(
                     "SKIPPING IMAGE SUBTITLES",
-                    `${fileInfo.fullPath} (track ${track.properties.number}, ${codecId})`,
+                    `${fileInfo.fullPath} (track ${track.properties.number}, ${codecId}) — `
+                    + `${codecId} is an image-based subtitle format (pixels, not text), so extracting it would produce a binary .sup/.sub file that downstream text-based steps like modifySubtitleMetadata can't read. `
+                    + `If every track on every file is an image format, this command will complete with no extracted output — that's expected, not a failure. `
+                    + `Use mkvextract directly if you need the raw image subs for OCR or an external tool.`,
                   )
                   return false
                 }
