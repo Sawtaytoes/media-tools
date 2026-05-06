@@ -670,6 +670,9 @@ function setParam(id, fieldName, value) {
   step.params[fieldName] = value
   refreshLinkedInputs()
   updateYaml()
+  // Persist to ?seq= so a refresh doesn't lose typed values; the previous
+  // version only updated the URL on full re-renders.
+  updateUrl()
 }
 
 function setLink(id, field, srcIdStr) {
@@ -694,6 +697,7 @@ function setLink(id, field, srcIdStr) {
   }
   refreshLinkedInputs()
   updateYaml()
+  updateUrl()
 }
 
 function refreshLinkedInputs() {
@@ -1038,6 +1042,7 @@ function setParamJson(id, field, raw) {
     step.params[field] = raw
   }
   updateYaml()
+  updateUrl()
 }
 
 // ─── YAML ─────────────────────────────────────────────────────────────────────
