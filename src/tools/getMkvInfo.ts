@@ -121,6 +121,12 @@ export const getMkvInfo = (
     )
 
     const chunks: Uint8Array[] = []
+    // mkvmerge writes informational lines to stderr in some builds (e.g.
+    // "Warning: …" on unusual-but-valid container quirks). Treating any
+    // stderr byte as a fatal error tears the SSE stream / sequence runner
+    // down mid-job for files that mkvmerge would otherwise identify just
+    // fine — same shape of bug we already fixed in runMkvExtract.
+    const stderrChunks: string[] = []
 
     childProcess
     .stdout
@@ -141,18 +147,11 @@ export const getMkvInfo = (
     .on(
       'data',
       (
-        error,
+        chunk,
       ) => {
-        console
-        .error(
-          error
-          .toString()
-        )
-
-        observer
-        .error(
-          error
-        )
+        const text = chunk.toString()
+        stderrChunks.push(text)
+        console.info(text)
       },
     )
 
@@ -190,10 +189,13 @@ export const getMkvInfo = (
       (
         code,
       ) => {
-        if (
-          code
-          === 0
-        ) {
+        process
+        .stdin
+        .setRawMode(
+          false
+        )
+
+        if (code === 0) {
           const bufferOutput = (
             Buffer
             .concat(
@@ -204,24 +206,26 @@ export const getMkvInfo = (
             )
           )
 
-          observer
-          .next(
+          observer.next(
             bufferOutput
             .replace(
               /("codec_private_data"\s*:\s*)"[^"]*"/g,
               '$1""',
             )
           )
+          observer.complete()
+          return
         }
-
-        observer
-        .complete()
-
-        process
-        .stdin
-        .setRawMode(
-          false
-        )
+        // code === null is the user-cancel path the 'close' handler
+        // resolves. Anything else with captured stderr is a real failure
+        // — surface it so the caller doesn't see an empty-tracks result
+        // and silently skip the file.
+        if (code !== null) {
+          observer.error(new Error(
+            `mkvmerge exited with code ${code}`
+            + (stderrChunks.length ? `: ${stderrChunks.join('').trim()}` : '')
+          ))
+        }
       },
     )
 
