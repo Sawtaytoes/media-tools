@@ -137,6 +137,11 @@
   <div id="cmd-picker-list" class="overflow-y-auto py-1"></div>
 </div>
 
+<!-- Path typeahead popover -->
+<div id="path-picker-popover" class="hidden fixed z-40 bg-slate-900 border border-slate-600 rounded-lg shadow-xl flex flex-col" style="width:380px;max-height:280px">
+  <div id="path-picker-list" class="overflow-y-auto py-1"></div>
+</div>
+
 <script>
 // ─── Command definitions ──────────────────────────────────────────────────────
 
@@ -818,7 +823,8 @@ function renderPathVarCard(pv, isFirst) {
       ${deleteBtn}
     </div>
     <input type="text" value="${esc(pv.value)}" placeholder="/mnt/media or D:\\Media"
-      oninput="setPathValue('${pv.id}',this.value)"
+      oninput="onPathVarInput(this,'${pv.id}',this.value)"
+      onkeydown="pathPickerKeydown(event)"
       class="w-full bg-slate-900 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono" />
   </div>`
 }
@@ -1085,8 +1091,8 @@ function renderPathField(step, field, stepIndex) {
     <input type="text" value="${esc(computed ?? val)}" ${computed !== null ? 'readonly' : ''}
       data-step="${step.id}" data-field="${field.name}"
       class="${computed !== null ? 'linked-input' : 'manual-input'} w-full bg-slate-${computed !== null ? '900' : '700'} text-slate-${computed !== null ? '400' : '200'} text-xs rounded px-2 py-1.5 border border-slate-${computed !== null ? '700' : '600'} focus:outline-none focus:border-blue-500 font-mono"
-      ${computed !== null ? '' : `oninput="setParam(${step.id},'${field.name}',this.value||undefined)" onchange="promotePathToPathVar(${step.id},'${field.name}',this.value)"`} />
-    ${computed !== null ? `<input type="text" value="${esc(val)}" data-step="${step.id}" data-field="${field.name}" class="manual-input hidden w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono" oninput="setParam(${step.id},'${field.name}',this.value||undefined)" onchange="promotePathToPathVar(${step.id},'${field.name}',this.value)" />` : ''}
+      ${computed !== null ? '' : `oninput="onPathFieldInput(this,${step.id},'${field.name}',this.value)" onkeydown="pathPickerKeydown(event)" onchange="promotePathToPathVar(${step.id},'${field.name}',this.value)"`} />
+    ${computed !== null ? `<input type="text" value="${esc(val)}" data-step="${step.id}" data-field="${field.name}" class="manual-input hidden w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono" oninput="onPathFieldInput(this,${step.id},'${field.name}',this.value)" onkeydown="pathPickerKeydown(event)" onchange="promotePathToPathVar(${step.id},'${field.name}',this.value)" />` : ''}
   </div>`
 }
 
@@ -1616,6 +1622,262 @@ document.addEventListener('mousedown', (event) => {
   if (popover.contains(event.target)) return
   if (event.target.closest('[data-cmd-picker-trigger]')) return
   closeCmdPicker()
+}, true)
+
+// ─── Path typeahead (filesystem autocomplete for path fields) ───────────────────
+
+let pathPickerState = null
+// shape: { inputElement, target, parentPath, query, entries, activeIndex, requestToken, debounceTimerId }
+// `target` is { mode: 'step', stepId, fieldName } | { mode: 'pathVar', pathVarId }
+
+function onPathFieldInput(inputElement, stepId, fieldName, value) {
+  setParam(stepId, fieldName, value || undefined)
+  schedulePathLookup(inputElement, { mode: 'step', stepId, fieldName }, value)
+}
+
+function onPathVarInput(inputElement, pathVarId, value) {
+  setPathValue(pathVarId, value)
+  schedulePathLookup(inputElement, { mode: 'pathVar', pathVarId }, value)
+}
+
+function schedulePathLookup(inputElement, target, value) {
+  // The query is the basename being typed; the directory we list is its parent.
+  const trimmed = (value ?? '').trim()
+  if (!trimmed) {
+    closePathPicker()
+    return
+  }
+
+  // Split path into "directory part" + "basename query". For an in-progress
+  // path like "/work/foo", parent="/work" and query="foo". For a trailing
+  // separator like "/work/", parent="/work" and query="" (list everything).
+  const trailingSlash = /[\\/]$/.test(trimmed)
+  const lastSep = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('\\'))
+  const parentPath = lastSep <= 0 ? trimmed : trimmed.slice(0, lastSep) || '/'
+  const query = trailingSlash ? '' : (lastSep < 0 ? trimmed : trimmed.slice(lastSep + 1))
+
+  if (!pathPickerState || pathPickerState.inputElement !== inputElement) {
+    pathPickerState = {
+      inputElement,
+      target,
+      parentPath,
+      query,
+      entries: null,
+      activeIndex: 0,
+      requestToken: 0,
+      debounceTimerId: null,
+    }
+  } else {
+    pathPickerState.target = target
+    pathPickerState.query = query
+  }
+
+  if (pathPickerState.debounceTimerId) {
+    clearTimeout(pathPickerState.debounceTimerId)
+  }
+
+  // Position the popover under the input now (in case it isn't open yet).
+  positionPathPicker(inputElement)
+
+  // If the parent dir hasn't changed since last fetch, just re-filter cached
+  // entries — no network call needed.
+  if (pathPickerState.cachedParentPath === parentPath && pathPickerState.entries) {
+    pathPickerState.parentPath = parentPath
+    pathPickerState.activeIndex = 0
+    renderPathPickerList()
+    return
+  }
+
+  pathPickerState.parentPath = parentPath
+  pathPickerState.debounceTimerId = setTimeout(() => {
+    pathPickerState.debounceTimerId = null
+    runPathLookup(parentPath)
+  }, 250)
+}
+
+async function runPathLookup(parentPath) {
+  if (!pathPickerState) return
+  const myToken = ++pathPickerState.requestToken
+  try {
+    const response = await fetch('/queries/listDirectoryEntries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: parentPath }),
+    })
+    const data = await response.json()
+    // Stale-check.
+    if (!pathPickerState || pathPickerState.requestToken !== myToken) return
+    if (data.error) {
+      pathPickerState.entries = []
+      pathPickerState.error = data.error
+    } else {
+      pathPickerState.entries = data.entries ?? []
+      pathPickerState.error = null
+      pathPickerState.cachedParentPath = parentPath
+    }
+    pathPickerState.activeIndex = 0
+    renderPathPickerList()
+  } catch (err) {
+    if (!pathPickerState || pathPickerState.requestToken !== myToken) return
+    pathPickerState.entries = []
+    pathPickerState.error = err?.message ?? String(err)
+    renderPathPickerList()
+  }
+}
+
+function positionPathPicker(inputElement) {
+  const popover = document.getElementById('path-picker-popover')
+  const rect = inputElement.getBoundingClientRect()
+  const popoverWidth = 380
+  const popoverMaxHeight = 280
+  const margin = 8
+
+  let left = rect.left
+  if (left + popoverWidth > window.innerWidth - margin) {
+    left = window.innerWidth - popoverWidth - margin
+  }
+  if (left < margin) {
+    left = margin
+  }
+
+  const spaceBelow = window.innerHeight - rect.bottom - margin
+  const spaceAbove = rect.top - margin
+  const flipAbove = spaceBelow < 160 && spaceAbove > spaceBelow
+  let top, height
+  if (flipAbove) {
+    height = Math.min(popoverMaxHeight, spaceAbove)
+    top = rect.top - height - 4
+  } else {
+    height = Math.min(popoverMaxHeight, spaceBelow)
+    top = rect.bottom + 4
+  }
+  popover.style.left = `${left}px`
+  popover.style.top = `${top}px`
+  popover.style.maxHeight = `${height}px`
+  popover.classList.remove('hidden')
+}
+
+function renderPathPickerList() {
+  const list = document.getElementById('path-picker-list')
+  if (!pathPickerState) {
+    list.innerHTML = ''
+    return
+  }
+  if (pathPickerState.entries === null) {
+    list.innerHTML = '<p class="text-xs text-slate-500 text-center py-3">Loading…</p>'
+    return
+  }
+  if (pathPickerState.error) {
+    list.innerHTML = `<p class="text-xs text-red-400 text-center py-3 break-words px-3">${esc(pathPickerState.error)}</p>`
+    return
+  }
+
+  const queryLower = pathPickerState.query.toLowerCase()
+  const matches = pathPickerState.entries
+    .filter(e => !queryLower || e.name.toLowerCase().startsWith(queryLower))
+    // Directories first, then alphabetical.
+    .sort((a, b) => {
+      if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1
+      return a.name.localeCompare(b.name)
+    })
+
+  pathPickerState.matches = matches
+  if (pathPickerState.activeIndex >= matches.length) {
+    pathPickerState.activeIndex = 0
+  }
+
+  if (matches.length === 0) {
+    list.innerHTML = '<p class="text-xs text-slate-500 text-center py-3">No matching entries.</p>'
+    return
+  }
+
+  list.innerHTML = matches.map((entry, index) => {
+    const active = index === pathPickerState.activeIndex
+    const icon = entry.isDirectory ? '📁' : '📄'
+    return `<button onmousedown="event.preventDefault()" onclick="pathPickerSelectByIndex(${index})"
+      data-path-idx="${index}"
+      class="w-full text-left px-3 py-1 flex items-center gap-2 ${active ? 'bg-blue-700 text-white' : 'text-slate-200 hover:bg-slate-800'}">
+      <span class="shrink-0">${icon}</span>
+      <span class="font-mono text-xs flex-1 min-w-0 truncate">${esc(entry.name)}</span>
+    </button>`
+  }).join('')
+
+  const activeEl = list.querySelector(`[data-path-idx="${pathPickerState.activeIndex}"]`)
+  activeEl?.scrollIntoView({ block: 'nearest' })
+}
+
+function pathPickerSelectByIndex(index) {
+  if (!pathPickerState?.matches) return
+  const entry = pathPickerState.matches[index]
+  if (!entry) return
+  applyPathPickerSelection(entry)
+}
+
+function applyPathPickerSelection(entry) {
+  if (!pathPickerState) return
+  const { inputElement, target, parentPath } = pathPickerState
+  // Compose the new path. Use forward slashes for new joins (cross-platform);
+  // if the parent already used backslashes, follow that convention.
+  const sep = parentPath.includes('\\') && !parentPath.includes('/') ? '\\' : '/'
+  const base = parentPath.endsWith('/') || parentPath.endsWith('\\') ? parentPath.slice(0, -1) : parentPath
+  let newValue = `${base}${sep}${entry.name}`
+  if (entry.isDirectory) {
+    newValue = newValue + sep  // trailing separator so the user can keep drilling in
+  }
+  inputElement.value = newValue
+  // Re-fire the input handler so step.params/path-var stays in sync. Keep
+  // the typeahead open if we just navigated INTO a directory; close on file.
+  if (target.mode === 'step') {
+    setParam(target.stepId, target.fieldName, newValue)
+  } else {
+    setPathValue(target.pathVarId, newValue)
+  }
+  if (entry.isDirectory) {
+    schedulePathLookup(inputElement, target, newValue)
+    inputElement.focus()
+  } else {
+    closePathPicker()
+  }
+}
+
+function pathPickerKeydown(event, inputElement, target) {
+  if (!pathPickerState) return
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    closePathPicker()
+    return
+  }
+  const matches = pathPickerState.matches
+  if (!matches?.length) return
+
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    pathPickerState.activeIndex = (pathPickerState.activeIndex + 1) % matches.length
+    renderPathPickerList()
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    pathPickerState.activeIndex = (pathPickerState.activeIndex - 1 + matches.length) % matches.length
+    renderPathPickerList()
+  } else if (event.key === 'Tab' || event.key === 'Enter') {
+    event.preventDefault()
+    pathPickerSelectByIndex(pathPickerState.activeIndex)
+  }
+}
+
+function closePathPicker() {
+  document.getElementById('path-picker-popover')?.classList.add('hidden')
+  if (pathPickerState?.debounceTimerId) {
+    clearTimeout(pathPickerState.debounceTimerId)
+  }
+  pathPickerState = null
+}
+
+document.addEventListener('mousedown', (event) => {
+  if (!pathPickerState) return
+  const popover = document.getElementById('path-picker-popover')
+  if (popover.contains(event.target)) return
+  if (event.target === pathPickerState.inputElement) return
+  closePathPicker()
 }, true)
 
 function openLookup(lookupType, stepId, fieldName) {
