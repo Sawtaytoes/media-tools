@@ -114,7 +114,7 @@ const commandNames = [
 
 export type CommandName = typeof commandNames[number]
 
-type CommandConfig = {
+export type CommandConfig = {
   // Optional projector that maps the collected emission stream into a
   // named-outputs record once the command completes. Surfaced on the job
   // for downstream sequence steps to consume via the linkedTo/output
@@ -128,7 +128,7 @@ type CommandConfig = {
   tags: string[]
 }
 
-const commandConfigs: Record<CommandName, CommandConfig> = {
+export const commandConfigs: Record<CommandName, CommandConfig> = {
   makeDirectory: {
     getObservable: (body) => makeDirectory(body.filePath),
     schema: schemas.makeDirectoryRequestSchema,

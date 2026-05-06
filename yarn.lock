@@ -1718,6 +1718,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/js-yaml@npm:^4.0.9":
+  version: 4.0.9
+  resolution: "@types/js-yaml@npm:4.0.9"
+  checksum: 10c0/24de857aa8d61526bbfbbaa383aa538283ad17363fcd5bb5148e2c7f604547db36646440e739d78241ed008702a8920665d1add5618687b6743858fae00da211
+  languageName: node
+  linkType: hard
+
 "@types/jsdom@npm:^21.1.7":
   version: 21.1.7
   resolution: "@types/jsdom@npm:21.1.7"
@@ -4549,6 +4556,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"js-yaml@npm:^4.1.1":
+  version: 4.1.1
+  resolution: "js-yaml@npm:4.1.1"
+  dependencies:
+    argparse: "npm:^2.0.1"
+  bin:
+    js-yaml: bin/js-yaml.js
+  checksum: 10c0/561c7d7088c40a9bb53cc75becbfb1df6ae49b34b5e6e5a81744b14ae8667ec564ad2527709d1a6e7d5e5fa6d483aa0f373a50ad98d42fde368ec4a190d4fae7
+  languageName: node
+  linkType: hard
+
 "jsdom@npm:^26.1.0":
   version: 26.1.0
   resolution: "jsdom@npm:26.1.0"
@@ -4966,6 +4984,7 @@ __metadata:
     "@types/cli-progress": "npm:^3.11.0"
     "@types/ffmpeg-static": "npm:^3.0.3"
     "@types/he": "npm:^1.2.3"
+    "@types/js-yaml": "npm:^4.0.9"
     "@types/jsdom": "npm:^21.1.7"
     "@types/node": "npm:^22.4.1"
     "@types/yargs": "npm:^17.0.33"
@@ -4982,6 +5001,7 @@ __metadata:
     he: "npm:^1.2.0"
     hono: "npm:^4.12.16"
     inquirer: "npm:^10.1.8"
+    js-yaml: "npm:^4.1.1"
     jsdom: "npm:^26.1.0"
     mal-scraper: "npm:^2.13.1"
     memfs: "npm:^4.14.0"

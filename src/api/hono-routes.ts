@@ -7,6 +7,7 @@ import { inputRoutes } from "./routes/inputRoutes.js"
 import { jobRoutes } from "./routes/jobRoutes.js"
 import { logsRoutes } from "./routes/logRoutes.js"
 import { queryRoutes } from "./routes/queryRoutes.js"
+import { sequenceRoutes } from "./routes/sequenceRoutes.js"
 
 export const app = new OpenAPIHono()
 
@@ -18,5 +19,6 @@ app.route("/", logsRoutes)
 app.route("/", inputRoutes)
 app.route("/", commandRoutes)
 app.route("/", queryRoutes)
+app.route("/", sequenceRoutes)
 
 addDocRoutes(app)
