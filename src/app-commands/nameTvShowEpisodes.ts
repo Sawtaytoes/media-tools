@@ -25,7 +25,7 @@ export const nameTvShowEpisodes = ({
   sourcePath,
   tvdbId,
 }: {
-  searchTerm: string,
+  searchTerm?: string,
   seasonNumber: number,
   sourcePath: string,
   tvdbId?: number,
@@ -67,7 +67,7 @@ export const nameTvShowEpisodes = ({
               )
             )
             : (
-              searchTvdb(searchTerm)
+              searchTvdb(searchTerm ?? "")
               .pipe(
                 switchMap((results) => {
                   if (results.length === 0) {

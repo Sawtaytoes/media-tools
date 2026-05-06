@@ -355,8 +355,7 @@ const COMMANDS = {
     outputFolderName: null,
     fields: [
       { name: "sourcePath", type: "path", label: "Source Path", required: true },
-      { name: "malId", type: "number", label: "MAL ID (bypasses search)", placeholder: "12345" },
-      { name: "searchTerm", type: "string", label: "Search Term (used if no MAL ID)", required: true },
+      { name: "malId", type: "numberWithLookup", lookupType: "mal", label: "MAL ID", placeholder: "12345", required: true },
       { name: "seasonNumber", type: "number", label: "Season Number", default: 1 },
     ]
   },
@@ -366,9 +365,8 @@ const COMMANDS = {
     outputFolderName: null,
     fields: [
       { name: "sourcePath", type: "path", label: "Source Path", required: true },
-      { name: "dvdCompareId", type: "number", label: "DVDCompare Film ID (bypasses search)", placeholder: "12345" },
-      { name: "searchTerm", type: "string", label: "Search Term (used if no Film ID)", placeholder: "Star Wars" },
-      { name: "url", type: "string", label: "Direct URL (overrides both)", placeholder: "https://dvdcompare.net/..." },
+      { name: "dvdCompareId", type: "numberWithLookup", lookupType: "dvdcompare", label: "DVDCompare Film ID", placeholder: "12345", required: true },
+      { name: "dvdCompareReleaseHash", type: "number", label: "Release Hash", default: 1 },
       { name: "fixedOffset", type: "number", label: "Fixed Offset (ms)", default: 0 },
       { name: "timecodePadding", type: "number", label: "Timecode Padding", default: 2 },
     ]
@@ -379,9 +377,8 @@ const COMMANDS = {
     outputFolderName: null,
     fields: [
       { name: "sourcePath", type: "path", label: "Source Path", required: true },
-      { name: "searchTerm", type: "string", label: "Search Term", required: true },
+      { name: "tvdbId", type: "numberWithLookup", lookupType: "tvdb", label: "TVDB ID", placeholder: "12345", required: true },
       { name: "seasonNumber", type: "number", label: "Season Number", required: true },
-      { name: "tvdbId", type: "number", label: "TVDB ID (optional, bypasses search)" },
     ]
   },
   renameDemos: {

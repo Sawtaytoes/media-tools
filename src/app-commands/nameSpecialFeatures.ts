@@ -38,16 +38,20 @@ const DVDCOMPARE_FILM_BASE = "https://www.dvdcompare.net/comparisons/film.php?fi
 
 const resolveUrl = ({
   dvdCompareId,
+  dvdCompareReleaseHash,
   searchTerm,
   url,
 }: {
   dvdCompareId?: number,
+  dvdCompareReleaseHash?: number,
   searchTerm?: string,
   url?: string,
 }): Observable<string> => {
   if (url) return of(url)
 
-  if (dvdCompareId != null) return of(`${DVDCOMPARE_FILM_BASE}${dvdCompareId}`)
+  const hash = dvdCompareReleaseHash ?? 1
+
+  if (dvdCompareId != null) return of(`${DVDCOMPARE_FILM_BASE}${dvdCompareId}#${hash}`)
 
   if (searchTerm) {
     return (
@@ -82,7 +86,7 @@ const resolveUrl = ({
               tap((result) => {
                 if (!result) throw new Error("No result selected.")
               }),
-              map((result) => `${DVDCOMPARE_FILM_BASE}${result!.id}`),
+              map((result) => `${DVDCOMPARE_FILM_BASE}${result!.id}#${hash}`),
             )
           )
         }),
@@ -95,6 +99,7 @@ const resolveUrl = ({
 
 export const nameSpecialFeatures = ({
   dvdCompareId,
+  dvdCompareReleaseHash,
   fixedOffset,
   searchTerm,
   sourcePath,
@@ -103,13 +108,14 @@ export const nameSpecialFeatures = ({
 }: (
   {
     dvdCompareId?: number,
+    dvdCompareReleaseHash?: number,
     searchTerm?: string,
     sourcePath: string,
     url?: string,
   }
   & TimecodeDeviation
 )) => (
-  resolveUrl({ dvdCompareId, searchTerm, url })
+  resolveUrl({ dvdCompareId, dvdCompareReleaseHash, searchTerm, url })
   .pipe(
     concatMap((resolvedUrl) => (
       searchDvdCompare({ url: resolvedUrl })

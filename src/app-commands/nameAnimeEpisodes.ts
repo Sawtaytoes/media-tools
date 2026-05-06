@@ -32,7 +32,7 @@ export const nameAnimeEpisodes = ({
   sourcePath,
 }: {
   malId?: number,
-  searchTerm: string,
+  searchTerm?: string,
   seasonNumber: number,
   sourcePath: string,
 }) => (

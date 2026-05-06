@@ -196,7 +196,7 @@ export const mergeTracksRequestSchema = z.object({
 
 export const nameAnimeEpisodesRequestSchema = z.object({
   sourcePath: z.string().describe("Source directory path"),
-  searchTerm: z.string().describe("Anime title to search for"),
+  searchTerm: z.string().optional().describe("Anime title to search for (CLI fallback when no malId)"),
   seasonNumber: z.number().default(1).describe("Season number"),
   malId: z.number().optional().describe("MyAnimeList ID — when provided, skips the interactive search and uses this ID directly"),
 })
@@ -213,8 +213,8 @@ export const nameSpecialFeaturesRequestSchema = z.object({
 
 export const nameTvShowEpisodesRequestSchema = z.object({
   sourcePath: z.string().describe("Source directory path"),
-  searchTerm: z.string().describe("TV show title to search for"),
-  seasonNumber: z.number().describe("Season number"),
+  searchTerm: z.string().optional().describe("TV show title to search for (CLI fallback when no tvdbId)"),
+  seasonNumber: z.number().default(1).describe("Season number"),
   tvdbId: z.number().optional().describe("TVDB ID — when provided, skips the interactive search and uses this ID directly"),
 })
 

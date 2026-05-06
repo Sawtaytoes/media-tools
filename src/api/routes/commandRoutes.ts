@@ -238,7 +238,7 @@ const commandConfigs: Record<CommandName, CommandConfig> = {
     tags: ["Naming Operations"],
   },
   nameSpecialFeatures: {
-    getObservable: (body) => nameSpecialFeatures({ dvdCompareId: body.dvdCompareId, fixedOffset: body.fixedOffset, searchTerm: body.searchTerm, sourcePath: body.sourcePath, timecodePaddingAmount: body.timecodePadding, url: body.url }),
+    getObservable: (body) => nameSpecialFeatures({ dvdCompareId: body.dvdCompareId, dvdCompareReleaseHash: body.dvdCompareReleaseHash, fixedOffset: body.fixedOffset, searchTerm: body.searchTerm, sourcePath: body.sourcePath, timecodePaddingAmount: body.timecodePadding, url: body.url }),
     schema: schemas.nameSpecialFeaturesRequestSchema,
     summary: "Rename special features based on timecode data",
     tags: ["Naming Operations"],
