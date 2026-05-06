@@ -4,6 +4,7 @@ import { type Observable } from "rxjs"
 
 import { makeDirectory } from "../../tools/makeDirectory.js"
 import { changeTrackLanguages } from "../../app-commands/changeTrackLanguages.js"
+import { computeDefaultSubtitleRules } from "../../app-commands/computeDefaultSubtitleRules.js"
 import { copyFiles } from "../../app-commands/copyFiles.js"
 import { flattenOutput } from "../../app-commands/flattenOutput.js"
 import { copyOutSubtitles, copyOutSubtitlesDefaultProps } from "../../app-commands/copyOutSubtitles.js"
@@ -76,6 +77,7 @@ const startCommandJob = ({
 const commandNames = [
   "makeDirectory",
   "changeTrackLanguages",
+  "computeDefaultSubtitleRules",
   "copyFiles",
   "flattenOutput",
   "copyOutSubtitles",
@@ -138,6 +140,15 @@ const commandConfigs: Record<CommandName, CommandConfig> = {
     schema: schemas.changeTrackLanguagesRequestSchema,
     summary: "Change language tags for media tracks",
     tags: ["Track Operations"],
+  },
+  computeDefaultSubtitleRules: {
+    getObservable: (body) => computeDefaultSubtitleRules({ isRecursive: body.isRecursive, recursiveDepth: body.recursiveDepth, sourcePath: body.sourcePath }),
+    // Pin the rules array as a named runtime output so a downstream
+    // modifySubtitleMetadata step can consume it via { linkedTo, output: 'rules' }.
+    extractOutputs: (results) => ({ rules: results }),
+    schema: schemas.computeDefaultSubtitleRulesRequestSchema,
+    summary: "Compute the default ASS modification rules from .ass file metadata. Emits a `rules` named output for the next sequence step to consume.",
+    tags: ["Subtitle Operations"],
   },
   copyFiles: {
     getObservable: (body) => copyFiles({ destinationPath: body.destinationPath, sourcePath: body.sourcePath }),

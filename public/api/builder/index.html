@@ -355,8 +355,27 @@ const COMMANDS = {
       { name: "sourcePath", type: "path", label: "Source Path", required: true },
       { name: "isRecursive", type: "boolean", label: "Recursive", default: false },
       { name: "recursiveDepth", type: "number", label: "Recursive Depth", default: 0 },
-      { name: "rules", type: "json", label: "Rules (JSON)", required: true,
+      // `linkable: true` exposes a "Link to step output" picker above the
+      // JSON editor so the user can wire this field to an upstream step's
+      // `rules` named output (e.g. computeDefaultSubtitleRules).
+      { name: "rules", type: "json", label: "Rules (JSON)", required: true, linkable: true,
         placeholder: '[{"type":"setScriptInfo","key":"YCbCr Matrix","value":"TV.709"}]' },
+    ]
+  },
+  computeDefaultSubtitleRules: {
+    summary: "Compute the default ASS modification rule set from .ass file metadata",
+    tag: "Subtitle Operations",
+    outputFolderName: null,
+    // Named runtime outputs this step publishes via the API's extractOutputs
+    // hook. Downstream steps can consume them through the link picker on
+    // any field flagged `linkable: true`.
+    outputs: [
+      { name: "rules", label: "rules (subtitle modification rules array)" },
+    ],
+    fields: [
+      { name: "sourcePath", type: "path", label: "Source Path", required: true },
+      { name: "isRecursive", type: "boolean", label: "Recursive", default: false },
+      { name: "recursiveDepth", type: "number", label: "Recursive Depth", default: 0 },
     ]
   },
   // Analysis
@@ -1099,7 +1118,19 @@ function renderFields(step, stepIndex) {
 
     if (field.type === 'json') {
       const str = val !== undefined ? (typeof val === 'string' ? val : JSON.stringify(val, null, 2)) : ''
-      return `<div>${label}<textarea rows="3" placeholder="${esc(field.placeholder ?? '[]')}"
+      const link = step.links?.[field.name]
+      const isLinked = link && typeof link === 'object' && link.linkedTo
+      const pickerHtml = field.linkable
+        ? renderStepOutputPicker(step, field, stepIndex, link)
+        : ''
+      if (isLinked) {
+        // Linked: replace the textarea with a readonly label so the user can
+        // see at a glance that this field is wired to a previous step's
+        // named output. To switch back to manual, pick "— manual —" in the
+        // picker above.
+        return `<div>${label}${pickerHtml}<div class="text-xs text-slate-400 bg-slate-900 rounded px-2 py-1.5 border border-slate-700 italic font-mono">Linked → ${esc(link.linkedTo)}.${esc(link.output ?? 'folder')}</div></div>`
+      }
+      return `<div>${label}${pickerHtml}<textarea rows="3" placeholder="${esc(field.placeholder ?? '[]')}"
         oninput="setParamJson('${step.id}','${field.name}',this.value)"
         class="w-full bg-slate-900 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono resize-y">${esc(str)}</textarea></div>`
     }
@@ -1110,6 +1141,38 @@ function renderFields(step, stepIndex) {
       oninput="setParam('${step.id}','${field.name}',this.value||undefined)"
       class="w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500" /></div>`
   }).join('')
+}
+
+// Picker for non-path fields flagged `linkable: true`. Lists every named
+// output (output: 'rules', output: 'someOther', ...) declared by previous
+// steps' commands. Re-uses the same setLink + "step:<id>:<output>" encoding
+// the path-field select uses, so changeover round-trips through one code
+// path.
+function renderStepOutputPicker(step, field, stepIndex, link) {
+  const isLinked = link && typeof link === 'object' && link.linkedTo
+  const options = (
+    steps
+    .slice(0, stepIndex)
+    .filter((s) => s.command && Array.isArray(COMMANDS[s.command]?.outputs) && COMMANDS[s.command].outputs.length > 0)
+    .flatMap((s, i) => (
+      COMMANDS[s.command].outputs.map((out) => {
+        const value = `step:${s.id}:${out.name}`
+        const isSelected = isLinked && link.linkedTo === s.id && link.output === out.name
+        const label = `Step (${esc(s.command)}) → ${esc(out.label ?? out.name)}`
+        return `<option value="${value}"${isSelected ? ' selected' : ''}>${label}</option>`
+      })
+    ))
+    .join('')
+  )
+
+  return `<div class="flex items-center gap-2 mb-1">
+    <span class="text-xs text-slate-500 shrink-0">Link to:</span>
+    <select onchange="setLink('${step.id}','${field.name}',this.value)"
+      class="text-xs bg-slate-700 text-slate-300 rounded px-1.5 py-0.5 border border-slate-600 focus:outline-none focus:border-blue-500 max-w-[280px] truncate">
+      <option value=""${!isLinked ? ' selected' : ''}>— manual —</option>
+      ${options}
+    </select>
+  </div>`
 }
 
 function renderPathField(step, field, stepIndex) {
