@@ -143,16 +143,32 @@ export type FileMatch =
   | { fileInfo: FileInfo, kind: "extra", renamedFilename: string }
   | { fileInfo: FileInfo, kind: "unmatched" }
 
+// Movie-cut matching uses a wider tolerance window than extras matching.
+// Full-feature rips routinely drift 5–10 seconds from DVDCompare's
+// published runtime (encoder padding, leading/trailing logos, slightly
+// different chapter handling), which the default per-extra padding of 2
+// would reject. Cuts on a single release are minutes apart, so a 15-sec
+// window won't false-positive across editions but does catch typical
+// rip variance.
+const CUT_TIMECODE_PADDING_FALLBACK = 15
+
 export const findMatchingCut = (
   cuts: Cut[],
   fileTimecode: string,
   deviation: TimecodeDeviation,
-): Cut | null => (
-  cuts.find((cut) => (
+): Cut | null => {
+  const cutDeviation: TimecodeDeviation = {
+    fixedOffset: deviation.fixedOffset,
+    timecodePaddingAmount: Math.max(
+      deviation.timecodePaddingAmount ?? 0,
+      CUT_TIMECODE_PADDING_FALLBACK,
+    ),
+  }
+  return cuts.find((cut) => (
     cut.timecode != null
-    && getIsSimilarTimecode(fileTimecode, cut.timecode, deviation)
+    && getIsSimilarTimecode(fileTimecode, cut.timecode, cutDeviation)
   )) ?? null
-)
+}
 
 // Produces the final {fileInfo, renamedFilename} pairs, applying movie
 // naming to unmatched files when (and only when) no cut matched anything
