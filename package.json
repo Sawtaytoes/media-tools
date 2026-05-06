@@ -3,6 +3,7 @@
   "packageManager": "yarn@4.9.0",
   "version": "1.0.0",
   "scripts": {
+    "api-dev-server": "tsx watch --env-file ./.env src/start-servers.ts",
     "api-server": "tsx --env-file ./.env src/api-server.ts",
     "build": "rimraf build/ && esbuild --format=cjs --minify --bundle --platform=node --external:./xhr-sync-worker.js --outfile=build/media-tools.cjs src/cli.ts",
     "cli-server": "tsx --env-file ./.env src/cli-server.ts",
