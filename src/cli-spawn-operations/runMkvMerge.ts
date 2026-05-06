@@ -81,6 +81,12 @@ export const runMkvMerge = ({
     )
 
     let hasStarted = false
+    // Same shape of bug we fixed in runMkvExtract / getMkvInfo: mkvmerge
+    // can write informational lines to stderr (warnings on weird-but-valid
+    // containers, codec advisories, etc.). Erroring on the first stderr
+    // byte tore the SSE stream / sequence runner down mid-job — buffer
+    // here, surface only on non-zero exit.
+    const stderrChunks: string[] = []
 
     childProcess
     .stdout
@@ -144,18 +150,11 @@ export const runMkvMerge = ({
     .on(
       'data',
       (
-        error,
+        chunk,
       ) => {
-        console
-        .error(
-          error
-          .toString()
-        )
-
-        observer
-        .error(
-          error
-        )
+        const text = chunk.toString()
+        stderrChunks.push(text)
+        console.info(text)
       },
     )
 
@@ -203,27 +202,23 @@ export const runMkvMerge = ({
       (
         code,
       ) => {
-        if (
-          code
-          === 0
-        ) {
-          observer
-          .next(
-            outputFilePath
-          )
+        cliProgressBar.stop()
+        process.stdin.setRawMode(false)
+
+        if (code === 0) {
+          observer.next(outputFilePath)
+          observer.complete()
+          return
         }
-
-        observer
-        .complete()
-
-        cliProgressBar
-        .stop()
-
-        process
-        .stdin
-        .setRawMode(
-          false
-        )
+        // code === null is the user-cancel path the 'close' handler resolves.
+        // Any other non-zero exit is a real failure — attach the captured
+        // stderr so consumers see what mkvmerge complained about.
+        if (code !== null) {
+          observer.error(new Error(
+            `mkvmerge exited with code ${code}`
+            + (stderrChunks.length ? `: ${stderrChunks.join('').trim()}` : '')
+          ))
+        }
       },
     )
 

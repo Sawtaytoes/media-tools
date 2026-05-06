@@ -45,6 +45,12 @@ export const runMkvExtractStdOut = ({
       )
     )
 
+    // Same shape of bug we fixed in runMkvExtract / getMkvInfo: buffer
+    // stderr (mkvextract's "Extracting track …" banners and benign
+    // warnings land here) instead of erroring on the first byte;
+    // surface only on a real non-zero exit.
+    const stderrChunks: string[] = []
+
     childProcess
     .stdout
     .on(
@@ -65,18 +71,11 @@ export const runMkvExtractStdOut = ({
     .on(
       'data',
       (
-        error,
+        chunk,
       ) => {
-        console
-        .error(
-          error
-          .toString()
-        )
-
-        observer
-        .error(
-          error
-        )
+        const text = chunk.toString()
+        stderrChunks.push(text)
+        console.info(text)
       },
     )
 
@@ -109,15 +108,21 @@ export const runMkvExtractStdOut = ({
     childProcess
     .on(
       'exit',
-      () => {
-        observer
-        .complete()
+      (
+        code,
+      ) => {
+        process.stdin.setRawMode(false)
 
-        process
-        .stdin
-        .setRawMode(
-          false
-        )
+        if (code === 0 || code === null) {
+          // code === null is the user-cancel path the 'close' handler resolves;
+          // we still want the observable to finish cleanly here.
+          observer.complete()
+          return
+        }
+        observer.error(new Error(
+          `mkvextract exited with code ${code}`
+          + (stderrChunks.length ? `: ${stderrChunks.join('').trim()}` : '')
+        ))
       },
     )
 

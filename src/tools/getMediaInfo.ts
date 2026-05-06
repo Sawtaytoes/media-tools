@@ -275,18 +275,11 @@ export const getMediaInfo = (
     )
   )
   .pipe(
-    map(({
-      stderr,
-      stdout,
-    }) => {
-      if (
-        stderr
-      ) {
-        throw stderr
-      }
-
-      return stdout
-    }),
+    // execFile rejects with a non-null `code` on real failures, so we
+    // don't need to throw on stderr presence — mediainfo is happy to
+    // print warnings/info to stderr on healthy files. Throwing here was
+    // the same shape of bug we fixed in runMkvExtract / getMkvInfo.
+    map(({ stdout }) => stdout),
     map((
       mediaInfoJsonString,
     ) => (

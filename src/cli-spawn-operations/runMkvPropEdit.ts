@@ -48,6 +48,11 @@ export const runMkvPropEdit = ({
       )
     )
 
+    // Same shape of bug we fixed in runMkvExtract / getMkvInfo: buffer
+    // stderr instead of erroring on the first byte; surface only on a
+    // real non-zero exit.
+    const stderrChunks: string[] = []
+
     childProcess
     .stdout
     .on(
@@ -68,18 +73,11 @@ export const runMkvPropEdit = ({
     .on(
       'data',
       (
-        error,
+        chunk,
       ) => {
-        console
-        .error(
-          error
-          .toString()
-        )
-
-        observer
-        .error(
-          error
-        )
+        const text = chunk.toString()
+        stderrChunks.push(text)
+        console.info(text)
       },
     )
 
@@ -132,24 +130,22 @@ export const runMkvPropEdit = ({
       (
         code,
       ) => {
-        if (
-          code
-          === 0
-        ) {
-          observer
-          .next(
-            filePath
-          )
+        process.stdin.setRawMode(false)
+
+        if (code === 0) {
+          observer.next(filePath)
+          observer.complete()
+          return
         }
-
-        observer
-        .complete()
-
-        process
-        .stdin
-        .setRawMode(
-          false
-        )
+        // code === null is the user-cancel path the 'close' handler resolves.
+        // Any other non-zero exit is a real failure — attach the captured
+        // stderr so consumers see what mkvpropedit complained about.
+        if (code !== null) {
+          observer.error(new Error(
+            `mkvpropedit exited with code ${code}`
+            + (stderrChunks.length ? `: ${stderrChunks.join('').trim()}` : '')
+          ))
+        }
       },
     )
 

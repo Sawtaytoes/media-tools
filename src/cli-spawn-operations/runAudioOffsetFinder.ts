@@ -81,6 +81,11 @@ export const runAudioOffsetFinder = ({
       )
     }
 
+    // Same shape of bug we fixed in runMkvExtract / getMkvInfo: buffer
+    // stderr instead of erroring on the first byte; surface only on a
+    // real non-zero exit.
+    const stderrChunks: string[] = []
+
     childProcess
     .stdout
     .on(
@@ -106,18 +111,11 @@ export const runAudioOffsetFinder = ({
     .on(
       'data',
       (
-        error,
+        chunk,
       ) => {
-        console
-        .error(
-          error
-          .toString()
-        )
-
-        observer
-        .error(
-          error
-        )
+        const text = chunk.toString()
+        stderrChunks.push(text)
+        console.info(text)
       },
     )
 
@@ -170,50 +168,29 @@ export const runAudioOffsetFinder = ({
       (
         code,
       ) => {
-        if (
-          code
-          === 0
-        ) {
-          observer
-          .next(
-            getOffsetFromAudioOffsetOutput(
-              outputData
-            )
-          )
+        process.stdin.setRawMode(false)
+
+        childProcess.stderr.unpipe()
+        childProcess.stderr.destroy()
+        childProcess.stdout.unpipe()
+        childProcess.stdout.destroy()
+        childProcess.stdin.end()
+        childProcess.stdin.destroy()
+
+        if (code === 0) {
+          observer.next(getOffsetFromAudioOffsetOutput(outputData))
+          observer.complete()
+          return
         }
-
-        observer
-        .complete()
-
-        process
-        .stdin
-        .setRawMode(
-          false
-        )
-
-        childProcess
-        .stderr
-        .unpipe()
-
-        childProcess
-        .stderr
-        .destroy()
-
-        childProcess
-        .stdout
-        .unpipe()
-
-        childProcess
-        .stdout
-        .destroy()
-
-        childProcess
-        .stdin
-        .end()
-
-        childProcess
-        .stdin
-        .destroy()
+        // code === null is the user-cancel path the 'close' handler resolves.
+        // Any other non-zero exit is a real failure — attach the captured
+        // stderr so consumers see what audio-offset-finder complained about.
+        if (code !== null) {
+          observer.error(new Error(
+            `audio-offset-finder exited with code ${code}`
+            + (stderrChunks.length ? `: ${stderrChunks.join('').trim()}` : '')
+          ))
+        }
       },
     )
 
