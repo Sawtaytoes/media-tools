@@ -35,15 +35,6 @@
     </div>
   </div>
 
-  <!-- Base path bar -->
-  <div class="shrink-0 flex items-center gap-2 px-4 py-2 border-b border-slate-700 bg-slate-800/60">
-    <label for="base-path" class="text-xs text-slate-400 shrink-0 font-medium">Base Path</label>
-    <input type="text" id="base-path" placeholder="/mnt/media or D:\Media"
-      oninput="refreshLinkedInputs(); updateUrl()"
-      class="flex-1 min-w-0 bg-slate-900 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono" />
-    <span class="text-xs text-slate-500 shrink-0 hidden sm:inline">Starting path for linked step fields</span>
-  </div>
-
   <!-- Step list -->
   <div id="steps-el" class="flex-1 overflow-y-auto p-4 grid gap-3 auto-rows-min grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 content-start"></div>
 
@@ -53,6 +44,7 @@
       <option value="">— pick command —</option>
     </select>
     <button onclick="addPicked()" class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium shrink-0">+ Add</button>
+    <button onclick="addPath()" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded font-medium shrink-0" title="Add a path variable">+ Path</button>
     <button id="run-btn" onclick="runSequence()"
       class="ml-auto text-xs bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white px-4 py-1.5 rounded font-medium shrink-0">
       ▶ Run Sequence
@@ -436,27 +428,43 @@ let stepCounter = 0
 let running = false
 const stepLogs = new Map()
 
+// Path variable registry — [{ id: string, label: string, value: string }]
+let paths = []
+
+function randomHex() {
+  return Math.random().toString(36).slice(2, 8)
+}
+
+function initPaths() {
+  if (!paths.length) {
+    paths = [{ id: 'path_' + randomHex(), label: 'Base Path', value: '' }]
+  }
+}
+
 // ─── URL persistence ──────────────────────────────────────────────────────────
 
 function updateUrl() {
-  const basePath = document.getElementById('base-path')?.value ?? ''
   const params = new URLSearchParams()
-  if (basePath) params.set('base', basePath)
-  if (steps.length) params.set('seq', btoa(unescape(encodeURIComponent(toYamlStr()))))
+  const yaml = toYamlStr()
+  if (yaml !== '# No steps yet') params.set('seq', btoa(unescape(encodeURIComponent(yaml))))
   const query = params.toString()
   history.replaceState(null, '', window.location.pathname + (query ? '?' + query : ''))
 }
 
 function restoreFromUrl() {
   const params = new URLSearchParams(window.location.search)
-  const base = params.get('base')
-  if (base) document.getElementById('base-path').value = base
   const seq = params.get('seq')
+  const base = params.get('base')  // old format backward compat
   if (seq) {
     try {
       const yaml = decodeURIComponent(escape(atob(seq)))
       loadYamlFromText(yaml)
+      // If old URL had a separate base= param and new YAML has no value in paths[0], apply it
+      if (base && paths.length > 0 && !paths[0].value) paths[0].value = base
     } catch {}
+  } else if (base) {
+    initPaths()
+    paths[0].value = base
   }
 }
 
@@ -488,9 +496,9 @@ function stepOutput(step) {
 function linkedVal(step, fieldName) {
   const srcId = step.links?.[fieldName]
   if (!srcId) return null
-  if (srcId === '__base__') {
-    const val = document.getElementById('base-path')?.value
-    return val || null
+  if (typeof srcId === 'string') {
+    const pv = paths.find(p => p.id === srcId)
+    return pv?.value || null
   }
   const src = steps.find(s => s.id === srcId)
   return src ? stepOutput(src) : null
@@ -514,8 +522,8 @@ function addPicked() {
     const prevStep = steps.at(-1)
     if (prevStep) {
       step.links[msf] = prevStep.id
-    } else if (document.getElementById('base-path').value) {
-      step.links[msf] = '__base__'
+    } else {
+      step.links[msf] = paths[0].id
     }
   }
   steps.push(step)
@@ -536,8 +544,8 @@ function insertAt(index) {
     const prevStep = steps[index - 1]
     if (prevStep) {
       step.links[msf] = prevStep.id
-    } else if (document.getElementById('base-path').value) {
-      step.links[msf] = '__base__'
+    } else {
+      step.links[msf] = paths[0].id
     }
   }
   steps.splice(index, 0, step)
@@ -564,7 +572,7 @@ function moveStep(id, dir) {
   // Clear any links that now point to a step at or after the linking step's position
   steps.forEach((step, stepIndex) => {
     for (const [field, srcId] of Object.entries(step.links)) {
-      if (srcId === '__base__') continue
+      if (typeof srcId === 'string') continue  // path var link — never goes stale
       const srcIndex = steps.findIndex(s => s.id === srcId)
       if (srcIndex >= stepIndex) delete step.links[field]
     }
@@ -586,7 +594,8 @@ function setLink(id, field, srcIdStr) {
   const step = steps.find(s => s.id === id)
   if (!step) return
   if (srcIdStr) {
-    step.links[field] = srcIdStr === '__base__' ? '__base__' : Number(srcIdStr)
+    // Numeric string = step ID; non-numeric string = path var ID
+    step.links[field] = /^\d+$/.test(srcIdStr) ? Number(srcIdStr) : srcIdStr
   } else {
     delete step.links[field]
   }
@@ -620,6 +629,62 @@ function esc(v) {
   return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
 }
 
+function renderPathVarCard(pv, isFirst) {
+  const labelHtml = isFirst
+    ? `<span class="text-xs font-medium text-slate-300">${esc(pv.label)}</span>`
+    : `<input type="text" value="${esc(pv.label)}" oninput="setPathLabel('${pv.id}',this.value)"
+        class="text-xs font-medium text-slate-300 bg-transparent border-b border-slate-600 focus:outline-none focus:border-blue-500 w-28 min-w-0" />`
+  const deleteBtn = !isFirst
+    ? `<button onclick="removePath('${pv.id}')" title="Remove path variable"
+        class="ml-auto text-xs text-slate-500 hover:text-red-400 w-5 h-5 flex items-center justify-center rounded hover:bg-slate-700">✕</button>`
+    : ''
+  return `<div class="col-span-full bg-slate-800/40 rounded-xl border border-dashed border-slate-600 px-4 py-3">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="text-slate-500 text-xs shrink-0">📁</span>
+      ${labelHtml}
+      <span class="text-xs text-slate-600 font-mono shrink-0">path variable</span>
+      ${deleteBtn}
+    </div>
+    <input type="text" value="${esc(pv.value)}" placeholder="/mnt/media or D:\\Media"
+      oninput="setPathValue('${pv.id}',this.value)"
+      class="w-full bg-slate-900 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono" />
+  </div>`
+}
+
+function setPathValue(pvId, value) {
+  const pv = paths.find(p => p.id === pvId)
+  if (!pv) return
+  pv.value = value
+  refreshLinkedInputs()
+  updateYaml()
+  updateUrl()
+}
+
+function setPathLabel(pvId, label) {
+  const pv = paths.find(p => p.id === pvId)
+  if (!pv) return
+  pv.label = label
+  updateYaml()
+  updateUrl()
+}
+
+function removePath(pvId) {
+  const i = paths.findIndex(p => p.id === pvId)
+  if (i <= 0) return  // can't remove Base Path (index 0)
+  paths.splice(i, 1)
+  for (const s of steps) {
+    for (const [k, v] of Object.entries(s.links)) {
+      if (v === pvId) delete s.links[k]
+    }
+  }
+  renderAll()
+}
+
+function addPath() {
+  paths.push({ id: 'path_' + randomHex(), label: 'Path ' + paths.length, value: '' })
+  renderAll()
+}
+
 function renderInsertDivider(index) {
   return `<div class="col-span-full flex items-center group -my-0.5">
     <div class="flex-1 h-px bg-slate-700/50 group-hover:bg-slate-600 transition-colors"></div>
@@ -632,18 +697,21 @@ function renderInsertDivider(index) {
 }
 
 function renderAll() {
+  initPaths()
   const el = document.getElementById('steps-el')
-  if (!steps.length) {
-    el.innerHTML = '<p class="col-span-full text-slate-500 text-xs text-center mt-8">No steps yet — select a command below to add one</p>'
-    updateYaml()
-    updateUrl()
-    return
-  }
   const parts = []
-  steps.forEach((s, i) => {
-    parts.push(renderStep(s, i))
-    if (i < steps.length - 1) parts.push(renderInsertDivider(i + 1))
-  })
+
+  paths.forEach((pv, i) => parts.push(renderPathVarCard(pv, i === 0)))
+
+  if (!steps.length) {
+    parts.push('<p class="col-span-full text-slate-500 text-xs text-center mt-4">No steps yet — select a command below to add one</p>')
+  } else {
+    steps.forEach((s, i) => {
+      parts.push(renderStep(s, i))
+      if (i < steps.length - 1) parts.push(renderInsertDivider(i + 1))
+    })
+  }
+
   el.innerHTML = parts.join('')
   updateYaml()
   updateUrl()
@@ -774,8 +842,9 @@ function renderPathField(step, field, stepIndex) {
   const linkedStepId = step.links[field.name]
   const computed = linkedStepId ? (linkedVal(step, field.name) ?? '') : null
 
-  const basePathValue = document.getElementById('base-path')?.value ?? ''
-  const baseOption = `<option value="__base__"${linkedStepId === '__base__' ? ' selected' : ''}>Base Path${basePathValue ? ' → ' + basePathValue : ''}</option>`
+  const pathVarOptions = paths.map(pv =>
+    `<option value="${pv.id}"${linkedStepId === pv.id ? ' selected' : ''}>${esc(pv.label)}${pv.value ? ' → ' + pv.value : ''}</option>`
+  ).join('')
 
   // Build previous step options
   const prevOptions = steps.slice(0, stepIndex).map((s, i) => {
@@ -784,15 +853,13 @@ function renderPathField(step, field, stepIndex) {
     return `<option value="${s.id}"${linkedStepId === s.id ? ' selected' : ''}>${esc(label)}</option>`
   }).join('')
 
-  const hasOptions = true
-
   return `<div>
     <div class="flex items-center gap-2 mb-1">
       <label class="text-xs text-slate-400">${esc(field.label)}${field.required ? ' <span class="text-red-400">*</span>' : ''}</label>
       <select onchange="setLink(${step.id},'${field.name}',this.value)"
         class="ml-auto text-xs bg-slate-700 text-slate-300 rounded px-1.5 py-0.5 border border-slate-600 focus:outline-none focus:border-blue-500 max-w-[200px] truncate">
         <option value="">— manual —</option>
-        ${baseOption}
+        ${pathVarOptions}
         ${prevOptions}
       </select>
     </div>
@@ -837,8 +904,15 @@ function buildParams(step) {
     let val = step.params[field.name]
 
     if (field.type === 'path') {
-      const lv = linkedVal(step, field.name)
-      if (lv !== null) val = lv
+      const srcId = step.links?.[field.name]
+      if (srcId) {
+        if (typeof srcId === 'string') {
+          val = '@' + srcId  // path var reference — store as @id, not resolved value
+        } else {
+          const lv = linkedVal(step, field.name)
+          if (lv !== null) val = lv
+        }
+      }
     }
 
     if (val === undefined || val === null || val === '') continue
@@ -851,8 +925,14 @@ function buildParams(step) {
 }
 
 function toYamlStr() {
-  if (!steps.length) return '# No steps yet'
-  const data = steps.map(s => ({ command: s.command, params: buildParams(s) }))
+  const hasContent = steps.length || paths.some(p => p.value)
+  if (!hasContent) return '# No steps yet'
+  const pathsObj = {}
+  for (const pv of paths) pathsObj[pv.id] = { label: pv.label, value: pv.value }
+  const data = {
+    paths: pathsObj,
+    steps: steps.map(s => ({ command: s.command, params: buildParams(s) })),
+  }
   return jsyaml.dump(data, { lineWidth: -1, flowLevel: 3, indent: 2 })
 }
 
@@ -900,16 +980,47 @@ function toggleLoad() {
 
 function loadYamlFromText(text) {
   const data = jsyaml.load(text)
-  if (!Array.isArray(data)) throw new Error('Expected a YAML sequence (array of steps)')
+
+  let stepsData
+  if (data && typeof data === 'object' && !Array.isArray(data) && data.steps !== undefined) {
+    // New format: { paths: {...}, steps: [...] }
+    if (data.paths && typeof data.paths === 'object') {
+      paths = Object.entries(data.paths).map(([id, pv]) => ({
+        id,
+        label: pv.label || id,
+        value: pv.value || '',
+      }))
+    }
+    if (!paths.length) initPaths()
+    stepsData = data.steps || []
+  } else if (Array.isArray(data)) {
+    // Old format: plain array of steps
+    initPaths()
+    stepsData = data
+  } else {
+    throw new Error('Expected a YAML sequence or object with "steps" key')
+  }
+
   steps = []
-  for (const item of data) {
+  for (const item of stepsData) {
     if (!item.command) throw new Error('Each step must have a "command" key')
     if (!COMMANDS[item.command]) throw new Error(`Unknown command: ${item.command}`)
     const step = makeStep(item.command)
     const cmd = COMMANDS[item.command]
     for (const field of cmd.fields) {
       const v = item.params?.[field.name]
-      if (v !== undefined) step.params[field.name] = v
+      if (v !== undefined) {
+        if (field.type === 'path' && typeof v === 'string' && v.startsWith('@')) {
+          const pvId = v.slice(1)
+          if (paths.find(p => p.id === pvId)) {
+            step.links[field.name] = pvId  // restore path var link
+          } else {
+            step.params[field.name] = v    // unknown @ref — treat as literal
+          }
+        } else {
+          step.params[field.name] = v
+        }
+      }
     }
     steps.push(step)
   }
@@ -1150,6 +1261,7 @@ function populateCmdPick() {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 populateCmdPick()
+initPaths()
 restoreFromUrl()
 renderAll()
 </script>
