@@ -2,7 +2,7 @@ import { OpenAPIHono, createRoute } from "@hono/zod-openapi"
 import { streamSSE } from "hono/streaming"
 import { z } from "zod"
 
-import { getAllJobs, getJob, jobEvents$ } from "../jobStore.js"
+import { cancelJob, getAllJobs, getJob, jobEvents$ } from "../jobStore.js"
 import * as schemas from "../schemas.js"
 
 const jobDetailSchema = z.object({
@@ -138,5 +138,62 @@ jobRoutes.openapi(
     }
 
     return context.json(job, 200)
+  },
+)
+
+jobRoutes.openapi(
+  createRoute({
+    method: "delete",
+    path: "/jobs/:id",
+    summary: "Cancel a running job",
+    description: "Idempotent. 202 with the cancelled job body when a running job was actually cancelled (the child-process tree-kill is async so the response may precede the OS-level death by a few ms). 204 No Content when the job is already in a terminal state — preserves history rather than failing the call. 404 when no job with that id exists.",
+    tags: ["Job Management"],
+    parameters: [
+      {
+        name: "id",
+        in: "path",
+        required: true,
+        description: "Job ID",
+        schema: { type: "string" },
+      },
+    ],
+    responses: {
+      202: {
+        description: "Job was running; cancellation has been initiated. Body is the job snapshot at the moment status flipped to cancelled.",
+        content: {
+          "application/json": {
+            schema: jobDetailSchema,
+          },
+        },
+      },
+      204: {
+        description: "Job exists but is already in a terminal state (completed / failed / cancelled). No-op.",
+      },
+      404: {
+        description: schemas.JOB_NOT_FOUND,
+        content: {
+          "application/json": {
+            schema: schemas.jobNotFoundSchema,
+          },
+        },
+      },
+    },
+  }),
+  (context) => {
+    const id = context.req.param("id")
+    const job = getJob(id)
+
+    if (!job) {
+      return context.json({ error: schemas.JOB_NOT_FOUND }, 404)
+    }
+
+    const wasCancelled = cancelJob(id)
+    if (!wasCancelled) {
+      // Job exists but is already terminal — idempotent no-op.
+      return context.body(null, 204)
+    }
+
+    // cancelJob mutated the job in place; re-read for the response.
+    return context.json(getJob(id)!, 202)
   },
 )
