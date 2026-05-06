@@ -355,7 +355,7 @@ const COMMANDS = {
     outputFolderName: null,
     fields: [
       { name: "sourcePath", type: "path", label: "Source Path", required: true },
-      { name: "malId", type: "numberWithLookup", lookupType: "mal", label: "MAL ID", placeholder: "12345", required: true },
+      { name: "malId", type: "numberWithLookup", lookupType: "mal", label: "MAL ID", placeholder: "12345", required: true, companionNameField: "malName" },
       { name: "seasonNumber", type: "number", label: "Season Number", default: 1 },
     ]
   },
@@ -365,8 +365,8 @@ const COMMANDS = {
     outputFolderName: null,
     fields: [
       { name: "sourcePath", type: "path", label: "Source Path", required: true },
-      { name: "dvdCompareId", type: "numberWithLookup", lookupType: "dvdcompare", label: "DVDCompare Film ID", placeholder: "12345", required: true },
-      { name: "dvdCompareReleaseHash", type: "number", label: "Release Hash", default: 1 },
+      { name: "dvdCompareId", type: "numberWithLookup", lookupType: "dvdcompare", label: "DVDCompare Film ID", placeholder: "12345", required: true, companionNameField: "dvdCompareName" },
+      { name: "dvdCompareReleaseHash", type: "number", label: "Release Hash", default: 1, companionNameField: "dvdCompareReleaseLabel" },
       { name: "fixedOffset", type: "number", label: "Fixed Offset (ms)", default: 0 },
       { name: "timecodePadding", type: "number", label: "Timecode Padding", default: 2 },
     ]
@@ -377,7 +377,7 @@ const COMMANDS = {
     outputFolderName: null,
     fields: [
       { name: "sourcePath", type: "path", label: "Source Path", required: true },
-      { name: "tvdbId", type: "numberWithLookup", lookupType: "tvdb", label: "TVDB ID", placeholder: "12345", required: true },
+      { name: "tvdbId", type: "numberWithLookup", lookupType: "tvdb", label: "TVDB ID", placeholder: "12345", required: true, companionNameField: "tvdbName" },
       { name: "seasonNumber", type: "number", label: "Season Number", required: true },
     ]
   },
@@ -595,10 +595,20 @@ function moveStep(id, dir) {
 
 // ─── Param handlers ───────────────────────────────────────────────────────────
 
-function setParam(id, field, value) {
+function setParam(id, fieldName, value) {
   const step = steps.find(s => s.id === id)
   if (!step) return
-  step.params[field] = value
+  const cmd = COMMANDS[step.command]
+  const fieldConfig = cmd?.fields.find(f => f.name === fieldName)
+  step.params[fieldName] = value
+  // Manual edit of an ID/hash field clears its companion display name
+  if (fieldConfig?.companionNameField) {
+    delete step.params[fieldConfig.companionNameField]
+    refreshLinkedInputs()
+    updateYaml()
+    renderAll()
+    return
+  }
   refreshLinkedInputs()
   updateYaml()
 }
@@ -801,13 +811,17 @@ function renderFields(step, stepIndex) {
 
     if (field.type === 'number') {
       const num = val ?? field.default ?? ''
+      const companion = field.companionNameField ? step.params[field.companionNameField] : null
       return `<div>${label}<input type="number" value="${esc(num)}"
         onchange="setParam(${step.id},'${field.name}',this.value===''?undefined:Number(this.value))"
-        class="w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500" /></div>`
+        class="w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500" />
+        ${companion ? `<p class="text-xs text-slate-500 mt-0.5 truncate" title="${esc(companion)}">${esc(companion)}</p>` : ''}
+      </div>`
     }
 
     if (field.type === 'numberWithLookup') {
       const num = val ?? field.default ?? ''
+      const companion = field.companionNameField ? step.params[field.companionNameField] : null
       return `<div>${label}<div class="flex items-center gap-2">
         <input type="number" value="${esc(num)}" placeholder="${esc(field.placeholder ?? '')}"
           onchange="setParam(${step.id},'${field.name}',this.value===''?undefined:Number(this.value))"
@@ -815,7 +829,9 @@ function renderFields(step, stepIndex) {
         <button onclick="openLookup('${field.lookupType}',${step.id},'${field.name}')"
           title="Look up ${esc(field.label)}"
           class="shrink-0 text-xs bg-slate-700 hover:bg-blue-700 text-slate-200 hover:text-white px-2.5 py-1.5 rounded border border-slate-600 hover:border-blue-500">🔍</button>
-      </div></div>`
+      </div>
+      ${companion ? `<p class="text-xs text-slate-500 mt-0.5 truncate" title="${esc(companion)}">${esc(companion)}</p>` : ''}
+      </div>`
     }
 
     if (field.type === 'languageCode') {
@@ -940,11 +956,20 @@ function buildParams(step) {
       }
     }
 
-    if (val === undefined || val === null || val === '') continue
-    if (Array.isArray(val) && val.length === 0) continue
-    if (!field.required && field.default !== undefined && val === field.default) continue
+    const skipPrimary = (
+      val === undefined || val === null || val === ''
+      || (Array.isArray(val) && val.length === 0)
+      || (!field.required && field.default !== undefined && val === field.default)
+    )
+    if (!skipPrimary) out[field.name] = val
 
-    out[field.name] = val
+    // Companion display-name field (purely visual; emitted whenever set)
+    if (field.companionNameField) {
+      const cv = step.params[field.companionNameField]
+      if (cv !== undefined && cv !== null && cv !== '') {
+        out[field.companionNameField] = cv
+      }
+    }
   }
   return out
 }
@@ -1045,6 +1070,11 @@ function loadYamlFromText(text) {
         } else {
           step.params[field.name] = v
         }
+      }
+      // Companion display-name field (purely visual)
+      if (field.companionNameField) {
+        const cv = item.params?.[field.companionNameField]
+        if (cv !== undefined) step.params[field.companionNameField] = cv
       }
     }
     steps.push(step)
@@ -1227,12 +1257,17 @@ function openLookup(lookupType, stepId, fieldName) {
     stage: 'search',
     searchTerm: '',
     results: null,
-    formatFilters: { 'DVD': true, 'Blu-ray': true, 'Blu-ray 4K': true },
+    formatFilter: 'all',
     selectedGroup: null,
+    selectedVariant: null,
     selectedFid: null,
     releases: null,
     loading: false,
+    _activeOptions: [],
+    _activeResults: null,
+    _renderedGroups: null,
   }
+  installLookupKeyboardHandler()
   renderLookupModal()
   document.getElementById('lookup-modal').classList.remove('hidden')
   setTimeout(() => document.getElementById('lookup-search-input')?.focus(), 50)
@@ -1241,6 +1276,7 @@ function openLookup(lookupType, stepId, fieldName) {
 function closeLookupModal(event) {
   if (event && event.target !== document.getElementById('lookup-modal')) return
   document.getElementById('lookup-modal').classList.add('hidden')
+  uninstallLookupKeyboardHandler()
   lookupState = null
 }
 
@@ -1277,19 +1313,29 @@ function renderLookupModal() {
 
 function renderLookupSearchView() {
   const isDvdCompare = lookupState.lookupType === 'dvdcompare'
+  const filterOptions = [
+    { value: 'all', label: 'All' },
+    { value: 'DVD', label: 'DVD' },
+    { value: 'Blu-ray', label: 'Blu-ray' },
+    { value: 'Blu-ray 4K', label: 'Blu-ray 4K' },
+  ]
   const filters = isDvdCompare
-    ? `<div class="flex items-center gap-3 text-xs text-slate-400">
-        <span class="font-medium">Filter:</span>
-        ${['DVD', 'Blu-ray', 'Blu-ray 4K'].map(format => `
+    ? `<div class="flex items-center gap-3 text-xs text-slate-400 flex-wrap">
+        <span class="font-medium">Format:</span>
+        ${filterOptions.map(opt => `
           <label class="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" ${lookupState.formatFilters[format] ? 'checked' : ''}
-              onchange="lookupState.formatFilters['${format}']=this.checked; renderLookupModal()"
-              class="w-3.5 h-3.5 rounded bg-slate-700 border-slate-500 accent-blue-500" />
-            <span>${format}</span>
+            <input type="radio" name="lookup-format-filter" value="${opt.value}"
+              ${lookupState.formatFilter === opt.value ? 'checked' : ''}
+              onchange="lookupState.formatFilter=this.value; renderLookupModal()"
+              class="w-3.5 h-3.5 bg-slate-700 border-slate-500 accent-blue-500" />
+            <span>${esc(opt.label)}</span>
           </label>
         `).join('')}
       </div>`
     : ''
+
+  // Reset _activeOptions; result renderers populate them.
+  lookupState._activeOptions = []
 
   let resultsHtml = ''
   if (lookupState.loading) {
@@ -1307,6 +1353,7 @@ function renderLookupSearchView() {
   return `
     <div class="flex items-center gap-2">
       <input id="lookup-search-input" type="text" value="${esc(lookupState.searchTerm)}" placeholder="Title to search…"
+        oninput="lookupState.searchTerm=this.value"
         onkeydown="if(event.key==='Enter'){event.preventDefault();runLookupSearch(this.value)}"
         class="flex-1 bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500" />
       <button onclick="runLookupSearch(document.getElementById('lookup-search-input').value)"
@@ -1317,8 +1364,16 @@ function renderLookupSearchView() {
   `
 }
 
+function kbdBadge(index) {
+  return index < 9
+    ? `<kbd class="text-xs font-mono bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded border border-slate-600 shrink-0">${index + 1}</kbd>`
+    : ''
+}
+
 function renderSimpleSearchResults() {
-  return lookupState.results.map((r) => {
+  lookupState._activeResults = lookupState.results
+  lookupState._activeOptions = lookupState.results.map((_, index) => () => lookupSelectSimpleByIndex(index))
+  return lookupState.results.map((r, index) => {
     let label, id
     if (lookupState.lookupType === 'mal') {
       id = r.malId
@@ -1327,46 +1382,51 @@ function renderSimpleSearchResults() {
       id = r.tvdbId
       label = `${esc(r.name)}${r.year ? ` <span class="text-slate-500">(${esc(r.year)})</span>` : ''}${r.status ? ` <span class="text-slate-500">[${esc(r.status)}]</span>` : ''}`
     }
-    return `<button onclick="lookupSelectSimple(${id})"
-      class="text-left text-sm px-3 py-2 rounded-lg border border-slate-600 text-slate-200 hover:bg-blue-700 hover:border-blue-500 transition-colors">
-      ${label}<span class="ml-2 text-xs font-mono text-slate-500">#${id}</span>
+    return `<button onclick="lookupSelectSimpleByIndex(${index})"
+      class="text-left text-sm px-3 py-2 rounded-lg border border-slate-600 text-slate-200 hover:bg-blue-700 hover:border-blue-500 transition-colors flex items-center gap-2">
+      ${kbdBadge(index)}
+      <span class="flex-1 min-w-0 truncate">${label}</span>
+      <span class="text-xs font-mono text-slate-500 shrink-0">#${id}</span>
     </button>`
   }).join('')
 }
 
 function renderDvdCompareSearchResults() {
-  // Group by baseTitle + year, filter by checked formats
+  // Group by baseTitle + year, filter by selected format ("all" = no filter)
   const groups = new Map()
   for (const r of lookupState.results) {
-    if (!lookupState.formatFilters[r.variant]) continue
+    if (lookupState.formatFilter !== 'all' && lookupState.formatFilter !== r.variant) continue
     const key = `${r.baseTitle}|${r.year}`
     if (!groups.has(key)) groups.set(key, { baseTitle: r.baseTitle, year: r.year, variants: [] })
     groups.get(key).variants.push({ id: r.id, variant: r.variant })
   }
 
   if (groups.size === 0) {
-    return '<p class="text-xs text-slate-500 text-center py-4">No results match the selected formats.</p>'
+    return '<p class="text-xs text-slate-500 text-center py-4">No results match the selected format.</p>'
   }
 
-  const items = Array.from(groups.values()).map((group, index) => {
+  const groupArray = Array.from(groups.values())
+  lookupState._renderedGroups = groupArray
+  lookupState._activeOptions = groupArray.map((_, index) => () => lookupSelectGroup(index))
+
+  return groupArray.map((group, index) => {
     const variantBadges = group.variants.map(v => `<span class="text-xs font-mono px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">${esc(v.variant)}</span>`).join(' ')
     return `<button onclick="lookupSelectGroup(${index})"
       class="text-left text-sm px-3 py-2 rounded-lg border border-slate-600 text-slate-200 hover:bg-blue-700 hover:border-blue-500 transition-colors flex items-center gap-2 flex-wrap">
+      ${kbdBadge(index)}
       <span class="font-medium">${esc(group.baseTitle)}</span>
       ${group.year ? `<span class="text-slate-500">(${esc(group.year)})</span>` : ''}
       <span class="ml-auto flex gap-1">${variantBadges}</span>
     </button>`
   }).join('')
-
-  // Stash the groups so lookupSelectGroup can resolve by index
-  lookupState._renderedGroups = Array.from(groups.values())
-  return items
 }
 
 function renderLookupVariantView() {
   const group = lookupState.selectedGroup
-  const variants = group.variants.map((v) => `<button onclick="lookupSelectVariant(${v.id})"
+  lookupState._activeOptions = group.variants.map((v) => () => lookupSelectVariant(v.id, v.variant))
+  const variants = group.variants.map((v, index) => `<button onclick="lookupSelectVariant(${v.id},'${esc(v.variant)}')"
     class="text-left text-sm px-3 py-2 rounded-lg border border-slate-600 text-slate-200 hover:bg-blue-700 hover:border-blue-500 transition-colors flex items-center gap-2">
+    ${kbdBadge(index)}
     <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-700 text-slate-300">${esc(v.variant)}</span>
     <span class="text-slate-400 text-xs">Film ID</span>
     <span class="font-mono text-xs">#${v.id}</span>
@@ -1381,14 +1441,18 @@ function renderLookupReleaseView() {
   const fid = lookupState.selectedFid
   const filmUrl = `https://www.dvdcompare.net/comparisons/film.php?fid=${fid}`
   let body = ''
+  lookupState._activeOptions = []
   if (lookupState.loading) {
     body = '<p class="text-xs text-slate-500 text-center py-4">Loading releases…</p>'
   } else if (!lookupState.releases || lookupState.releases.length === 0) {
     body = '<p class="text-xs text-slate-500 text-center py-4">No release packages found.</p>'
   } else {
-    body = lookupState.releases.map(r => `<button onclick="lookupSelectRelease('${esc(r.hash)}')"
-      class="text-left text-sm px-3 py-2 rounded-lg border border-slate-600 text-slate-200 hover:bg-blue-700 hover:border-blue-500 transition-colors">
-      <span class="text-xs font-mono text-slate-500 mr-2">#${esc(r.hash)}</span>${esc(r.label || '(no label)')}
+    lookupState._activeOptions = lookupState.releases.map((r) => () => lookupSelectRelease(r.hash, r.label))
+    body = lookupState.releases.map((r, index) => `<button onclick="lookupSelectReleaseByIndex(${index})"
+      class="text-left text-sm px-3 py-2 rounded-lg border border-slate-600 text-slate-200 hover:bg-blue-700 hover:border-blue-500 transition-colors flex items-center gap-2">
+      ${kbdBadge(index)}
+      <span class="text-xs font-mono text-slate-500 shrink-0">#${esc(r.hash)}</span>
+      <span class="flex-1 min-w-0">${esc(r.label || '(no label)')}</span>
     </button>`).join('')
   }
   return `
@@ -1401,6 +1465,7 @@ function renderLookupReleaseView() {
 async function runLookupSearch(searchTerm) {
   if (!searchTerm || !lookupState) return
   lookupState.searchTerm = searchTerm
+  document.getElementById('lookup-search-input')?.blur()
   lookupState.loading = true
   renderLookupModal()
   try {
@@ -1422,10 +1487,23 @@ async function runLookupSearch(searchTerm) {
   renderLookupModal()
 }
 
-function lookupSelectSimple(id) {
+function lookupSelectSimpleByIndex(index) {
   if (!lookupState) return
-  setParam(lookupState.stepId, lookupState.fieldName, id)
-  renderAll()
+  const r = lookupState._activeResults?.[index]
+  if (!r) return
+  const id = lookupState.lookupType === 'mal' ? r.malId : r.tvdbId
+  const step = steps.find(s => s.id === lookupState.stepId)
+  if (step) {
+    const cmd = COMMANDS[step.command]
+    const field = cmd?.fields.find(f => f.name === lookupState.fieldName)
+    step.params[lookupState.fieldName] = id
+    if (field?.companionNameField && r.name) {
+      step.params[field.companionNameField] = r.name
+    }
+    refreshLinkedInputs()
+    updateYaml()
+    renderAll()
+  }
   closeLookupModal()
 }
 
@@ -1436,16 +1514,17 @@ function lookupSelectGroup(index) {
   lookupState.selectedGroup = group
   // If only one variant, skip straight to release stage
   if (group.variants.length === 1) {
-    lookupSelectVariant(group.variants[0].id)
+    lookupSelectVariant(group.variants[0].id, group.variants[0].variant)
     return
   }
   lookupState.stage = 'variant'
   renderLookupModal()
 }
 
-async function lookupSelectVariant(fid) {
+async function lookupSelectVariant(fid, variant) {
   if (!lookupState) return
   lookupState.selectedFid = fid
+  lookupState.selectedVariant = variant ?? null
   lookupState.stage = 'release'
   lookupState.releases = null
   lookupState.loading = true
@@ -1466,19 +1545,64 @@ async function lookupSelectVariant(fid) {
   renderLookupModal()
 }
 
-function lookupSelectRelease(hash) {
+function lookupSelectReleaseByIndex(index) {
   if (!lookupState) return
-  setParam(lookupState.stepId, 'dvdCompareId', lookupState.selectedFid)
-  setParam(lookupState.stepId, 'dvdCompareReleaseHash', Number(hash) || hash)
-  renderAll()
+  const release = lookupState.releases?.[index]
+  if (!release) return
+  lookupSelectRelease(release.hash, release.label)
+}
+
+function lookupSelectRelease(hash, label) {
+  if (!lookupState) return
+  const step = steps.find(s => s.id === lookupState.stepId)
+  if (step) {
+    step.params.dvdCompareId = lookupState.selectedFid
+    step.params.dvdCompareReleaseHash = Number(hash) || hash
+    const group = lookupState.selectedGroup
+    if (group) {
+      const variantSuffix = lookupState.selectedVariant && lookupState.selectedVariant !== 'DVD'
+        ? ` (${lookupState.selectedVariant})` : ''
+      const yearSuffix = group.year ? ` (${group.year})` : ''
+      step.params.dvdCompareName = `${group.baseTitle}${variantSuffix}${yearSuffix}`
+    }
+    if (label) step.params.dvdCompareReleaseLabel = label
+    refreshLinkedInputs()
+    updateYaml()
+    renderAll()
+  }
   closeLookupModal()
 }
 
-document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && !document.getElementById('lookup-modal').classList.contains('hidden')) {
-    closeLookupModal()
+let lookupKeydownHandler = null
+
+function installLookupKeyboardHandler() {
+  uninstallLookupKeyboardHandler()
+  lookupKeydownHandler = (event) => {
+    if (!lookupState) return
+    if (event.key === 'Escape') {
+      closeLookupModal()
+      return
+    }
+    // Don't intercept digits while the user is typing in an input
+    if (event.target?.tagName === 'INPUT' || event.target?.tagName === 'TEXTAREA') return
+    if (event.key >= '1' && event.key <= '9') {
+      const index = Number(event.key) - 1
+      const handler = lookupState._activeOptions?.[index]
+      if (handler) {
+        event.preventDefault()
+        handler()
+      }
+    }
   }
-})
+  document.addEventListener('keydown', lookupKeydownHandler)
+}
+
+function uninstallLookupKeyboardHandler() {
+  if (lookupKeydownHandler) {
+    document.removeEventListener('keydown', lookupKeydownHandler)
+    lookupKeydownHandler = null
+  }
+}
 
 function updateStepLogs(stepId, logs) {
   const card = document.getElementById(`step-${stepId}`)
