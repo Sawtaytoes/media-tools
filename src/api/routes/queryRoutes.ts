@@ -8,6 +8,7 @@ import {
   lookupDvdCompareFilm,
   lookupDvdCompareRelease,
 } from "../../tools/searchDvdCompare.js"
+import { listDirectoryEntries } from "../../tools/listDirectoryEntries.js"
 import { lookupMalById, searchMal } from "../../tools/searchMal.js"
 import { lookupTvdbById, searchTvdb } from "../../tools/searchTvdb.js"
 import * as schemas from "../schemas.js"
@@ -325,5 +326,41 @@ queryRoutes.openapi(
     const body = context.req.valid("json")
     const result = await lastValueFrom(lookupDvdCompareRelease(body.dvdCompareId, body.hash))
     return context.json({ label: result?.label ?? null }, 200)
+  },
+)
+
+queryRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/queries/listDirectoryEntries",
+    summary: "List entries in a directory (typeahead for path fields)",
+    description: "Returns the directory entries at `path`. If `path` is a file, lists its parent directory instead. Used by the builder UI to autocomplete path inputs as the user types.",
+    tags: ["File Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": { schema: schemas.listDirectoryEntriesRequestSchema },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: "Directory entries (or an error message if the listing failed)",
+        content: {
+          "application/json": { schema: schemas.listDirectoryEntriesResponseSchema },
+        },
+      },
+    },
+  }),
+  async (context) => {
+    const body = context.req.valid("json")
+    try {
+      const entries = await lastValueFrom(listDirectoryEntries(body.path))
+      return context.json({ entries, error: null }, 200)
+    } catch (err) {
+      const message = messageFromError(err)
+      console.error("[listDirectoryEntries]", message)
+      return context.json({ entries: [], error: message }, 200)
+    }
   },
 )

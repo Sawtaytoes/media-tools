@@ -397,3 +397,18 @@ export const nameLookupResponseSchema = z.object({
 export const labelLookupResponseSchema = z.object({
   label: z.string().nullable().describe("Release label, or null if not found"),
 })
+
+// Path-field typeahead
+export const listDirectoryEntriesRequestSchema = z.object({
+  path: z.string().describe("Directory path to list. If the path is a file, the parent directory is listed instead."),
+})
+
+export const directoryEntrySchema = z.object({
+  isDirectory: z.boolean().describe("True if this entry is a directory"),
+  name: z.string().describe("Basename of the entry (no path prefix)"),
+})
+
+export const listDirectoryEntriesResponseSchema = z.object({
+  entries: z.array(directoryEntrySchema).describe("Entries in the directory"),
+  error: z.string().nullable().optional().describe("Error message if the listing failed (e.g. missing path, permission denied). When present, entries is empty."),
+})
