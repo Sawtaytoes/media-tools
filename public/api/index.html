@@ -73,10 +73,15 @@
     border-radius: 6px;
     font-size: 0.75rem;
     cursor: pointer;
-    margin-left: 8px;
   }
   .cancel-btn:hover { background: #78350f33; }
   .cancel-btn:disabled { opacity: 0.4; cursor: default; }
+
+  .job-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+  }
 
   @keyframes pulse {
     0%, 100% { opacity: 1; }
@@ -169,30 +174,9 @@ function renderJob(job) {
   const header = makeEl("div", "job-header");
   const cmd = makeEl("div", "command");
   cmd.textContent = job.commandName ?? job.command ?? "unknown";
-  const right = makeEl("div");
-  right.style.display = "flex";
-  right.style.alignItems = "center";
-  if (job.status === "running") {
-    const cancelBtn = makeEl("button", "cancel-btn");
-    cancelBtn.textContent = "⏹ Cancel";
-    cancelBtn.title = "Cancel this job (DELETE /jobs/" + job.id + ")";
-    cancelBtn.onclick = async () => {
-      cancelBtn.disabled = true;
-      try {
-        // The /jobs/stream SSE will deliver the cancelled status update
-        // and upsertJob() will re-render this card automatically.
-        await fetch(`/jobs/${job.id}`, { method: "DELETE" });
-      } catch (err) {
-        console.error("cancel failed", err);
-        cancelBtn.disabled = false;
-      }
-    };
-    right.append(cancelBtn);
-  }
   const badge = makeEl("div", `status ${job.status}`);
   badge.textContent = job.status;
-  right.append(badge);
-  header.append(cmd, right);
+  header.append(cmd, badge);
 
   const meta = makeEl("div", "meta");
   const started = job.startedAt ? new Date(job.startedAt).toLocaleString() : "—";
@@ -225,6 +209,28 @@ function renderJob(job) {
     const err = makeEl("div", "error");
     err.textContent = job.error;
     card.append(err);
+  }
+
+  if (job.status === "running") {
+    // Footer-positioned so it doesn't crowd the status badge in the
+    // header. SSE re-render via upsertJob() rebuilds the whole card on
+    // the cancelled status flip, so the button just disappears once
+    // cancelJob lands — no manual cleanup needed.
+    const footer = makeEl("div", "job-footer");
+    const cancelBtn = makeEl("button", "cancel-btn");
+    cancelBtn.textContent = "⏹ Cancel";
+    cancelBtn.title = "Cancel this job (DELETE /jobs/" + job.id + ")";
+    cancelBtn.onclick = async () => {
+      cancelBtn.disabled = true;
+      try {
+        await fetch(`/jobs/${job.id}`, { method: "DELETE" });
+      } catch (err) {
+        console.error("cancel failed", err);
+        cancelBtn.disabled = false;
+      }
+    };
+    footer.append(cancelBtn);
+    card.append(footer);
   }
 
   if (job.results?.length) {
