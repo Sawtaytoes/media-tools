@@ -271,7 +271,6 @@ export const mergeOrderedChapters = ({
             ),
           })
         )),
-        tap(t => { console.log(t) }),
       )
     )),
     concatAll(),
