@@ -6,6 +6,24 @@
 <title>Sequence Builder</title>
 <script src="/vendor/tailwind-3.4.17.js"></script>
 <script src="/vendor/js-yaml-4.1.1.min.js"></script>
+<style>
+  @keyframes stepEnter {
+    from { opacity: 0; transform: translateY(-6px) scale(0.985); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes stepLeave {
+    from { opacity: 1; transform: none; }
+    to   { opacity: 0; transform: translateY(-6px) scale(0.985); }
+  }
+  .step-enter { animation: stepEnter 200ms ease-out; }
+  .step-leave { animation: stepLeave 200ms ease-in forwards; pointer-events: none; }
+
+  /* View-transition timing for the move-step swap */
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 220ms;
+  }
+</style>
 </head>
 <body class="bg-slate-900 text-slate-200 font-sans text-sm">
 
@@ -585,31 +603,46 @@ function insertAt(index) {
 }
 
 function removeStep(id) {
-  const i = steps.findIndex(s => s.id === id)
-  steps.splice(i, 1)
-  // Remove any links pointing to removed step
-  for (const s of steps) {
-    for (const [k, v] of Object.entries(s.links)) {
-      if (v === id) delete s.links[k]
+  const finishRemoval = () => {
+    const removeIndex = steps.findIndex(s => s.id === id)
+    if (removeIndex < 0) return
+    steps.splice(removeIndex, 1)
+    // Remove any links pointing to removed step
+    for (const step of steps) {
+      for (const [field, source] of Object.entries(step.links)) {
+        if (source === id) delete step.links[field]
+      }
     }
+    renderAll()
   }
-  renderAll()
+  const card = document.getElementById(`step-${id}`)
+  if (card) {
+    card.classList.add('step-leave')
+    setTimeout(finishRemoval, 200)
+  } else {
+    finishRemoval()
+  }
 }
 
 function moveStep(id, dir) {
-  const i = steps.findIndex(s => s.id === id)
-  const j = i + dir
-  if (j < 0 || j >= steps.length) return
-  ;[steps[i], steps[j]] = [steps[j], steps[i]]
+  const fromIndex = steps.findIndex(s => s.id === id)
+  const toIndex = fromIndex + dir
+  if (toIndex < 0 || toIndex >= steps.length) return
+  ;[steps[fromIndex], steps[toIndex]] = [steps[toIndex], steps[fromIndex]]
   // Clear any links that now point to a step at or after the linking step's position
   steps.forEach((step, stepIndex) => {
-    for (const [field, srcId] of Object.entries(step.links)) {
-      if (typeof srcId === 'string') continue  // path var link — never goes stale
-      const srcIndex = steps.findIndex(s => s.id === srcId)
-      if (srcIndex >= stepIndex) delete step.links[field]
+    for (const [field, source] of Object.entries(step.links)) {
+      if (typeof source === 'string') continue  // path var link — never goes stale
+      const sourceIndex = steps.findIndex(s => s.id === source)
+      if (sourceIndex >= stepIndex) delete step.links[field]
     }
   })
-  renderAll()
+  // Smoothly crossfade card positions when supported (Chromium 111+).
+  if (typeof document.startViewTransition === 'function') {
+    document.startViewTransition(() => renderAll())
+  } else {
+    renderAll()
+  }
 }
 
 // ─── Param handlers ───────────────────────────────────────────────────────────
@@ -728,6 +761,8 @@ function renderInsertDivider(index) {
   </div>`
 }
 
+let lastRenderedStepIds = new Set()
+
 function renderAll() {
   initPaths()
   const el = document.getElementById('steps-el')
@@ -744,7 +779,18 @@ function renderAll() {
     })
   }
 
+  const previousIds = lastRenderedStepIds
   el.innerHTML = parts.join('')
+
+  // Fade-in animation for newly inserted step cards
+  for (const step of steps) {
+    if (!previousIds.has(step.id)) {
+      const card = document.getElementById(`step-${step.id}`)
+      if (card) card.classList.add('step-enter')
+    }
+  }
+  lastRenderedStepIds = new Set(steps.map(s => s.id))
+
   updateYaml()
   updateUrl()
 }
@@ -763,7 +809,7 @@ function renderStep(step, index) {
   }).join('')
 
   return `
-<div id="step-${step.id}" class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+<div id="step-${step.id}" style="view-transition-name: step-${step.id}" class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
   <div class="flex items-center gap-2 px-3 py-2 border-b border-slate-700 bg-slate-800/80">
     <span class="text-xs font-mono text-slate-500 shrink-0 w-5 text-center">${index + 1}</span>
     <select onchange="changeCommand(${step.id}, this.value)"
