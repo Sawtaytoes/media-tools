@@ -1,10 +1,9 @@
 import {
+  EMPTY,
   filter,
   map,
   mergeMap,
-  tap,
   of,
-  EMPTY,
   type Observable,
 } from "rxjs"
 
@@ -393,33 +392,37 @@ export const getSpecialFeatureFromTimecode = ({
         )
         > 1
       ) {
-        console
-        .info(
-          filename,
-          "\n",
-          mediaTimecode,
-          "\n",
-          matchingExtras
-          .map((
-            matchingExtra,
-            index,
-          ) => ({
-            index,
-            matchingExtra,
-          }))
-        )
-
         return (
-          getUserSearchInput()
+          getUserSearchInput({
+            message: `${filename}\n${mediaTimecode}`,
+            options: [
+              ...matchingExtras
+              .map((
+                matchingExtra,
+                index,
+              ) => ({
+                index,
+                label: matchingExtra.text,
+              })),
+              {
+                index: -1,
+                label: "Don't rename / skip",
+              },
+            ],
+          })
           .pipe(
             map((
-              selectedIndex
-            ) => (
-              matchingExtras
-              .at(
-                selectedIndex
+              selectedIndex,
+            ) => {
+              if (selectedIndex === -1) return undefined
+
+              return (
+                matchingExtras
+                .at(
+                  selectedIndex
+                )
               )
-            )),
+            }),
             filter(
               Boolean
             ),
@@ -495,38 +498,36 @@ export const getSpecialFeatureFromTimecode = ({
         if (
           parentType === "unknown"
         ) {
-          console
-          .info(
-            filename,
-            "\n",
-            text,
-            "\n",
-            specialFeatureTypes
-            .map((
-              specialFeatureType,
-              index,
-            ) => (
-              `${index} | ${specialFeatureType}`
-            ))
-          )
-
           return (
-            getUserSearchInput()
+            getUserSearchInput({
+              message: `${filename}\n${text}`,
+              options: [
+                ...specialFeatureTypes
+                .map((
+                  specialFeatureType,
+                  index,
+                ) => ({
+                  index,
+                  label: specialFeatureType,
+                })),
+                {
+                  index: -1,
+                  label: "Don't rename / skip",
+                },
+              ],
+            })
             .pipe(
               map((
-                selectedIndex
-              ) => (
-                specialFeatureTypes
-                .at(
-                  selectedIndex
-                )
-              )),
-              tap((
-                selectedType,
+                selectedIndex,
               ) => {
-                if (!selectedType) {
-                  throw "Incorrect type selected."
-                }
+                if (selectedIndex === -1) return undefined
+
+                return (
+                  specialFeatureTypes
+                  .at(
+                    selectedIndex
+                  )
+                )
               }),
               filter(
                 Boolean

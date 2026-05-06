@@ -110,7 +110,7 @@ describe(appendJobLog.name, () => {
     const subject = createSubject(job.id)
     const received: string[] = []
 
-    subject.subscribe((line) => received.push(line))
+    subject.subscribe((event) => { if (typeof event === "string") received.push(event) })
 
     appendJobLog(job.id, "hello")
 

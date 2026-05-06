@@ -1,14 +1,14 @@
 import { randomUUID } from "node:crypto"
 import { Subject } from "rxjs"
 
-import type { Job } from "./types.js"
+import type { Job, PromptEvent } from "./types.js"
 
 // ---------------------------------------------------------------------------
 // Module-level state — only mutated through the exported functions below.
 // ---------------------------------------------------------------------------
 
 const jobs = new Map<string, Job>()
-const subjects = new Map<string, Subject<string>>()
+const subjects = new Map<string, Subject<string | PromptEvent>>()
 const jobSubject = new Subject<Omit<Job, "logs">>()
 
 export const jobEvents$ = jobSubject.asObservable()
@@ -100,8 +100,8 @@ export const appendJobLog = (
 
 export const createSubject = (
   id: string,
-): Subject<string> => {
-  const subject = new Subject<string>()
+): Subject<string | PromptEvent> => {
+  const subject = new Subject<string | PromptEvent>()
 
   subjects.set(id, subject)
 
@@ -110,9 +110,16 @@ export const createSubject = (
 
 export const getSubject = (
   id: string,
-): Subject<string> | undefined => (
+): Subject<string | PromptEvent> | undefined => (
   subjects.get(id)
 )
+
+export const emitJobEvent = (
+  id: string,
+  event: PromptEvent,
+): void => {
+  subjects.get(id)?.next(event)
+}
 
 export const completeSubject = (
   id: string,

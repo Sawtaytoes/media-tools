@@ -12,3 +12,15 @@ export type Job = {
   startedAt: Date | null
   status: JobStatus
 }
+
+export type PromptOption = {
+  index: number
+  label: string
+}
+
+export type PromptEvent = {
+  message: string
+  options: PromptOption[]
+  promptId: string
+  type: "prompt"
+}

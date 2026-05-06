@@ -94,10 +94,12 @@ logsRoutes.openapi(
             await send({ done: true, status: failedJob?.status ?? job.status })
             resolve()
           },
-          next: (line) => {
-            stream.writeSSE({
-              data: JSON.stringify({ line }),
-            })
+          next: (event) => {
+            if (typeof event === "string") {
+              stream.writeSSE({ data: JSON.stringify({ line: event }) })
+            } else {
+              stream.writeSSE({ data: JSON.stringify(event) })
+            }
           },
         })
 

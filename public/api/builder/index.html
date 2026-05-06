@@ -75,6 +75,18 @@
   </div>
 </div>
 
+<!-- Prompt modal -->
+<div id="prompt-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+  <div class="bg-slate-900 border border-slate-600 rounded-xl flex flex-col gap-4 p-6" style="width:min(90vw,560px);max-height:85vh">
+    <div>
+      <p class="text-xs text-slate-400 mb-1 font-medium">Job requires input</p>
+      <pre id="prompt-message" class="text-sm text-slate-200 font-mono whitespace-pre-wrap"></pre>
+    </div>
+    <div id="prompt-options" class="flex flex-col gap-2 overflow-y-auto"></div>
+    <p class="text-xs text-slate-500">Press a number key to select, or click an option.</p>
+  </div>
+</div>
+
 <script>
 // ─── Command definitions ──────────────────────────────────────────────────────
 
@@ -988,9 +1000,12 @@ function waitForJob(jobId, stepId) {
       try {
         const data = JSON.parse(e.data)
         if (data.done) {
+          closePromptModal()
           es.close()
           if (data.status === 'completed') resolve()
           else reject(`Job ended with status: ${data.status}`)
+        } else if (data.type === 'prompt') {
+          showPromptModal(jobId, data)
         } else if (data.line) {
           const logs = stepLogs.get(stepId) ?? []
           logs.push(data.line)
@@ -999,8 +1014,63 @@ function waitForJob(jobId, stepId) {
         }
       } catch {}
     }
-    es.onerror = () => { es.close(); reject('SSE connection error') }
+    es.onerror = () => { closePromptModal(); es.close(); reject('SSE connection error') }
   })
+}
+
+function showPromptModal(jobId, promptData) {
+  document.getElementById('prompt-message').textContent = promptData.message
+  const optionsEl = document.getElementById('prompt-options')
+  optionsEl.innerHTML = ''
+  promptData.options.forEach(option => {
+    const btn = document.createElement('button')
+    const isSkip = option.index === -1
+    btn.className = `text-left text-sm px-4 py-2.5 rounded-lg border transition-colors ${
+      isSkip
+        ? 'border-slate-600 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+        : 'border-slate-600 text-slate-200 hover:bg-blue-700 hover:border-blue-500'
+    }`
+    const keyHint = option.index >= 0 && option.index <= 9
+      ? `<span class="text-xs font-mono bg-slate-700 px-1.5 py-0.5 rounded mr-2">${option.index}</span>`
+      : ''
+    btn.innerHTML = `${keyHint}${esc(option.label)}`
+    btn.onclick = () => submitPromptChoice(jobId, promptData.promptId, option.index)
+    optionsEl.appendChild(btn)
+  })
+  document.getElementById('prompt-modal').classList.remove('hidden')
+  document._promptKeyHandler = e => {
+    const num = parseInt(e.key, 10)
+    if (!isNaN(num)) {
+      const match = promptData.options.find(o => o.index === num)
+      if (match) submitPromptChoice(jobId, promptData.promptId, match.index)
+    }
+    if (e.key === '-' || e.key === 'Escape') {
+      const skipOpt = promptData.options.find(o => o.index === -1)
+      if (skipOpt) submitPromptChoice(jobId, promptData.promptId, -1)
+    }
+  }
+  document.addEventListener('keydown', document._promptKeyHandler)
+}
+
+function closePromptModal() {
+  document.getElementById('prompt-modal').classList.add('hidden')
+  if (document._promptKeyHandler) {
+    document.removeEventListener('keydown', document._promptKeyHandler)
+    document._promptKeyHandler = null
+  }
+}
+
+async function submitPromptChoice(jobId, promptId, selectedIndex) {
+  closePromptModal()
+  try {
+    await fetch(`/jobs/${jobId}/input`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ promptId, selectedIndex }),
+    })
+  } catch (err) {
+    console.error('Failed to submit prompt response', err)
+  }
 }
 
 function updateStepLogs(stepId, logs) {
