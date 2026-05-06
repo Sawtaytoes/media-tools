@@ -29,9 +29,10 @@ export type FileInfo = {
   renameFile: (
     renamedFilename: string,
   ) => (
-    Observable<
-      void
-    >
+    Observable<{
+      newPath: string
+      oldPath: string
+    }>
   )
 }
 

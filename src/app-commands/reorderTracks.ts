@@ -1,5 +1,4 @@
 import {
-  concatAll,
   concatMap,
   EMPTY,
   map,
@@ -64,45 +63,35 @@ export const reorderTracks = ({
   })
   .pipe(
     filterIsVideoFile(),
-    map((
-      fileInfo,
-    ) => (
-      (
-        reorderTracksFfmpeg({
-          audioTrackIndexes,
-          filePath: (
-            fileInfo
-            .fullPath
-          ),
-          outputFolderName,
-          subtitlesTrackIndexes,
-          videoTrackIndexes,
-        })
-
-        // To do this with `mkvmerge`, tracks need to be numbered sequentially from video to audio to subtitles. It's more complicated and not as easy to replicate.
-        // Only use this if something is botched with `ffmpeg`.
-        // reorderTracksMkvMerge({
-        //   audioTrackIndexes,
-        //   filePath: (
-        //     fileInfo
-        //     .fullPath
-        //   ),
-        //   subtitlesTrackIndexes,
-        //   videoTrackIndexes,
-        // })
-      )
+    // Per-file: reorder via ffmpeg, then re-anchor the default tracks
+    // on the reordered output. Emit a { sourceFilePath, outputFilePath }
+    // record once both inner steps complete so job.results lists every
+    // file that was actually reordered (instead of an array of nulls
+    // from the discarded toArray of the inner setOnlyFirst pipe).
+    concatMap((fileInfo) => (
+      reorderTracksFfmpeg({
+        audioTrackIndexes,
+        filePath: fileInfo.fullPath,
+        outputFolderName,
+        subtitlesTrackIndexes,
+        videoTrackIndexes,
+      })
+      // To do this with `mkvmerge`, tracks need to be numbered sequentially
+      // from video to audio to subtitles. It's more complicated and not as
+      // easy to replicate. Only use this if something is botched with `ffmpeg`.
       .pipe(
-        concatMap((
-          filePath
-        ) => (
-          setOnlyFirstTracksAsDefault({
-            filePath,
-          })
+        concatMap((outputFilePath) => (
+          setOnlyFirstTracksAsDefault({ filePath: outputFilePath })
+          .pipe(
+            toArray(),
+            map(() => ({
+              outputFilePath,
+              sourceFilePath: fileInfo.fullPath,
+            })),
+          )
         )),
       )
     )),
-    concatAll(),
-    toArray(),
     catchNamedError(
       reorderTracks
     ),

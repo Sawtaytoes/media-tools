@@ -4,6 +4,7 @@ import { join, sep } from "node:path"
 import {
   catchError,
   concatMap,
+  defer,
   filter,
   from,
   map,
@@ -465,14 +466,21 @@ export const storeAspectRatioData = ({
       aspectRatioCalculationData,
       jsonFilePath,
     }) => (
-      writeFile(
-        jsonFilePath,
-        (
-          JSON
-          .stringify(
-            aspectRatioCalculationData
-          )
-        ),
+      defer(() => (
+        writeFile(
+          jsonFilePath,
+          (
+            JSON
+            .stringify(
+              aspectRatioCalculationData
+            )
+          ),
+        )
+      ))
+      .pipe(
+        // Emit the persisted JSON path so job.results says where the
+        // aspect-ratio data was written instead of [null].
+        map(() => ({ jsonFilePath })),
       )
     )),
     catchNamedError(

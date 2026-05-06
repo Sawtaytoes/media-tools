@@ -1,7 +1,6 @@
 import {
-  concatAll,
+  concatMap,
   map,
-  tap,
   toArray,
 } from "rxjs"
 
@@ -27,18 +26,20 @@ export const fixIncorrectDefaultTracks = ({
   })
   .pipe(
     filterIsVideoFile(),
-    map((
-      fileInfo,
-    ) => (
-      setOnlyFirstTracksAsDefault({
-        filePath: (
-          fileInfo
-          .fullPath
-        )
-      })
+    // Per-file: run setOnlyFirstTracksAsDefault, swallow its 0-N inner
+    // emissions with toArray, then emit one { filePath, modificationCount }
+    // record so job.results lists every video that was inspected (and
+    // how many tracks were retouched), not a chain of nulls.
+    concatMap((fileInfo) => (
+      setOnlyFirstTracksAsDefault({ filePath: fileInfo.fullPath })
+      .pipe(
+        toArray(),
+        map((emissions) => ({
+          filePath: fileInfo.fullPath,
+          modificationCount: emissions.length,
+        })),
+      )
     )),
-    concatAll(),
-    toArray(),
     catchNamedError(
       fixIncorrectDefaultTracks
     ),

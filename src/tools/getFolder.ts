@@ -30,9 +30,10 @@ export type FolderInfo = {
   renameFolder: (
     newFolderName: string,
   ) => (
-    Observable<
-      void
-    >
+    Observable<{
+      newPath: string
+      oldPath: string
+    }>
   )
 }
 

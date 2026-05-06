@@ -249,7 +249,10 @@ describe(createRenameFileOrFolderObservable.name, () => {
               )
             )
             .resolves
-            .toBeUndefined()
+            .toEqual({
+              newPath: "G:\\Movies\\Star Wars (1977)\\Star Wars (1977) {edition-4K77}.mkv",
+              oldPath: "G:\\Movies\\Star Wars (1977)\\Star Wars (1977).mkv",
+            })
           )
 
           const logMessageArgs = (

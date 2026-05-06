@@ -122,9 +122,12 @@ export const createRenameFileOrFolderObservable = ({
             newPath,
           )
         }),
-        map(() => (
-          void 0
-        )),
+        // Emit { oldPath, newPath } instead of void so callers
+        // (renameDemos / renameMovieClipDownloads / nameAnimeEpisodes /
+        // nameTvShowEpisodes — every command that streams renameFile
+        // calls into job.results) get a useful per-rename record
+        // instead of a chain of nulls.
+        map(() => ({ newPath, oldPath })),
       )
     )),
     catchNamedError(
