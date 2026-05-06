@@ -33,7 +33,8 @@ export const copyFilesRequestSchema = z.object({
 })
 
 export const flattenOutputRequestSchema = z.object({
-  sourcePath: z.string().describe("Output folder produced by a previous step (e.g. /work/SUBTITLED). Its contents are copied up one level (overwriting same-named originals) and then the folder is deleted."),
+  sourcePath: z.string().describe("Output folder produced by a previous step (e.g. /work/SUBTITLED). Its contents are copied up one level, overwriting same-named originals."),
+  deleteSourceFolder: z.boolean().default(false).describe("If true, delete sourcePath after copying. Default false: source is preserved so you can inspect intermediate state during a long sequence; clean up later with deleteFolder."),
 })
 
 export const moveFilesRequestSchema = z.object({

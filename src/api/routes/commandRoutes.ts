@@ -136,9 +136,9 @@ const commandConfigs: Record<CommandName, CommandConfig> = {
     tags: ["File Operations"],
   },
   flattenOutput: {
-    getObservable: (body) => flattenOutput({ sourcePath: body.sourcePath }),
+    getObservable: (body) => flattenOutput({ deleteSourceFolder: body.deleteSourceFolder, sourcePath: body.sourcePath }),
     schema: schemas.flattenOutputRequestSchema,
-    summary: "Flatten a chained step's output: copies the folder's contents up one level and removes the folder",
+    summary: "Flatten a chained step's output: copies the folder's contents up one level (deletes source only if requested)",
     tags: ["File Operations"],
   },
   copyOutSubtitles: {
