@@ -2,11 +2,11 @@ import { throwError } from "rxjs"
 import { describe, expect, test } from "vitest"
 
 import { captureLogMessage } from "./captureLogMessage.js"
-import { catchNamedError } from "./catchNamedError.js"
+import { logAndRethrow } from "./logAndRethrow.js"
 import { runTestScheduler } from "./test-runners.js"
 
-describe(catchNamedError.name, () => {
-  test("catches a pipeline error", async () => {
+describe(logAndRethrow.name, () => {
+  test("logs the error and re-emits it so downstream catchError handlers fire", async () => {
     captureLogMessage(
       "error",
       (
@@ -15,18 +15,23 @@ describe(catchNamedError.name, () => {
         runTestScheduler(({
           expectObservable,
         }) => {
+          // "#" = error notification (vs. "|" for clean complete).
+          // logAndSwallow returns "|"; logAndRethrow must return "#" with
+          // the original error preserved.
           expectObservable(
             throwError(() => (
               "test error"
             ))
             .pipe(
-              catchNamedError(
+              logAndRethrow(
                 "testFunction"
               )
             )
           )
           .toBe(
-            "|"
+            "#",
+            undefined,
+            "test error",
           )
         })
 
@@ -51,30 +56,12 @@ describe(catchNamedError.name, () => {
         )
         .toContain(
           "testFunction"
-        )
-
-        expect(
-          logMessageSpy
-          .mock
-          .calls
-          [0]
-          .find((
-            text
-          ) => (
-            text
-            .includes(
-              "test error"
-            )
-          ))
-        )
-        .toContain(
-          "test error"
         )
       }
     )
   })
 
-  test("logs an error buffer", async () => {
+  test("logs an error buffer and re-emits the original error", async () => {
     captureLogMessage(
       "error",
       (
@@ -83,21 +70,19 @@ describe(catchNamedError.name, () => {
         runTestScheduler(({
           expectObservable,
         }) => {
+          const errorBuffer = Buffer.from("test error")
           expectObservable(
-            throwError(() => (
-              Buffer
-              .from(
-                "test error"
-              )
-            ))
+            throwError(() => errorBuffer)
             .pipe(
-              catchNamedError(
+              logAndRethrow(
                 "testFunction"
               )
             )
           )
           .toBe(
-            "|"
+            "#",
+            undefined,
+            errorBuffer,
           )
         })
 
@@ -105,24 +90,6 @@ describe(catchNamedError.name, () => {
           logMessageSpy
         )
         .toHaveBeenCalledOnce()
-
-        expect(
-          logMessageSpy
-          .mock
-          .calls
-          [0]
-          .find((
-            text
-          ) => (
-            text
-            .includes(
-              "testFunction"
-            )
-          ))
-        )
-        .toContain(
-          "testFunction"
-        )
 
         expect(
           logMessageSpy

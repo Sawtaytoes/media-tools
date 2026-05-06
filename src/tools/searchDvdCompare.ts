@@ -6,7 +6,7 @@ import {
   type Observable,
 } from "rxjs"
 
-import { catchNamedError } from "./catchNamedError.js"
+import { logAndSwallow } from "./logAndSwallow.js"
 
 export type DvdCompareVariant = "DVD" | "Blu-ray" | "Blu-ray 4K"
 
@@ -279,7 +279,7 @@ export const lookupDvdCompareFilm = (
     return { name: `${result.baseTitle}${variantSuffix}${yearSuffix}` }
   })())
   .pipe(
-    catchNamedError(lookupDvdCompareFilm),
+    logAndSwallow(lookupDvdCompareFilm),
   )
 )
 
@@ -297,7 +297,7 @@ export const lookupDvdCompareRelease = (
     return matched ? { label: matched.label } : null
   })())
   .pipe(
-    catchNamedError(lookupDvdCompareRelease),
+    logAndSwallow(lookupDvdCompareRelease),
   )
 )
 
@@ -392,6 +392,6 @@ export const searchDvdCompare = ({
     }
   })())
   .pipe(
-    catchNamedError(searchDvdCompare),
+    logAndSwallow(searchDvdCompare),
   )
 )

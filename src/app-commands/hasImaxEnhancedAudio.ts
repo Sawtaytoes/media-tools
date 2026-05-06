@@ -8,7 +8,7 @@ import {
   tap,
 } from "rxjs"
 
-import { catchNamedError } from "../tools/catchNamedError.js"
+import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { getMediaInfo } from "../tools/getMediaInfo.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 
@@ -84,7 +84,7 @@ export const hasImaxEnhancedAudio = ({
         }),
       )
     )),
-    catchNamedError(
+    logAndSwallow(
       hasImaxEnhancedAudio
     ),
   )

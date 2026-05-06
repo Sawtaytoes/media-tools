@@ -5,7 +5,7 @@ import {
   type Observable,
 } from "rxjs"
 
-import { catchNamedError } from "../tools/catchNamedError.js"
+import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { logInfo } from "../tools/logMessage.js"
 
 export const deleteFolder = ({
@@ -32,6 +32,6 @@ export const deleteFolder = ({
       logInfo("DELETED", path)
       return path
     }),
-    catchNamedError(deleteFolder),
+    logAndSwallow(deleteFolder),
   )
 )

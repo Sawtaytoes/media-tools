@@ -29,7 +29,7 @@ describe(deleteFolder.name, () => {
 
   test("refuses to run and emits no values when confirm is false", async () => (
     captureConsoleMessage("error", async () => {
-      // catchNamedError swallows the thrown error into EMPTY, so the observable
+      // logAndSwallow swallows the thrown error into EMPTY, so the observable
       // completes with no emitted values. firstValueFrom-on-EMPTY rejects with
       // a NoElementsError; toArray() resolves to [] which is the cleaner check.
       const emissions = await firstValueFrom(

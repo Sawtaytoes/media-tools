@@ -15,7 +15,7 @@ import {
   toArray,
 } from "rxjs"
 
-import { catchNamedError } from "../tools/catchNamedError.js"
+import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
 import {
   getAspectRatioData,
@@ -483,7 +483,7 @@ export const storeAspectRatioData = ({
         map(() => ({ jsonFilePath })),
       )
     )),
-    catchNamedError(
+    logAndSwallow(
       storeAspectRatioData
     ),
   )

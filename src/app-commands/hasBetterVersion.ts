@@ -8,7 +8,7 @@ import {
   toArray,
 } from "rxjs"
 
-import { catchNamedError } from "../tools/catchNamedError.js"
+import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
 import { getUhdDiscForumPostData } from "../tools/getUhdDiscForumPostData.js"
 import { naturalSort } from "../tools/naturalSort.js"
@@ -192,7 +192,7 @@ export const hasBetterVersion = ({
         `\n\n${matchingSections}\n\n`,
       )
     }),
-    catchNamedError(
+    logAndSwallow(
       hasBetterVersion
     )
   )

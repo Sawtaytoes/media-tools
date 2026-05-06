@@ -9,7 +9,7 @@ import {
   toArray,
 } from "rxjs"
 
-import { catchNamedError } from "../tools/catchNamedError.js"
+import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
 import { naturalSort } from "../tools/naturalSort.js"
 import { getFiles } from "../tools/getFiles.js"
@@ -99,7 +99,7 @@ export const splitChapters = ({
         toArray(),
       )
     )),
-    catchNamedError(
+    logAndSwallow(
       splitChapters
     ),
   )

@@ -6,7 +6,7 @@ import {
 } from "rxjs"
 
 import { mkvPropEditPath } from "../tools/appPaths.js";
-import { catchNamedError } from "../tools/catchNamedError.js"
+import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { createTtyAffordances } from "../tools/createTtyAffordances.js";
 import { logWarning } from "../tools/logMessage.js";
 import { treeKillOnUnsubscribe } from "./treeKillChild.js"
@@ -131,7 +131,7 @@ export const runMkvPropEdit = ({
     return treeKillOnUnsubscribe(childProcess)
   })
   .pipe(
-    catchNamedError(
+    logAndSwallow(
       runMkvPropEdit
     ),
   )

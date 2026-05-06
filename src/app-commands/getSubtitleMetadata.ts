@@ -9,7 +9,7 @@ import {
 } from "rxjs"
 
 import { type AssScriptInfoProperty } from "../tools/assTypes.js"
-import { catchNamedError } from "../tools/catchNamedError.js"
+import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 import { parseAssFile } from "../tools/assFileTools.js"
 
@@ -96,6 +96,6 @@ export const getSubtitleMetadata = ({
     )),
     concatAll(),
     toArray(),
-    catchNamedError(getSubtitleMetadata),
+    logAndSwallow(getSubtitleMetadata),
   )
 )

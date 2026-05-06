@@ -8,7 +8,7 @@ import {
   tap,
 } from "rxjs"
 
-import { catchNamedError } from "../tools/catchNamedError.js"
+import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 import { logInfo } from "../tools/logMessage.js"
 
@@ -65,6 +65,6 @@ export const deleteFilesByExtension = ({
         map(() => fileInfo.fullPath),
       )
     )),
-    catchNamedError(deleteFilesByExtension),
+    logAndSwallow(deleteFilesByExtension),
   )
 }

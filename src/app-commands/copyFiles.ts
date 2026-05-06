@@ -7,7 +7,7 @@ import {
   tap,
 } from "rxjs"
 
-import { catchNamedError } from "../tools/catchNamedError.js"
+import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { getFiles } from "../tools/getFiles.js"
 import { logInfo } from "../tools/logMessage.js"
 import { makeDirectory } from "../tools/makeDirectory.js"
@@ -73,7 +73,7 @@ export const copyFiles = ({
         )
       )
     }),
-    catchNamedError(
+    logAndSwallow(
       copyFiles
     ),
   )

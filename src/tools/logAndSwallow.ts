@@ -5,7 +5,13 @@ import {
 } from "rxjs"
 import { logError } from "./logMessage.js"
 
-export const catchNamedError = <
+// Logs the error under `func`'s name (or the provided string label) and
+// completes the observable with no emissions. Use this in INNER pipes —
+// per-file `mergeMap`/`concatMap` callbacks where one bad item shouldn't
+// abort the rest of the batch (e.g. spawn-op wrappers, per-file fetch
+// helpers). For OUTER terminal pipes that need the error to reach the
+// runner, use `logAndRethrow` instead.
+export const logAndSwallow = <
   PipelineValue
 >(
   func: (
@@ -51,10 +57,6 @@ export const catchNamedError = <
         : error
       ),
     )
-
-    // TODO: See if this needs to be removed.
-    // process
-    // .exit()
 
     return EMPTY
   })

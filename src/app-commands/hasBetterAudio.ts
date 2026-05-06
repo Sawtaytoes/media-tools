@@ -8,7 +8,7 @@ import {
   tap,
 } from "rxjs"
 
-import { catchNamedError } from "../tools/catchNamedError.js"
+import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
 import {
   getMediaInfo,
@@ -249,7 +249,7 @@ export const hasBetterAudio = ({
       )
     )),
     concatAll(),
-    catchNamedError(
+    logAndSwallow(
       hasBetterAudio
     ),
   )

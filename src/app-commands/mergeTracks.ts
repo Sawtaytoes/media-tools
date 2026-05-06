@@ -24,7 +24,7 @@ import {
   zip,
 } from "rxjs"
 
-import { catchNamedError } from "../tools/catchNamedError.js"
+import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { ChaptersXml } from "../tools/ChaptersXml.js"
 import { subtitlesFileExtensionSet } from "../tools/filterIsSubtitlesFile.js"
 import { getFiles } from "../tools/getFiles.js"
@@ -427,7 +427,7 @@ export const mergeTracks = ({
     )),
     concatAll(),
     toArray(),
-    catchNamedError(
+    logAndSwallow(
       mergeTracks
     )
   )

@@ -16,7 +16,7 @@ import {
 } from "rxjs"
 
 import { ffmpegPath as defaultFfmpegPath } from "../tools/appPaths.js";
-import { catchNamedError } from "../tools/catchNamedError.js"
+import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { getActiveJobId } from "../api/logCapture.js"
 import { getFileDuration } from "../tools/getFileDuration.js";
 import { getMediaInfo } from "../tools/getMediaInfo.js";
@@ -457,7 +457,7 @@ export const runFfmpeg = ({
         return treeKillOnUnsubscribe(childProcess)
       })
   )),
-    catchNamedError(
+    logAndSwallow(
       runFfmpeg
     ),
   )

@@ -14,7 +14,7 @@ import {
 } from "rxjs"
 
 import { replaceAudioFormatByChannelCount } from './audioHelpers.js'
-import { catchNamedError } from "./catchNamedError.js"
+import { logAndSwallow } from "./logAndSwallow.js"
 import { MediaInfo } from "./getMediaInfo.js"
 import { replaceHdrFormat } from './hdrHelpers.js'
 import { replaceResolutionName } from './resolutionHelpers.js'
@@ -129,7 +129,7 @@ export const getDemoName = ({
                 })
               )
             )),
-            catchNamedError(
+            logAndSwallow(
               getDemoName
             ),
           )
@@ -187,7 +187,7 @@ export const getDemoName = ({
       ),
       filename,
     ),
-    catchNamedError(
+    logAndSwallow(
       getDemoName
     ),
   )

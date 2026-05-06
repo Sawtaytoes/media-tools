@@ -5,7 +5,7 @@ import {
   type Observable,
 } from "rxjs"
 
-import { catchNamedError } from "./catchNamedError.js"
+import { logAndSwallow } from "./logAndSwallow.js"
 
 export type MalResult = {
   airDate?: string
@@ -76,6 +76,6 @@ export const lookupMalById = (
       )
       return name ? { name } : null
     }),
-    catchNamedError(lookupMalById),
+    logAndSwallow(lookupMalById),
   )
 )

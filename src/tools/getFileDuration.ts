@@ -7,7 +7,7 @@ import {
   type Observable,
 } from "rxjs"
 
-import { catchNamedError } from "./catchNamedError.js"
+import { logAndSwallow } from "./logAndSwallow.js"
 import {
   type GeneralTrack,
   type MediaInfo,
@@ -188,7 +188,7 @@ export const getFileDuration = ({
         .Duration
       )
     )),
-    catchNamedError(
+    logAndSwallow(
       getFileDuration
     ),
   )

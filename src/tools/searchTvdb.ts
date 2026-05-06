@@ -5,7 +5,7 @@ import {
   type Observable,
 } from "rxjs"
 
-import { catchNamedError } from "./catchNamedError.js"
+import { logAndSwallow } from "./logAndSwallow.js"
 import { getTvdbFetchClient } from "./tvdbApi.js"
 
 export type TvdbResult = {
@@ -88,6 +88,6 @@ export const lookupTvdbById = (
       const name = data?.data?.name ?? ""
       return name ? { name } : null
     }),
-    catchNamedError(lookupTvdbById),
+    logAndSwallow(lookupTvdbById),
   )
 )

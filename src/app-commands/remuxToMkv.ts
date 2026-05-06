@@ -11,7 +11,7 @@ import {
 } from "rxjs"
 
 import { remuxMkvMerge } from "../cli-spawn-operations/remuxMkvMerge.js"
-import { catchNamedError } from "../tools/catchNamedError.js"
+import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 import { logInfo } from "../tools/logMessage.js"
 
@@ -94,7 +94,7 @@ export const remuxToMkv = ({
                 )
               )
             }),
-            catchNamedError(remuxToMkv),
+            logAndSwallow(remuxToMkv),
           )
         )
       }),

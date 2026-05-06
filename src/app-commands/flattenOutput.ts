@@ -10,7 +10,7 @@ import {
   type Observable,
 } from "rxjs"
 
-import { catchNamedError } from "../tools/catchNamedError.js"
+import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { getFiles } from "../tools/getFiles.js"
 import { logInfo } from "../tools/logMessage.js"
 
@@ -64,7 +64,7 @@ export const flattenOutput = ({
         }
         return of(sourcePath)
       }),
-      catchNamedError(flattenOutput),
+      logAndSwallow(flattenOutput),
     )
   )
 }

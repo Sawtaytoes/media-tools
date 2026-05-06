@@ -6,7 +6,7 @@ import {
   type Observable,
 } from "rxjs"
 
-import { catchNamedError } from "./catchNamedError.js"
+import { logAndSwallow } from "./logAndSwallow.js"
 import { getTimecodeAtOffset } from "./getSpecialFeatureFromTimecode.js"
 
 export const specialFeatureTypes = [
@@ -472,7 +472,7 @@ export const parseSpecialFeatures = (
       extras,
       cuts: parseCuts(specialFeatureText),
     })),
-    catchNamedError(
+    logAndSwallow(
       parseSpecialFeatures
     ),
   )

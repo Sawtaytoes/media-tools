@@ -5,7 +5,7 @@ import {
   toArray,
 } from "rxjs"
 
-import { catchNamedError } from "../tools/catchNamedError.js"
+import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 import { logInfo } from "../tools/logMessage.js"
@@ -92,7 +92,7 @@ export const reorderTracks = ({
         )),
       )
     )),
-    catchNamedError(
+    logAndSwallow(
       reorderTracks
     ),
   )

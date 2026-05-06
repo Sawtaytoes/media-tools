@@ -7,7 +7,7 @@ import {
   type Observable,
 } from "rxjs"
 
-import { catchNamedError } from "./catchNamedError.js"
+import { logAndSwallow } from "./logAndSwallow.js"
 import { convertNumberToTimeString } from "./getFileDuration.js";
 import { getUserSearchInput } from "./getUserSearchInput.js";
 import {
@@ -554,7 +554,7 @@ export const getSpecialFeatureFromTimecode = ({
         )
       )
     }),
-    catchNamedError(
+    logAndSwallow(
       getSpecialFeatureFromTimecode
     ),
   )

@@ -8,7 +8,7 @@ import {
   toArray,
 } from "rxjs"
 
-import { catchNamedError } from "../tools/catchNamedError.js"
+import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { getAudioOffset } from "../cli-spawn-operations/getAudioOffset.js"
 import { type Iso6392LanguageCode } from "../tools/iso6392LanguageCodes.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
@@ -169,7 +169,7 @@ export const replaceTracks = ({
         toArray(),
       )
     )),
-    catchNamedError(
+    logAndSwallow(
       replaceTracks
     ),
   )

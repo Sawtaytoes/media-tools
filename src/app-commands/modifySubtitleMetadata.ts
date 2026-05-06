@@ -12,7 +12,7 @@ import {
 
 import { type AssModificationRule } from "../tools/assTypes.js"
 import { applyAssRules } from "../tools/applyAssRules.js"
-import { catchNamedError } from "../tools/catchNamedError.js"
+import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 import { logInfo } from "../tools/logMessage.js"
 import { parseAssFile, serializeAssFile } from "../tools/assFileTools.js"
@@ -97,7 +97,7 @@ export const modifySubtitleMetadata = ({
       )
     )),
     concatAll(),
-    catchNamedError(modifySubtitleMetadata),
+    logAndSwallow(modifySubtitleMetadata),
   )
   )
 }

@@ -11,7 +11,7 @@ import {
 } from "rxjs"
 
 import { mediaInfoPath } from "./appPaths.js";
-import { catchNamedError } from "./catchNamedError.js"
+import { logAndSwallow } from "./logAndSwallow.js"
 import { type Iso6391LanguageCode } from "./iso6391LanguageCodes.js";
 
 const execFile = (
@@ -290,7 +290,7 @@ export const getMediaInfo = (
         MediaInfo
       )
     )),
-    catchNamedError(
+    logAndSwallow(
       getMediaInfo
     ),
   )

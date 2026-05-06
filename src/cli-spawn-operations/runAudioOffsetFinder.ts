@@ -5,7 +5,7 @@ import {
 } from "rxjs"
 
 import { audioOffsetFinderPath } from "../tools/appPaths.js";
-import { catchNamedError } from "../tools/catchNamedError.js"
+import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { createTtyAffordances } from "../tools/createTtyAffordances.js";
 import { logWarning } from "../tools/logMessage.js";
 import { treeKillOnUnsubscribe } from "./treeKillChild.js"
@@ -176,7 +176,7 @@ export const runAudioOffsetFinder = ({
     return treeKillOnUnsubscribe(childProcess)
   })
   .pipe(
-    catchNamedError(
+    logAndSwallow(
       runAudioOffsetFinder
     ),
   )

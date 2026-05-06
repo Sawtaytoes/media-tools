@@ -5,7 +5,7 @@ import {
   toArray,
 } from 'rxjs'
 import { getFiles } from '../tools/getFiles.js';
-import { catchNamedError } from '../tools/catchNamedError.js';
+import { logAndSwallow } from '../tools/logAndSwallow.js';
 
 
 export const renameMovieClipDownloads = ({
@@ -55,7 +55,7 @@ export const renameMovieClipDownloads = ({
     ) => (
       renameFile()
     )),
-    catchNamedError(
+    logAndSwallow(
       renameMovieClipDownloads
     ),
   )

@@ -2,7 +2,7 @@ import {
   Observable,
 } from "rxjs"
 
-import { catchNamedError } from "../tools/catchNamedError.js"
+import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { type Iso6392LanguageCode } from "../tools/iso6392LanguageCodes.js"
 import { LANGUAGE_TRIMMED_FOLDER_NAME } from "../tools/outputFolderNames.js"
 import { runMkvMerge } from "./runMkvMerge.js";
@@ -101,7 +101,7 @@ export const keepSpecifiedLanguageTracks = ({
       )
     })
     .pipe(
-      catchNamedError(
+      logAndSwallow(
         keepSpecifiedLanguageTracks
       ),
     )

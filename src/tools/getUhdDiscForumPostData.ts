@@ -5,7 +5,7 @@ import {
   type Observable,
 } from "rxjs"
 
-import { catchNamedError } from "./catchNamedError.js"
+import { logAndSwallow } from "./logAndSwallow.js"
 import { processUhdDiscForumPost } from "../app-commands/processUhdDiscForumPost.cherrio.js"
 
 export type UhdDiscForumPostItem = {
@@ -88,6 +88,6 @@ export const getUhdDiscForumPostData = (): Observable<UhdDiscForumPostGroup[]> =
     }
   })())
   .pipe(
-    catchNamedError(getUhdDiscForumPostData),
+    logAndSwallow(getUhdDiscForumPostData),
   )
 )

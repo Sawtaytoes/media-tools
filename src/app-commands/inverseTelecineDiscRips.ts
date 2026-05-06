@@ -7,7 +7,7 @@ import {
   toArray,
 } from "rxjs"
 
-import { catchNamedError } from "../tools/catchNamedError.js"
+import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { convertVariableToConstantBitrate } from "../cli-spawn-operations/convertVariableToConstantBitrate.js"
 import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
 import {
@@ -79,7 +79,7 @@ export const inverseTelecineDiscRips = ({
     )),
     concatAll(),
     toArray(),
-    catchNamedError(
+    logAndSwallow(
       inverseTelecineDiscRips
     ),
   )

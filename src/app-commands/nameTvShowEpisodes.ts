@@ -9,7 +9,7 @@ import {
   toArray,
 } from "rxjs"
 
-import { catchNamedError } from "../tools/catchNamedError.js"
+import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { cleanupFilename } from "../tools/cleanupFilename.js"
 import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
 import { getRandomString } from "../tools/getRandomString.js"
@@ -294,7 +294,7 @@ export const nameTvShowEpisodes = ({
         renamedFilename
       )
     )),
-    catchNamedError(
+    logAndSwallow(
       nameTvShowEpisodes
     )
   )

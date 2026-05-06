@@ -7,7 +7,7 @@ import {
 } from "rxjs"
 
 import { mkvMergePath } from "./appPaths.js";
-import { catchNamedError } from "./catchNamedError.js"
+import { logAndSwallow } from "./logAndSwallow.js"
 import { createTtyAffordances } from "./createTtyAffordances.js";
 import { Iso6392LanguageCode } from "./iso6392LanguageCodes.js";
 
@@ -226,7 +226,7 @@ export const getMkvInfo = (
         MkvInfo
       )
     )),
-    catchNamedError(
+    logAndSwallow(
       getMkvInfo
     ),
   )

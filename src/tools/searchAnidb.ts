@@ -2,7 +2,7 @@ import { XMLParser } from "fast-xml-parser"
 import { from, map, type Observable } from "rxjs"
 
 import type { AnidbAnime, AnidbEpisodeType, AnidbTitleType } from "../types/anidb.js"
-import { catchNamedError } from "./catchNamedError.js"
+import { logAndSwallow } from "./logAndSwallow.js"
 import { findAnimeByQuery, loadAnimeIndex } from "./animeOfflineDatabase.js"
 import { getAnimeXml } from "./anidbApi.js"
 
@@ -38,7 +38,7 @@ export const searchAnidb = (
         type: entry.type,
       }))
     )),
-    catchNamedError(searchAnidb),
+    logAndSwallow(searchAnidb),
   )
 )
 
@@ -102,6 +102,6 @@ export const lookupAnidbById = (
   from(getAnimeXml(aid, { client: CLIENT, clientver: CLIENT_VER }))
   .pipe(
     map(parseAnidbAnimeXml),
-    catchNamedError(lookupAnidbById),
+    logAndSwallow(lookupAnidbById),
   )
 )

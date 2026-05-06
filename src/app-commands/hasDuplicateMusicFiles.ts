@@ -12,7 +12,7 @@ import {
   tap,
 } from "rxjs"
 
-import { catchNamedError } from "../tools/catchNamedError.js"
+import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { filterIsAudioFile } from "../tools/filterIsAudioFile.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 
@@ -113,7 +113,7 @@ export const hasDuplicateMusicFiles = ({
         directoryWithDuplicates,
       )
     }),
-    catchNamedError(
+    logAndSwallow(
       hasDuplicateMusicFiles
     ),
   )

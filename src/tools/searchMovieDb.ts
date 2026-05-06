@@ -1,6 +1,6 @@
 import { from, map, type Observable } from "rxjs"
 
-import { catchNamedError } from "./catchNamedError.js"
+import { logAndSwallow } from "./logAndSwallow.js"
 
 // Public-facing shape for builder UI + nameMovies app-command consumption.
 // Year is the four-digit release year extracted from TMDB's release_date
@@ -92,7 +92,7 @@ export const searchMovieDb = (
   )
   .pipe(
     map((body) => mapTmdbSearchResults((body as { results?: MovieDbRawSearchResult[] }).results)),
-    catchNamedError(searchMovieDb),
+    logAndSwallow(searchMovieDb),
   )
 )
 
@@ -114,6 +114,6 @@ export const lookupMovieDbById = (
       // structured { title, year } pair it uses to build the filename.
       return { name: year ? `${title} (${year})` : title }
     }),
-    catchNamedError(lookupMovieDbById),
+    logAndSwallow(lookupMovieDbById),
   )
 )

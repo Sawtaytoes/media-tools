@@ -8,7 +8,7 @@ import {
 } from "rxjs"
 
 import { mkvExtractPath } from "../tools/appPaths.js";
-import { catchNamedError } from "../tools/catchNamedError.js"
+import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { createTtyAffordances } from "../tools/createTtyAffordances.js";
 import { unlink } from "node:fs/promises";
 import { logWarning } from "../tools/logMessage.js";
@@ -210,7 +210,7 @@ export const runMkvExtract = ({
     return treeKillOnUnsubscribe(childProcess)
   })
   .pipe(
-    catchNamedError(
+    logAndSwallow(
       runMkvExtract
     ),
   )
