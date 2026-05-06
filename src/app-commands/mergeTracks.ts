@@ -43,7 +43,6 @@ const xmlParser = (
 
 type MergeTracksRequiredProps = {
   mediaFilesPath: string
-  offsetsInMilliseconds: number[]
   subtitlesPath: string
 }
 
@@ -51,6 +50,11 @@ type MergeTracksOptionalProps = {
   globalOffsetInMilliseconds?: number
   hasAutomaticOffset?: boolean
   hasChapters?: boolean
+  // Per-file audio offsets in ms. Defaults to [] when the caller (e.g. a
+  // sequence step that doesn't supply offsets) omits it — without the
+  // default the destructured value is undefined and the in-flight
+  // `offsetsInMilliseconds.length > 0` check below throws TypeError.
+  offsetsInMilliseconds?: number[]
   outputFolderName?: string
 }
 
@@ -60,6 +64,7 @@ export const mergeTracksDefaultProps = {
   globalOffsetInMilliseconds: 0,
   hasAutomaticOffset: false,
   hasChapters: false,
+  offsetsInMilliseconds: [] as number[],
   outputFolderName: mergeSubtitlesMkvMergeDefaultProps.outputFolderName,
 } satisfies MergeTracksOptionalProps
 
@@ -68,7 +73,7 @@ export const mergeTracks = ({
   hasAutomaticOffset = mergeTracksDefaultProps.hasAutomaticOffset,
   hasChapters = mergeTracksDefaultProps.hasChapters,
   mediaFilesPath,
-  offsetsInMilliseconds,
+  offsetsInMilliseconds = mergeTracksDefaultProps.offsetsInMilliseconds,
   outputFolderName = mergeTracksDefaultProps.outputFolderName,
   subtitlesPath,
 }: MergeTracksProps) => (
