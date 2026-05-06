@@ -516,7 +516,11 @@ const TAG_ORDER = [
 // ─── State ────────────────────────────────────────────────────────────────────
 
 let steps = []
+// Monotonically-increasing counter for stable string IDs (`step1`, `step2`,
+// ...). Once assigned, an ID is never reused — even after a step is deleted —
+// so links in YAML stay valid as long as the referenced step still exists.
 let stepCounter = 0
+const generateStepId = () => `step${++stepCounter}`
 let running = false
 const stepLogs = new Map()
 
@@ -644,12 +648,12 @@ function getLinkedValue(step, fieldName) {
 
 function makeStep(command = null) {
   if (!command) {
-    return { id: ++stepCounter, command: null, params: {}, links: {}, status: null, error: null }
+    return { id: generateStepId(), command: null, params: {}, links: {}, status: null, error: null }
   }
   const cmd = COMMANDS[command]
   const params = {}
   for (const f of cmd.fields) if (f.default !== undefined) params[f.name] = f.default
-  return { id: ++stepCounter, command, params, links: {}, status: null, error: null }
+  return { id: generateStepId(), command, params, links: {}, status: null, error: null }
 }
 
 // Wraps renderAll in document.startViewTransition (Chromium 111+) so existing
@@ -946,21 +950,21 @@ function renderStep(step, index) {
 <div id="step-${step.id}" style="view-transition-name: step-${step.id}" class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
   <div class="flex items-center gap-2 px-3 py-2 border-b border-slate-700 bg-slate-800/80">
     <span class="text-xs font-mono text-slate-500 shrink-0 w-5 text-center">${index + 1}</span>
-    <button onclick="openCmdPicker(${step.id}, this)" data-cmd-picker-trigger
+    <button onclick="openCmdPicker('${step.id}', this)" data-cmd-picker-trigger
       class="flex-1 min-w-0 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded px-2 py-1 border border-slate-600 focus:outline-none focus:border-blue-500 text-left flex items-center gap-2 cursor-pointer">
       <span class="flex-1 min-w-0 truncate flex items-center">${triggerLabel}</span>
       <span class="text-slate-400 shrink-0">▾</span>
     </button>
     ${statusBadge}
     <div class="flex items-center gap-1 shrink-0">
-      <button onclick="runStep(${step.id})" ${step.command ? '' : 'disabled'}
+      <button onclick="runStep('${step.id}')" ${step.command ? '' : 'disabled'}
         title="Run this step only"
         class="w-6 h-6 flex items-center justify-center rounded text-emerald-400 hover:text-emerald-300 hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent text-xs">▶</button>
-      <button onclick="moveStep(${step.id},-1)" ${isFirst ? 'disabled' : ''}
+      <button onclick="moveStep('${step.id}',-1)" ${isFirst ? 'disabled' : ''}
         class="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700 disabled:opacity-30 text-xs">↑</button>
-      <button onclick="moveStep(${step.id},1)" ${isLast ? 'disabled' : ''}
+      <button onclick="moveStep('${step.id}',1)" ${isLast ? 'disabled' : ''}
         class="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700 disabled:opacity-30 text-xs">↓</button>
-      <button onclick="removeStep(${step.id})"
+      <button onclick="removeStep('${step.id}')"
         class="w-6 h-6 flex items-center justify-center rounded text-slate-500 hover:text-red-400 hover:bg-slate-700 text-xs">✕</button>
     </div>
   </div>
@@ -989,7 +993,7 @@ function renderFields(step, stepIndex) {
     if (field.type === 'boolean') {
       const checked = val ?? field.default ?? false
       return `<label class="flex items-center gap-2 cursor-pointer select-none py-0.5">
-        <input type="checkbox" ${checked ? 'checked' : ''} onchange="setParam(${step.id},'${field.name}',this.checked)"
+        <input type="checkbox" ${checked ? 'checked' : ''} onchange="setParam('${step.id}','${field.name}',this.checked)"
           class="w-3.5 h-3.5 rounded bg-slate-700 border-slate-500 accent-blue-500 cursor-pointer" />
         <span class="text-xs text-slate-300">${esc(field.label)}</span>
       </label>`
@@ -1002,10 +1006,10 @@ function renderFields(step, stepIndex) {
     if (field.type === 'number') {
       const num = val ?? field.default ?? ''
       const companion = field.companionNameField ? step.params[field.companionNameField] : null
-      const reverseLookup = field.companionNameField ? `oninput="scheduleReverseLookup(${step.id},'${field.name}',this.value)"` : ''
+      const reverseLookup = field.companionNameField ? `oninput="scheduleReverseLookup('${step.id}','${field.name}',this.value)"` : ''
       return `<div>${label}<input type="number" value="${esc(num)}"
         ${reverseLookup}
-        onchange="setParam(${step.id},'${field.name}',this.value===''?undefined:Number(this.value))"
+        onchange="setParam('${step.id}','${field.name}',this.value===''?undefined:Number(this.value))"
         class="w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500" />
         ${field.companionNameField ? `<p data-step="${step.id}" data-companion="${field.name}" class="text-xs text-slate-500 mt-0.5 truncate ${companion ? '' : 'hidden'}" title="${esc(companion ?? '')}">${esc(companion ?? '')}</p>` : ''}
       </div>`
@@ -1016,10 +1020,10 @@ function renderFields(step, stepIndex) {
       const companion = field.companionNameField ? step.params[field.companionNameField] : null
       return `<div>${label}<div class="flex items-center gap-2">
         <input type="number" value="${esc(num)}" placeholder="${esc(field.placeholder ?? '')}"
-          oninput="scheduleReverseLookup(${step.id},'${field.name}',this.value)"
-          onchange="setParam(${step.id},'${field.name}',this.value===''?undefined:Number(this.value))"
+          oninput="scheduleReverseLookup('${step.id}','${field.name}',this.value)"
+          onchange="setParam('${step.id}','${field.name}',this.value===''?undefined:Number(this.value))"
           class="flex-1 min-w-0 bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500" />
-        <button onclick="openLookup('${field.lookupType}',${step.id},'${field.name}')"
+        <button onclick="openLookup('${field.lookupType}','${step.id}','${field.name}')"
           title="Look up ${esc(field.label)}"
           class="shrink-0 text-xs bg-slate-700 hover:bg-blue-700 text-slate-200 hover:text-white px-2.5 py-1.5 rounded border border-slate-600 hover:border-blue-500">🔍</button>
       </div>
@@ -1030,7 +1034,7 @@ function renderFields(step, stepIndex) {
     if (field.type === 'languageCode') {
       const str = val ?? ''
       return `<div>${label}<input type="text" value="${esc(str)}" placeholder="eng"
-        oninput="setParam(${step.id},'${field.name}',this.value||undefined)"
+        oninput="setParam('${step.id}','${field.name}',this.value||undefined)"
         maxlength="3"
         class="w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono" /></div>`
     }
@@ -1038,35 +1042,35 @@ function renderFields(step, stepIndex) {
     if (field.type === 'languageCodes') {
       const str = Array.isArray(val) ? val.join(', ') : (val ?? '')
       return `<div>${label}<input type="text" value="${esc(str)}" placeholder="${esc(field.placeholder ?? 'eng, jpn')}"
-        oninput="setParam(${step.id},'${field.name}',this.value.split(',').map(s=>s.trim()).filter(Boolean))"
+        oninput="setParam('${step.id}','${field.name}',this.value.split(',').map(s=>s.trim()).filter(Boolean))"
         class="w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono" /></div>`
     }
 
     if (field.type === 'stringArray') {
       const str = Array.isArray(val) ? val.join(', ') : (val ?? '')
       return `<div>${label}<input type="text" value="${esc(str)}" placeholder="${esc(field.placeholder ?? '')}"
-        oninput="setParam(${step.id},'${field.name}',this.value.split(',').map(s=>s.trim()).filter(Boolean))"
+        oninput="setParam('${step.id}','${field.name}',this.value.split(',').map(s=>s.trim()).filter(Boolean))"
         class="w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono" /></div>`
     }
 
     if (field.type === 'numberArray') {
       const str = Array.isArray(val) ? val.join(', ') : (val ?? '')
       return `<div>${label}<input type="text" value="${esc(str)}" placeholder="${esc(field.placeholder ?? '0, 100')}"
-        oninput="setParam(${step.id},'${field.name}',this.value.split(',').map(s=>s.trim()).filter(Boolean).map(Number).filter(n=>!isNaN(n)))"
+        oninput="setParam('${step.id}','${field.name}',this.value.split(',').map(s=>s.trim()).filter(Boolean).map(Number).filter(n=>!isNaN(n)))"
         class="w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono" /></div>`
     }
 
     if (field.type === 'json') {
       const str = val !== undefined ? (typeof val === 'string' ? val : JSON.stringify(val, null, 2)) : ''
       return `<div>${label}<textarea rows="3" placeholder="${esc(field.placeholder ?? '[]')}"
-        oninput="setParamJson(${step.id},'${field.name}',this.value)"
+        oninput="setParamJson('${step.id}','${field.name}',this.value)"
         class="w-full bg-slate-900 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono resize-y">${esc(str)}</textarea></div>`
     }
 
     // string
     const str = val ?? ''
     return `<div>${label}<input type="text" value="${esc(str)}" placeholder="${esc(field.placeholder ?? '')}"
-      oninput="setParam(${step.id},'${field.name}',this.value||undefined)"
+      oninput="setParam('${step.id}','${field.name}',this.value||undefined)"
       class="w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500" /></div>`
   }).join('')
 }
@@ -1094,7 +1098,7 @@ function renderPathField(step, field, stepIndex) {
   return `<div>
     <div class="flex items-center gap-2 mb-1">
       <label class="text-xs text-slate-400">${esc(field.label)}${field.required ? ' <span class="text-red-400">*</span>' : ''}</label>
-      <select onchange="setLink(${step.id},'${field.name}',this.value)"
+      <select onchange="setLink('${step.id}','${field.name}',this.value)"
         class="ml-auto text-xs bg-slate-700 text-slate-300 rounded px-1.5 py-0.5 border border-slate-600 focus:outline-none focus:border-blue-500 max-w-[200px] truncate">
         <option value="">— manual —</option>
         ${pathVarOptions}
@@ -1104,8 +1108,8 @@ function renderPathField(step, field, stepIndex) {
     <input type="text" value="${esc(computed ?? val)}" ${computed !== null ? 'readonly' : ''}
       data-step="${step.id}" data-field="${field.name}"
       class="${computed !== null ? 'linked-input' : 'manual-input'} w-full bg-slate-${computed !== null ? '900' : '700'} text-slate-${computed !== null ? '400' : '200'} text-xs rounded px-2 py-1.5 border border-slate-${computed !== null ? '700' : '600'} focus:outline-none focus:border-blue-500 font-mono"
-      ${computed !== null ? '' : `oninput="onPathFieldInput(this,${step.id},'${field.name}',this.value)" onkeydown="pathPickerKeydown(event)" onchange="promotePathToPathVar(${step.id},'${field.name}',this.value)"`} />
-    ${computed !== null ? `<input type="text" value="${esc(val)}" data-step="${step.id}" data-field="${field.name}" class="manual-input hidden w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono" oninput="onPathFieldInput(this,${step.id},'${field.name}',this.value)" onkeydown="pathPickerKeydown(event)" onchange="promotePathToPathVar(${step.id},'${field.name}',this.value)" />` : ''}
+      ${computed !== null ? '' : `oninput="onPathFieldInput(this,'${step.id}','${field.name}',this.value)" onkeydown="pathPickerKeydown(event)" onchange="promotePathToPathVar('${step.id}','${field.name}',this.value)"`} />
+    ${computed !== null ? `<input type="text" value="${esc(val)}" data-step="${step.id}" data-field="${field.name}" class="manual-input hidden w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono" oninput="onPathFieldInput(this,'${step.id}','${field.name}',this.value)" onkeydown="pathPickerKeydown(event)" onchange="promotePathToPathVar('${step.id}','${field.name}',this.value)" />` : ''}
   </div>`
 }
 
@@ -1200,7 +1204,9 @@ function toYamlStr() {
   for (const pv of paths) pathsObj[pv.id] = { label: pv.label, value: pv.value }
   const data = {
     paths: pathsObj,
-    steps: filledSteps.map(s => ({ command: s.command, params: buildParams(s) })),
+    // Each step ships its stable string ID so { linkedTo: stepN, output: ... }
+    // links remain valid across save/load cycles.
+    steps: filledSteps.map(s => ({ id: s.id, command: s.command, params: buildParams(s) })),
   }
   return jsyaml.dump(data, { lineWidth: -1, flowLevel: 3, indent: 2 })
 }
@@ -1279,10 +1285,24 @@ function loadYamlFromText(text) {
   }
 
   steps = []
+  // Reset the step counter for this load so we don't keep bumping it across
+  // reloads. Each loaded step's explicit `id` (when present) is preserved;
+  // anything missing falls through to the generated `step{N}` form. After
+  // the loop, advance the counter past every step{N}-shaped ID we restored
+  // so future makeStep calls won't collide with a loaded ID.
+  stepCounter = 0
   for (const item of stepsData) {
     if (!item.command) throw new Error('Each step must have a "command" key')
     if (!COMMANDS[item.command]) throw new Error(`Unknown command: ${item.command}`)
     const step = makeStep(item.command)
+    if (typeof item.id === 'string' && item.id) {
+      step.id = item.id
+      const match = /^step(\d+)$/.exec(item.id)
+      if (match) {
+        const restoredCount = Number(match[1])
+        if (restoredCount > stepCounter) stepCounter = restoredCount
+      }
+    }
     const cmd = COMMANDS[item.command]
     for (const field of cmd.fields) {
       const v = item.params?.[field.name]
