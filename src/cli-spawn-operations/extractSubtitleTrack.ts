@@ -18,30 +18,30 @@ export const subtitleCodecExtension = {
   "S_TEXT/UTF8": ".srt",
 } as const satisfies Record<string, typeof subtitlesFileExtensions[number]>
 
-type ExtractSubtitlesRequiredProps = {
+type ExtractSubtitleTrackRequiredProps = {
   codec_id: keyof typeof subtitleCodecExtension
   filePath: string
   languageCode: Iso6392LanguageCode | "und"
   trackId: number
 }
 
-type ExtractSubtitlesOptionalProps = {
+type ExtractSubtitleTrackOptionalProps = {
   outputFolderName?: string
 }
 
-export type ExtractSubtitlesProps = ExtractSubtitlesRequiredProps & ExtractSubtitlesOptionalProps
+export type ExtractSubtitleTrackProps = ExtractSubtitleTrackRequiredProps & ExtractSubtitleTrackOptionalProps
 
-export const extractSubtitlesDefaultProps = {
+export const extractSubtitleTrackDefaultProps = {
   outputFolderName: EXTRACTED_SUBTITLES_FOLDER_NAME,
-} satisfies ExtractSubtitlesOptionalProps
+} satisfies ExtractSubtitleTrackOptionalProps
 
-export const extractSubtitles = ({
+export const extractSubtitleTrack = ({
   codec_id,
   filePath,
   languageCode,
-  outputFolderName = extractSubtitlesDefaultProps.outputFolderName,
+  outputFolderName = extractSubtitleTrackDefaultProps.outputFolderName,
   trackId,
-}: ExtractSubtitlesProps) => (
+}: ExtractSubtitleTrackProps) => (
   of(
     addFolderNameBeforeFilename({
       filePath,

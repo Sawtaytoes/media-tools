@@ -1,11 +1,6 @@
-// @deprecated — `copyOutSubtitles` was renamed to `extractSubtitles`.
-// This shim keeps the old CLI invocation working (with a deprecation
-// warning) so existing scripts don't break. Remove once those scripts
-// have migrated.
+﻿import type { Argv, CommandBuilder, CommandModule } from "yargs"
 
-import type { Argv, CommandBuilder, CommandModule } from "yargs"
-
-import { copyOutSubtitles } from "../app-commands/copyOutSubtitles.js"
+import { extractSubtitles } from "../app-commands/extractSubtitles.js"
 import { subscribeCli } from "../tools/subscribeCli.js"
 import {
   iso6392LanguageCodes,
@@ -17,8 +12,8 @@ type InferArgvOptions<T> = T extends Argv<infer U> ? U : never
 const builder = (yargs: Argv) => (
   yargs
   .example(
-    "$0 copyOutSubtitles \"~/anime/Zegapain\" -r",
-    "Deprecated: use 'extractSubtitles'. Recursively copies subtitle tracks into a separate folder alongside each video file.",
+    "$0 extractSubtitles \"~/anime/Zegapain\" -r",
+    "Recursively looks through all folders in '~/anime/Zegapain' and copies out subtitles tracks into a separate folder.",
   )
   .positional(
     "sourcePath",
@@ -53,17 +48,26 @@ const builder = (yargs: Argv) => (
 
 type Args = InferArgvOptions<ReturnType<typeof builder>>
 
-export const copyOutSubtitlesCommand: CommandModule<{}, Args> = {
-  command: "copyOutSubtitles <sourcePath>",
-  describe: "[DEPRECATED — use 'extractSubtitles'] Extract subtitle tracks into separate files alongside each video file.",
+export const extractSubtitlesCommand: CommandModule<{}, Args> = {
+  command: "extractSubtitles <sourcePath>",
+  describe: "Extract subtitle tracks into separate files alongside each video file.",
 
   builder: builder as CommandBuilder<{}, Args>,
 
   handler: (argv) => {
-    copyOutSubtitles({
-      isRecursive: argv.isRecursive,
-      sourcePath: argv.sourcePath,
-      subtitlesLanguage: argv.subtitlesLanguage as Iso6392LanguageCode,
+    extractSubtitles({
+      isRecursive: (
+        argv
+        .isRecursive
+      ),
+      sourcePath: (
+        argv
+        .sourcePath
+      ),
+      subtitlesLanguage: (
+        argv
+        .subtitlesLanguage as Iso6392LanguageCode
+      ),
     })
     .subscribe(subscribeCli())
   },

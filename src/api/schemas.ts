@@ -42,11 +42,14 @@ export const moveFilesRequestSchema = z.object({
   destinationPath: z.string().describe("Destination directory path"),
 })
 
-export const copyOutSubtitlesRequestSchema = z.object({
+export const extractSubtitlesRequestSchema = z.object({
   sourcePath: z.string().describe("Source directory path"),
   isRecursive: z.boolean().default(false).describe("Search recursively in subdirectories"),
   subtitlesLanguage: z.enum(iso6392LanguageCodes).optional().describe("Filter subtitles by language"),
 })
+
+/** @deprecated Renamed to {@link extractSubtitlesRequestSchema}. Kept as an alias so existing callers don't break. */
+export const copyOutSubtitlesRequestSchema = extractSubtitlesRequestSchema
 
 export const getAudioOffsetsRequestSchema = z.object({
   sourceFilesPath: z.string().describe("Path to source audio files"),

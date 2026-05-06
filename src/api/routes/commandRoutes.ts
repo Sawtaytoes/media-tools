@@ -7,7 +7,8 @@ import { changeTrackLanguages } from "../../app-commands/changeTrackLanguages.js
 import { computeDefaultSubtitleRules } from "../../app-commands/computeDefaultSubtitleRules.js"
 import { copyFiles } from "../../app-commands/copyFiles.js"
 import { flattenOutput } from "../../app-commands/flattenOutput.js"
-import { copyOutSubtitles, copyOutSubtitlesDefaultProps } from "../../app-commands/copyOutSubtitles.js"
+import { copyOutSubtitles } from "../../app-commands/copyOutSubtitles.js"
+import { extractSubtitles, extractSubtitlesDefaultProps } from "../../app-commands/extractSubtitles.js"
 import { fixIncorrectDefaultTracks } from "../../app-commands/fixIncorrectDefaultTracks.js"
 import { getAudioOffsets, getAudioOffsetsDefaultProps } from "../../app-commands/getAudioOffsets.js"
 import { hasBetterAudio } from "../../app-commands/hasBetterAudio.js"
@@ -82,6 +83,7 @@ export const commandNames = [
   "copyFiles",
   "flattenOutput",
   "copyOutSubtitles",
+  "extractSubtitles",
   "fixIncorrectDefaultTracks",
   "getAudioOffsets",
   "hasBetterAudio",
@@ -174,10 +176,19 @@ export const commandConfigs: Record<CommandName, CommandConfig> = {
     tags: ["File Operations"],
   },
   copyOutSubtitles: {
+    // Deprecated alias for extractSubtitles — getObservable points to the
+    // shim app-command which logs a deprecation warning then delegates.
     getObservable: (body) => copyOutSubtitles({ isRecursive: body.isRecursive, sourcePath: body.sourcePath, subtitlesLanguage: body.subtitlesLanguage }),
-    outputFolderName: copyOutSubtitlesDefaultProps.outputFolderName,
+    outputFolderName: extractSubtitlesDefaultProps.outputFolderName,
     schema: schemas.copyOutSubtitlesRequestSchema,
-    summary: "Extract subtitle files from media files",
+    summary: "[DEPRECATED — use extractSubtitles] Extract subtitle tracks into separate files alongside each video file.",
+    tags: ["Subtitle Operations"],
+  },
+  extractSubtitles: {
+    getObservable: (body) => extractSubtitles({ isRecursive: body.isRecursive, sourcePath: body.sourcePath, subtitlesLanguage: body.subtitlesLanguage }),
+    outputFolderName: extractSubtitlesDefaultProps.outputFolderName,
+    schema: schemas.extractSubtitlesRequestSchema,
+    summary: "Extract subtitle tracks into separate files alongside each video file.",
     tags: ["Subtitle Operations"],
   },
   fixIncorrectDefaultTracks: {

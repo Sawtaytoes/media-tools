@@ -5,6 +5,7 @@ import { changeTrackLanguagesCommand } from "./cli-commands/changeTrackLanguages
 import { computeDefaultSubtitleRulesCommand } from "./cli-commands/computeDefaultSubtitleRulesCommand.js"
 import { copyFilesCommand } from "./cli-commands/copyFilesCommand.js"
 import { copyOutSubtitlesCommand } from "./cli-commands/copyOutSubtitlesCommand.js"
+import { extractSubtitlesCommand } from "./cli-commands/extractSubtitlesCommand.js"
 import { fixIncorrectDefaultTracksCommand } from "./cli-commands/fixIncorrectDefaultTracksCommand.js"
 import { flattenOutputCommand } from "./cli-commands/flattenOutputCommand.js"
 import { getAudioOffsetsCommand } from "./cli-commands/getAudioOffsetsCommand.js"
@@ -77,6 +78,7 @@ yargs(
 .command(computeDefaultSubtitleRulesCommand)
 .command(copyFilesCommand)
 .command(copyOutSubtitlesCommand)
+.command(extractSubtitlesCommand)
 .command(fixIncorrectDefaultTracksCommand)
 .command(flattenOutputCommand)
 .command(getAudioOffsetsCommand)

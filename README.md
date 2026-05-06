@@ -38,7 +38,8 @@ yarn media <command> --help        # options for a specific command
 |---|---|---|
 | `changeTrackLanguages` | `<sourcePath>` | Change the language tag on video, audio, or subtitle tracks. Useful when tracks were mislabelled (e.g. English subs marked as Japanese). |
 | `copyFiles` | `<sourcePath> <destinationPath>` | Copy all files from one directory into another. Does not recurse. Handy for moving processed files (e.g. from a `LANGUAGE-TRIMMED` output dir) back to the original. |
-| `copyOutSubtitles` | `<sourcePath>` | Extract subtitle tracks into separate files alongside each video file. |
+| `extractSubtitles` | `<sourcePath>` | Extract subtitle tracks into separate files alongside each video file. |
+| `copyOutSubtitles` | `<sourcePath>` | **Deprecated** — alias for `extractSubtitles`. Will be removed in a future release. |
 | `fixIncorrectDefaultTracks` | `<sourcePath>` | Set the first track of each type (video/audio/subs) as the default and unset all others. |
 | `getAudioOffsets` | `<sourceFilesPath> <destinationFilesPath>` | Print the audio offset between matching files in two directories. |
 | `hasBetterAudio` | `<sourcePath>` | List files where a higher channel-count audio track is not first. |
