@@ -55,6 +55,26 @@ in module files must be removed before those modules can be used in the API.
 - Use `captureConsoleMessage` / `captureLogMessage` helpers to silence and inspect console output
 - Use `vol.fromJSON(...)` from memfs to seed the virtual filesystem
 
+### App-command tests (memfs-backed)
+
+App commands return Observables and write through `node:fs/promises`, so the unit-test pattern is: seed the virtual filesystem with `vol.fromJSON`, run the observable to completion via `firstValueFrom(... .pipe(toArray()))` (or `lastValueFrom` for the final emission), then assert filesystem state with `stat` / `readFileSync`. See `flattenOutput.test.ts` and `deleteFilesByExtension.test.ts` for the canonical shape.
+
+Errors swallowed by `catchNamedError` complete the observable as `EMPTY` rather than rejecting — assert `emissions).toEqual([])` and use `captureConsoleMessage('error', ...)` to capture the logged reason.
+
+### Hono route tests (in-process)
+
+Each sub-app (e.g. `jobRoutes`, `queryRoutes`) is an `OpenAPIHono` instance — exercise it directly with `subApp.request(url, init)`; no real HTTP server needed. See `src/api/routes/jobRoutes.test.ts` (in-memory state via `jobStore`, reset in `afterEach`) and `src/api/routes/queryRoutes.test.ts` (filesystem-backed routes seeded with `vol.fromJSON`) for examples. POST helper:
+
+```ts
+const post = (path: string, body: unknown) => subApp.request(path, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(body),
+})
+```
+
+Query routes that wrap filesystem / network calls return `{ ..., error: string | null }` at HTTP 200 instead of 500-ing — assert on `body.error`, not on `response.status`.
+
 ### Browser-driven tests (Playwright Test)
 
 - Framework: `@playwright/test`. Tests live in `e2e/*.spec.ts`.
