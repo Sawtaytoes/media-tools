@@ -14,11 +14,30 @@
   <!-- Header -->
   <div class="shrink-0 flex items-center justify-between px-4 py-3 border-b border-slate-700 bg-slate-900 z-10">
     <h1 class="font-semibold text-slate-100">Sequence Builder</h1>
-    <div class="flex items-center gap-4">
-      <button onclick="toggleLoad()" class="text-xs text-blue-400 hover:text-blue-300">Load YAML</button>
-      <button onclick="copyYaml()" id="copy-btn" class="text-xs text-blue-400 hover:text-blue-300">Copy YAML</button>
-      <button onclick="openYamlModal()" class="text-xs text-blue-400 hover:text-blue-300">View YAML</button>
-      <a href="/" class="text-xs text-slate-400 hover:text-slate-300">Jobs ↗</a>
+    <div class="flex items-center gap-2">
+      <button onclick="toggleLoad()" id="load-btn" title="Load YAML"
+        class="w-7 h-7 flex items-center justify-center rounded text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+          <path d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5" />
+          <path d="M16.5 7.5 12 3m0 0L7.5 7.5M12 3v13.5" />
+        </svg>
+      </button>
+      <button onclick="copyYaml()" id="copy-btn" title="Copy YAML"
+        class="w-7 h-7 flex items-center justify-center rounded text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+          <path d="M15.75 17.25v3a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-9a1.5 1.5 0 0 1 1.5-1.5H8.25" />
+          <rect x="8.25" y="2.25" width="12" height="15" rx="1.5" ry="1.5" />
+        </svg>
+      </button>
+      <button onclick="openYamlModal()" title="View YAML"
+        class="w-7 h-7 flex items-center justify-center rounded text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+          <path d="m17.25 6.75 4.5 5.25-4.5 5.25" />
+          <path d="m6.75 17.25-4.5-5.25 4.5-5.25" />
+          <path d="m14.25 4.5-4.5 15" />
+        </svg>
+      </button>
+      <a href="/" class="ml-2 text-xs text-slate-400 hover:text-slate-300">Jobs ↗</a>
     </div>
   </div>
 
@@ -992,12 +1011,20 @@ function updateYaml() {
 
 function copyYaml() {
   navigator.clipboard.writeText(toYamlStr()).then(() => {
-    for (const id of ['copy-btn', 'modal-copy-btn']) {
-      const btn = document.getElementById(id)
-      if (!btn) continue
-      const original = btn.textContent
-      btn.textContent = 'Copied!'
-      setTimeout(() => { btn.textContent = original }, 2000)
+    // Header icon button: flash a green ring without touching its SVG content.
+    const headerBtn = document.getElementById('copy-btn')
+    if (headerBtn) {
+      headerBtn.classList.add('!text-emerald-400', '!border-emerald-500')
+      setTimeout(() => {
+        headerBtn.classList.remove('!text-emerald-400', '!border-emerald-500')
+      }, 2000)
+    }
+    // Modal "Copy" button stays text-only; swap its label briefly.
+    const modalBtn = document.getElementById('modal-copy-btn')
+    if (modalBtn) {
+      const original = modalBtn.textContent
+      modalBtn.textContent = 'Copied!'
+      setTimeout(() => { modalBtn.textContent = original }, 2000)
     }
   })
 }
