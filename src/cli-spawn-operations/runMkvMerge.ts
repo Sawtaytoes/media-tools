@@ -12,6 +12,7 @@ import {
 
 import { mkvMergePath } from "../tools/appPaths.js";
 import { catchNamedError } from "../tools/catchNamedError.js"
+import { createTtyAffordances } from "../tools/createTtyAffordances.js";
 import { logWarning } from "../tools/logMessage.js";
 
 const cliProgressBar = (
@@ -79,6 +80,8 @@ export const runMkvMerge = ({
         commandArgs,
       )
     )
+
+    const tty = createTtyAffordances(childProcess)
 
     let hasStarted = false
     // Same shape of bug we fixed in runMkvExtract / getMkvInfo: mkvmerge
@@ -164,35 +167,18 @@ export const runMkvMerge = ({
       (
         code,
       ) => {
-        (
-          (
-            code
-            === null
-          )
-          ? (
-            unlink(
-              outputFilePath
-            )
-            .then(() => {
-              logWarning(
-                "mkvmerge",
-                "Process canceled by user.",
-              )
+        if (code === null) {
+          unlink(outputFilePath)
+          .then(() => {
+            logWarning("mkvmerge", "Process canceled by user.")
 
-              setTimeout(
-                () => {
-                  process
-                  .exit()
-                },
-                500,
-              )
-            })
-          )
-          : (
-            Promise
-            .resolve()
-          )
-        )
+            if (tty.useTtyAffordances) {
+              setTimeout(() => {
+                process.exit()
+              }, 500)
+            }
+          })
+        }
       },
     )
 
@@ -203,7 +189,7 @@ export const runMkvMerge = ({
         code,
       ) => {
         cliProgressBar.stop()
-        process.stdin.setRawMode(false)
+        tty.detach()
 
         if (code === 0) {
           observer.next(outputFilePath)
@@ -222,50 +208,6 @@ export const runMkvMerge = ({
       },
     )
 
-    process
-    .stdin
-    .setRawMode(
-      true
-    )
-
-    process
-    .stdin
-    .resume()
-
-    process
-    .stdin
-    .setEncoding(
-      'utf8'
-    )
-
-    process
-    .stdin
-    .on(
-      'data',
-      (
-        key,
-      ) => {
-        // [CTRL][C]
-        if (
-          (
-            key
-            .toString()
-          )
-          === "\u0003"
-        ) {
-          childProcess
-          .kill()
-        }
-        else {
-          process
-          .stdout
-          .write(
-            key
-            .toString()
-          )
-        }
-      }
-    )
   })
   .pipe(
     catchNamedError(

@@ -8,6 +8,7 @@ import {
 
 import { mkvMergePath } from "./appPaths.js";
 import { catchNamedError } from "./catchNamedError.js"
+import { createTtyAffordances } from "./createTtyAffordances.js";
 import { Iso6392LanguageCode } from "./iso6392LanguageCodes.js";
 
 export type Chapter = {
@@ -120,6 +121,8 @@ export const getMkvInfo = (
       )
     )
 
+    const tty = createTtyAffordances(childProcess)
+
     const chunks: Uint8Array[] = []
     // mkvmerge writes informational lines to stderr in some builds (e.g.
     // "Warning: …" on unusual-but-valid container quirks). Treating any
@@ -161,25 +164,11 @@ export const getMkvInfo = (
       (
         code,
       ) => {
-        (
-          (
-            code
-            === null
-          )
-          ? (
-            setTimeout(
-              () => {
-                process
-                .exit()
-              },
-              500,
-            )
-          )
-          : (
-            Promise
-            .resolve()
-          )
-        )
+        if (code === null && tty.useTtyAffordances) {
+          setTimeout(() => {
+            process.exit()
+          }, 500)
+        }
       },
     )
 
@@ -189,11 +178,7 @@ export const getMkvInfo = (
       (
         code,
       ) => {
-        process
-        .stdin
-        .setRawMode(
-          false
-        )
+        tty.detach()
 
         if (code === 0) {
           const bufferOutput = (
@@ -229,49 +214,6 @@ export const getMkvInfo = (
       },
     )
 
-    process
-    .stdin
-    .setRawMode(
-      true
-    )
-
-    process
-    .stdin
-    .resume()
-
-    process
-    .stdin
-    .setEncoding(
-      'utf8'
-    )
-
-    process
-    .stdin
-    .on(
-      'data',
-      (
-        key,
-      ) => {
-        // [CTRL][C]
-        if (
-          (
-            key
-            .toString()
-          )
-          === "\u0003"
-        ) {
-          childProcess
-          .kill()
-        }
-
-        process
-        .stdout
-        .write(
-          key
-          .toString()
-        )
-      }
-    )
   })
   .pipe(
     map((

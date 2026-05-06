@@ -6,6 +6,7 @@ import {
 
 import { audioOffsetFinderPath } from "../tools/appPaths.js";
 import { catchNamedError } from "../tools/catchNamedError.js"
+import { createTtyAffordances } from "../tools/createTtyAffordances.js";
 import { logWarning } from "../tools/logMessage.js";
 
 export const getOffsetFromAudioOffsetOutput = (
@@ -68,6 +69,8 @@ export const runAudioOffsetFinder = ({
       )
     )
 
+    const tty = createTtyAffordances(childProcess)
+
     let outputData: string = ""
 
     const appendOutputData = (
@@ -125,40 +128,15 @@ export const runAudioOffsetFinder = ({
       (
         code,
       ) => {
-        (
-          (
-            code
-            === null
-          )
-          ? (
-            Promise
-            .resolve()
-            .then(() => {
-              logWarning(
-                "audio-offset-finder",
-                "Process canceled by user.",
-              )
+        if (code === null) {
+          logWarning("audio-offset-finder", "Process canceled by user.")
 
-              return (
-                Promise
-                .reject()
-                .finally(() => {
-                  setTimeout(
-                    () => {
-                      process
-                      .exit()
-                    },
-                    500,
-                  )
-                })
-              )
-            })
-          )
-          : (
-            Promise
-            .resolve()
-          )
-        )
+          if (tty.useTtyAffordances) {
+            setTimeout(() => {
+              process.exit()
+            }, 500)
+          }
+        }
       },
     )
 
@@ -168,7 +146,7 @@ export const runAudioOffsetFinder = ({
       (
         code,
       ) => {
-        process.stdin.setRawMode(false)
+        tty.detach()
 
         childProcess.stderr.unpipe()
         childProcess.stderr.destroy()
@@ -194,48 +172,6 @@ export const runAudioOffsetFinder = ({
       },
     )
 
-    process
-    .stdin
-    .setRawMode(
-      true
-    )
-
-    process
-    .stdin
-    .resume()
-
-    process
-    .stdin
-    .setEncoding(
-      'utf8'
-    )
-
-    process
-    .stdin
-    .on(
-      'data',
-      (
-        key,
-      ) => {
-        // [CTRL][C]
-        if (
-          (
-            key
-            .toString()
-          )
-          === "\u0003"
-        ) {
-          childProcess
-          .kill()
-        }
-
-        process
-        .stdout
-        .write(
-          key
-        )
-      }
-    )
   })
   .pipe(
     catchNamedError(

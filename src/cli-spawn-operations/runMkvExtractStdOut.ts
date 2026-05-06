@@ -7,6 +7,7 @@ import {
 
 import { mkvExtractPath } from "../tools/appPaths.js";
 import { catchNamedError } from "../tools/catchNamedError.js"
+import { createTtyAffordances } from "../tools/createTtyAffordances.js";
 import { logWarning } from "../tools/logMessage.js";
 
 export const runMkvExtractStdOut = ({
@@ -44,6 +45,8 @@ export const runMkvExtractStdOut = ({
         commandArgs,
       )
     )
+
+    const tty = createTtyAffordances(childProcess)
 
     // Same shape of bug we fixed in runMkvExtract / getMkvInfo: buffer
     // stderr (mkvextract's "Extracting track …" banners and benign
@@ -85,22 +88,14 @@ export const runMkvExtractStdOut = ({
       (
         code,
       ) => {
-        if (
-          code
-          === null
-        ) {
-          logWarning(
-            "mkvextract",
-            "Process canceled by user.",
-          )
+        if (code === null) {
+          logWarning("mkvextract", "Process canceled by user.")
 
-          setTimeout(
-            () => {
-              process
-              .exit()
-            },
-            500,
-          )
+          if (tty.useTtyAffordances) {
+            setTimeout(() => {
+              process.exit()
+            }, 500)
+          }
         }
       },
     )
@@ -111,7 +106,7 @@ export const runMkvExtractStdOut = ({
       (
         code,
       ) => {
-        process.stdin.setRawMode(false)
+        tty.detach()
 
         if (code === 0 || code === null) {
           // code === null is the user-cancel path the 'close' handler resolves;
@@ -126,49 +121,6 @@ export const runMkvExtractStdOut = ({
       },
     )
 
-    process
-    .stdin
-    .setRawMode(
-      true
-    )
-
-    process
-    .stdin
-    .resume()
-
-    process
-    .stdin
-    .setEncoding(
-      'utf8'
-    )
-
-    process
-    .stdin
-    .on(
-      'data',
-      (
-        key,
-      ) => {
-        // [CTRL][C]
-        if (
-          (
-            key
-            .toString()
-          )
-          === "\u0003"
-        ) {
-          childProcess
-          .kill()
-        }
-
-        process
-        .stdout
-        .write(
-          key
-          .toString()
-        )
-      }
-    )
   })
   .pipe(
     catchNamedError(

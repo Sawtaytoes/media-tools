@@ -7,6 +7,7 @@ import {
 
 import { mkvPropEditPath } from "../tools/appPaths.js";
 import { catchNamedError } from "../tools/catchNamedError.js"
+import { createTtyAffordances } from "../tools/createTtyAffordances.js";
 import { logWarning } from "../tools/logMessage.js";
 
 export const runMkvPropEdit = ({
@@ -48,6 +49,8 @@ export const runMkvPropEdit = ({
       )
     )
 
+    const tty = createTtyAffordances(childProcess)
+
     // Same shape of bug we fixed in runMkvExtract / getMkvInfo: buffer
     // stderr instead of erroring on the first byte; surface only on a
     // real non-zero exit.
@@ -87,40 +90,15 @@ export const runMkvPropEdit = ({
       (
         code,
       ) => {
-        (
-          (
-            code
-            === null
-          )
-          ? (
-            Promise
-            .resolve()
-            .then(() => {
-              logWarning(
-                "mkvpropedit",
-                "Process canceled by user.",
-              )
+        if (code === null) {
+          logWarning("mkvpropedit", "Process canceled by user.")
 
-              return (
-                Promise
-                .reject()
-                .finally(() => {
-                  setTimeout(
-                    () => {
-                      process
-                      .exit()
-                    },
-                    500,
-                  )
-                })
-              )
-            })
-          )
-          : (
-            Promise
-            .resolve()
-          )
-        )
+          if (tty.useTtyAffordances) {
+            setTimeout(() => {
+              process.exit()
+            }, 500)
+          }
+        }
       },
     )
 
@@ -130,7 +108,7 @@ export const runMkvPropEdit = ({
       (
         code,
       ) => {
-        process.stdin.setRawMode(false)
+        tty.detach()
 
         if (code === 0) {
           observer.next(filePath)
@@ -149,48 +127,6 @@ export const runMkvPropEdit = ({
       },
     )
 
-    process
-    .stdin
-    .setRawMode(
-      true
-    )
-
-    process
-    .stdin
-    .resume()
-
-    process
-    .stdin
-    .setEncoding(
-      'utf8'
-    )
-
-    process
-    .stdin
-    .on(
-      'data',
-      (
-        key,
-      ) => {
-        // [CTRL][C]
-        if (
-          (
-            key
-            .toString()
-          )
-          === "\u0003"
-        ) {
-          childProcess
-          .kill()
-        }
-
-        process
-        .stdout
-        .write(
-          key
-        )
-      }
-    )
   })
   .pipe(
     catchNamedError(
