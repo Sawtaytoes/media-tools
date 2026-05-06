@@ -37,9 +37,13 @@
         class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium">Add Step</button>
       <button onclick="addPath()" title="Add a path variable"
         class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium">Add Path</button>
-      <button id="run-btn" onclick="runSequence()" title="Run the entire sequence"
+      <button id="run-btn" onclick="runSequence()" title="Run the entire sequence (client-side: each step posts to /commands and tails its job)"
         class="text-xs bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white px-3 py-1.5 rounded font-medium">
         ▶ Run Sequence
+      </button>
+      <button id="run-api-btn" onclick="runViaApi()" title="POST the YAML to /sequences/run as one umbrella job (server-side orchestration)"
+        class="text-xs bg-sky-700 hover:bg-sky-600 disabled:opacity-40 text-white px-3 py-1.5 rounded font-medium">
+        ▶ Run via API
       </button>
       <span class="w-px h-6 bg-slate-700 mx-1"></span>
       <button onclick="toggleLoad()" id="load-btn" title="Load YAML"
@@ -100,6 +104,24 @@
       </div>
     </div>
     <pre id="yaml-out" class="flex-1 overflow-auto p-4 text-xs text-emerald-400 font-mono leading-relaxed whitespace-pre"></pre>
+  </div>
+</div>
+
+<!-- Run-via-API modal: shows live log stream of the umbrella sequence job -->
+<div id="api-run-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70" onclick="closeApiRunModal(event)">
+  <div class="bg-slate-900 border border-slate-700 rounded-xl flex flex-col" style="width:min(90vw,800px);max-height:85vh" onclick="event.stopPropagation()">
+    <div class="shrink-0 flex items-center justify-between px-4 py-2 border-b border-slate-700">
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-medium text-slate-400">Run via API</span>
+        <span id="api-run-status" class="text-xs px-2 py-0.5 rounded font-mono bg-slate-700 text-slate-300">pending</span>
+        <span id="api-run-jobid" class="text-xs text-slate-500 font-mono"></span>
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="copyApiRunLogs()" id="api-run-copy-btn" class="text-xs text-blue-400 hover:text-blue-300">Copy logs</button>
+        <button onclick="closeApiRunModal()" class="text-xs text-slate-400 hover:text-slate-200">✕ Close</button>
+      </div>
+    </div>
+    <pre id="api-run-logs" class="flex-1 overflow-auto p-4 text-xs text-slate-300 font-mono leading-relaxed whitespace-pre-wrap"></pre>
   </div>
 </div>
 
@@ -1377,7 +1399,10 @@ function closeYamlModal(event) {
 }
 
 document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') closeYamlModal()
+  if (event.key === 'Escape') {
+    closeYamlModal()
+    closeApiRunModal()
+  }
 })
 
 // ─── Load YAML ────────────────────────────────────────────────────────────────
@@ -1553,6 +1578,117 @@ async function runSequence() {
 
   running = false
   document.getElementById('run-btn').disabled = false
+}
+
+// Server-side orchestration: POSTs the same YAML the View YAML modal
+// shows to /sequences/run, then tails the umbrella job's SSE stream
+// inside a modal. Coexists with runSequence — that path keeps the
+// per-step UI on each card; this one trades that for a single
+// unified log stream.
+async function runViaApi() {
+  const yaml = toYamlStr()
+  if (yaml === '# No steps yet') return
+
+  const runApiBtn = document.getElementById('run-api-btn')
+  runApiBtn.disabled = true
+
+  let response
+  try {
+    response = await fetch('/sequences/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ yaml }),
+    })
+  } catch (error) {
+    runApiBtn.disabled = false
+    openApiRunModal({ jobId: null, status: 'failed' })
+    document.getElementById('api-run-logs').textContent = `Network error: ${error?.message ?? error}`
+    return
+  }
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '(no body)')
+    runApiBtn.disabled = false
+    openApiRunModal({ jobId: null, status: 'failed' })
+    document.getElementById('api-run-logs').textContent = `HTTP ${response.status}: ${errorText}`
+    return
+  }
+
+  const { jobId } = await response.json()
+  openApiRunModal({ jobId, status: 'running' })
+  tailApiRunLogs(jobId, () => { runApiBtn.disabled = false })
+}
+
+let apiRunEventSource = null
+
+function openApiRunModal({ jobId, status }) {
+  document.getElementById('api-run-jobid').textContent = jobId ? `job ${jobId}` : ''
+  setApiRunStatus(status)
+  document.getElementById('api-run-logs').textContent = ''
+  document.getElementById('api-run-modal').classList.remove('hidden')
+}
+
+function closeApiRunModal(event) {
+  if (event && event.target !== document.getElementById('api-run-modal')) return
+  document.getElementById('api-run-modal').classList.add('hidden')
+  if (apiRunEventSource) {
+    apiRunEventSource.close()
+    apiRunEventSource = null
+  }
+  document.getElementById('run-api-btn').disabled = false
+}
+
+function setApiRunStatus(status) {
+  const el = document.getElementById('api-run-status')
+  el.textContent = status
+  // Color-code so the user can see the umbrella job's outcome at a glance.
+  el.className = 'text-xs px-2 py-0.5 rounded font-mono ' + ({
+    pending:   'bg-slate-700 text-slate-300',
+    running:   'bg-amber-700 text-amber-100',
+    completed: 'bg-emerald-700 text-emerald-100',
+    failed:    'bg-red-700 text-red-100',
+  }[status] ?? 'bg-slate-700 text-slate-300')
+}
+
+function tailApiRunLogs(jobId, onDone) {
+  if (apiRunEventSource) apiRunEventSource.close()
+  const logsEl = document.getElementById('api-run-logs')
+
+  apiRunEventSource = new EventSource(`/jobs/${jobId}/logs`)
+  apiRunEventSource.onmessage = (event) => {
+    let data
+    try { data = JSON.parse(event.data) } catch { return }
+    if (data.line) {
+      logsEl.textContent += (logsEl.textContent ? '\n' : '') + data.line
+      logsEl.scrollTop = logsEl.scrollHeight
+      return
+    }
+    if (data.done) {
+      setApiRunStatus(data.status || 'completed')
+      apiRunEventSource.close()
+      apiRunEventSource = null
+      onDone?.()
+    }
+  }
+  apiRunEventSource.onerror = () => {
+    setApiRunStatus('failed')
+    apiRunEventSource?.close()
+    apiRunEventSource = null
+    onDone?.()
+  }
+}
+
+function copyApiRunLogs() {
+  const text = document.getElementById('api-run-logs').textContent || ''
+  const btn = document.getElementById('api-run-copy-btn')
+  const original = btn.textContent
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ Copied'
+    setTimeout(() => { btn.textContent = original }, 1200)
+  }).catch(() => {
+    btn.textContent = '✗ Failed'
+    setTimeout(() => { btn.textContent = original }, 1200)
+  })
 }
 
 async function runStep(stepId) {

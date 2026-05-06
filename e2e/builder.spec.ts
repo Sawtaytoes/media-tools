@@ -217,6 +217,58 @@ test.describe("Sequence Builder", () => {
     await expect(page.locator('[id^="step-"]').first()).toContainText("copyFiles")
   })
 
+  test("Run via API posts the YAML to /sequences/run, opens the modal, and reflects the umbrella job's status", async ({ page }) => {
+    // Stub the POST so the test doesn't need a real subscriber filesystem.
+    await page.route("**/sequences/run", async (route) => {
+      const request = route.request()
+      const body = JSON.parse(request.postData() ?? "{}")
+      // Confirm the YAML actually shipped: we're testing that the button
+      // wires the current builder state into the request body.
+      expect(typeof body.yaml).toBe("string")
+      expect(body.yaml).toContain("command: copyFiles")
+      await route.fulfill({
+        status: 202,
+        contentType: "application/json",
+        body: JSON.stringify({ jobId: "test-umbrella-id", logsUrl: "/jobs/test-umbrella-id/logs" }),
+      })
+    })
+
+    // Stub the SSE stream — emit one log line, then a done event.
+    await page.route("**/jobs/test-umbrella-id/logs", async (route) => {
+      const sseBody = [
+        `data: ${JSON.stringify({ line: "[SEQUENCE] Step copy: starting." })}\n\n`,
+        `data: ${JSON.stringify({ line: "[SEQUENCE] Step copy: completed." })}\n\n`,
+        `data: ${JSON.stringify({ done: true, status: "completed", results: [], outputs: null })}\n\n`,
+      ].join("")
+      await route.fulfill({
+        status: 200,
+        contentType: "text/event-stream",
+        headers: { "Cache-Control": "no-cache", "Connection": "keep-alive" },
+        body: sseBody,
+      })
+    })
+
+    // Build a one-step sequence so the YAML body has content to ship.
+    await page.getByRole("button", { name: "Add Step" }).click()
+    await page.getByText("— pick a command —").click()
+    await page.getByPlaceholder("Search commands…").fill("copyFiles")
+    await page.getByRole("button", { name: /^copyFiles\s/ }).click()
+
+    await page.getByRole("button", { name: "▶ Run via API" }).click()
+
+    // Modal opens with the umbrella job id surfaced.
+    const modal = page.locator("#api-run-modal")
+    await expect(modal).toBeVisible()
+    await expect(page.locator("#api-run-jobid")).toContainText("test-umbrella-id")
+
+    // Logs land in the panel as the SSE stream replays.
+    await expect(page.locator("#api-run-logs")).toContainText("Step copy: starting.")
+    await expect(page.locator("#api-run-logs")).toContainText("Step copy: completed.")
+
+    // Status badge flips to completed once the done event arrives.
+    await expect(page.locator("#api-run-status")).toHaveText("completed")
+  })
+
   test("auto-linked step-output renders as { linkedTo, output: folder } in the YAML and survives reload", async ({ page }) => {
     // Two consecutive steps — when the second is given a command, its
     // main source field auto-links to the previous step's folder output.
