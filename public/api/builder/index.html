@@ -77,9 +77,6 @@
 
   <!-- Footer toolbar -->
   <div class="shrink-0 flex flex-wrap items-center gap-2 px-4 py-3 border-t border-slate-700 bg-slate-900">
-    <select id="cmd-pick" onchange="addPicked()" class="flex-1 min-w-0 bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500">
-      <option value="">— pick command —</option>
-    </select>
     <button onclick="addPicked()" class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium shrink-0">+ Add</button>
     <button onclick="addPath()" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded font-medium shrink-0" title="Add a path variable">+ Path</button>
     <button id="run-btn" onclick="runSequence()"
@@ -556,7 +553,10 @@ function getLinkedValue(step, fieldName) {
 
 // ─── Step CRUD ────────────────────────────────────────────────────────────────
 
-function makeStep(command) {
+function makeStep(command = null) {
+  if (!command) {
+    return { id: ++stepCounter, command: null, params: {}, links: {}, status: null, error: null }
+  }
   const cmd = COMMANDS[command]
   const params = {}
   for (const f of cmd.fields) if (f.default !== undefined) params[f.name] = f.default
@@ -574,42 +574,17 @@ function renderAllAnimated() {
   }
 }
 
+// Both add paths drop in an empty step (command: null). The user picks
+// the command from the per-step dropdown; auto-linking the main source
+// field to the previous step's output happens in changeCommand at that
+// moment.
 function addPicked() {
-  const sel = document.getElementById('cmd-pick')
-  if (!sel.value) return
-  const step = makeStep(sel.value)
-  const msf = mainSrcField(sel.value)
-  if (msf) {
-    const prevStep = steps.at(-1)
-    if (prevStep) {
-      step.links[msf] = prevStep.id
-    } else {
-      step.links[msf] = paths[0].id
-    }
-  }
-  steps.push(step)
+  steps.push(makeStep(null))
   renderAllAnimated()
 }
 
 function insertAt(index) {
-  const sel = document.getElementById('cmd-pick')
-  if (!sel.value) {
-    sel.classList.add('ring-2', 'ring-red-500')
-    sel.focus()
-    setTimeout(() => sel.classList.remove('ring-2', 'ring-red-500'), 800)
-    return
-  }
-  const step = makeStep(sel.value)
-  const msf = mainSrcField(sel.value)
-  if (msf) {
-    const prevStep = steps[index - 1]
-    if (prevStep) {
-      step.links[msf] = prevStep.id
-    } else {
-      step.links[msf] = paths[0].id
-    }
-  }
-  steps.splice(index, 0, step)
+  steps.splice(index, 0, makeStep(null))
   renderAllAnimated()
 }
 
@@ -802,17 +777,28 @@ function renderAll() {
 }
 
 function renderStep(step, index) {
-  const cmd = COMMANDS[step.command]
+  const cmd = step.command ? COMMANDS[step.command] : null
   const statusBadge = step.status ? renderStatusBadge(step.status) : ''
   const isFirst = index === 0, isLast = index === steps.length - 1
 
-  const cmdOptions = TAG_ORDER.map(tag => {
+  const placeholderOption = step.command === null
+    ? '<option value="" selected disabled>— pick a command —</option>'
+    : ''
+  const groupOptions = TAG_ORDER.map(tag => {
     const cmds = Object.entries(COMMANDS).filter(([,c]) => c.tag === tag)
     if (!cmds.length) return ''
     return `<optgroup label="${esc(tag)}">${cmds.map(([name,c]) =>
       `<option value="${esc(name)}"${step.command === name ? ' selected' : ''}>${esc(name)}</option>`
     ).join('')}</optgroup>`
   }).join('')
+  const cmdOptions = placeholderOption + groupOptions
+
+  const body = cmd
+    ? `<p class="text-xs text-slate-500 mb-2">${esc(cmd.summary)}</p>
+       ${cmd.outputFolderName ? `<p class="text-xs text-amber-500/80 mb-2">→ outputs to <code class="text-amber-400 bg-slate-900 px-1 rounded">${esc(cmd.outputFolderName)}/</code> subfolder</p>` : ''}
+       ${step.error ? `<p class="text-xs text-red-400 bg-red-950/40 rounded px-2 py-1 mb-2 font-mono">${esc(step.error)}</p>` : ''}
+       <div class="space-y-2">${renderFields(step, index)}</div>`
+    : `<p class="text-xs text-slate-500 italic">No command selected — choose one from the dropdown above.</p>`
 
   return `
 <div id="step-${step.id}" style="view-transition-name: step-${step.id}" class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
@@ -833,10 +819,7 @@ function renderStep(step, index) {
     </div>
   </div>
   <div class="px-3 py-2">
-    <p class="text-xs text-slate-500 mb-2">${esc(cmd.summary)}</p>
-    ${cmd.outputFolderName ? `<p class="text-xs text-amber-500/80 mb-2">→ outputs to <code class="text-amber-400 bg-slate-900 px-1 rounded">${esc(cmd.outputFolderName)}/</code> subfolder</p>` : ''}
-    ${step.error ? `<p class="text-xs text-red-400 bg-red-950/40 rounded px-2 py-1 mb-2 font-mono">${esc(step.error)}</p>` : ''}
-    <div class="space-y-2">${renderFields(step, index)}</div>
+    ${body}
   </div>
 </div>`
 }
@@ -977,8 +960,10 @@ function renderPathField(step, field, stepIndex) {
 }
 
 function changeCommand(id, command) {
+  if (!command) return
   const step = steps.find(s => s.id === id)
   if (!step) return
+  const wasEmpty = step.command === null
   step.command = command
   step.params = {}
   step.links = {}
@@ -986,6 +971,20 @@ function changeCommand(id, command) {
   step.error = null
   const cmd = COMMANDS[command]
   for (const f of cmd.fields) if (f.default !== undefined) step.params[f.name] = f.default
+  // Auto-link the main source field on the empty -> set transition,
+  // matching the auto-link addPicked used to do at creation time.
+  if (wasEmpty) {
+    const msf = mainSrcField(command)
+    if (msf) {
+      const stepIndex = steps.findIndex(s => s.id === id)
+      const prevStep = stepIndex > 0 ? steps[stepIndex - 1] : null
+      if (prevStep && prevStep.command) {
+        step.links[msf] = prevStep.id
+      } else if (paths.length) {
+        step.links[msf] = paths[0].id
+      }
+    }
+  }
   renderAll()
 }
 
@@ -1043,13 +1042,14 @@ function buildParams(step, { resolveLinks = false } = {}) {
 }
 
 function toYamlStr() {
-  const hasContent = steps.length || paths.some(p => p.value)
+  const filledSteps = steps.filter(step => step.command !== null)
+  const hasContent = filledSteps.length || paths.some(p => p.value)
   if (!hasContent) return '# No steps yet'
   const pathsObj = {}
   for (const pv of paths) pathsObj[pv.id] = { label: pv.label, value: pv.value }
   const data = {
     paths: pathsObj,
-    steps: steps.map(s => ({ command: s.command, params: buildParams(s) })),
+    steps: filledSteps.map(s => ({ command: s.command, params: buildParams(s) })),
   }
   return jsyaml.dump(data, { lineWidth: -1, flowLevel: 3, indent: 2 })
 }
@@ -1175,19 +1175,20 @@ function loadYaml() {
 // ─── Run sequence ─────────────────────────────────────────────────────────────
 
 async function runSequence() {
-  if (running || !steps.length) return
+  const runnableSteps = steps.filter(step => step.command !== null)
+  if (running || !runnableSteps.length) return
   running = true
   stepLogs.clear()
   document.getElementById('run-btn').disabled = true
 
-  for (const step of steps) {
+  for (const step of runnableSteps) {
     step.status = 'pending'
     step.error = null
     step.results = null
     updateStepUI(step)
   }
 
-  for (const step of steps) {
+  for (const step of runnableSteps) {
     step.status = 'running'
     updateStepUI(step)
 
@@ -1923,28 +1924,8 @@ function formatStepResults(commandName, results) {
   }
 }
 
-// ─── Add command select ───────────────────────────────────────────────────────
-
-function populateCmdPick() {
-  const sel = document.getElementById('cmd-pick')
-  for (const tag of TAG_ORDER) {
-    const cmds = Object.entries(COMMANDS).filter(([,c]) => c.tag === tag)
-    if (!cmds.length) continue
-    const grp = document.createElement('optgroup')
-    grp.label = tag
-    for (const [name] of cmds) {
-      const opt = document.createElement('option')
-      opt.value = name
-      opt.textContent = name
-      grp.appendChild(opt)
-    }
-    sel.appendChild(grp)
-  }
-}
-
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
-populateCmdPick()
 initPaths()
 restoreFromUrl()
 renderAll()
