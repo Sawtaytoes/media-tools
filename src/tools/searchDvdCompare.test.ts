@@ -1,6 +1,8 @@
 import { describe, expect, test } from "vitest"
 
 import {
+  displayDvdCompareVariant,
+  parseDvdCompareReleasesHtml,
   parseDvdCompareSearchHtml,
   parseDvdCompareTitleText,
 } from "./searchDvdCompare.js"
@@ -145,5 +147,62 @@ describe(parseDvdCompareSearchHtml.name, () => {
     .toEqual([
       { id: 5, baseTitle: "Real", variant: "DVD", year: "2005" },
     ])
+  })
+})
+
+describe(parseDvdCompareReleasesHtml.name, () => {
+  test("returns an empty array for empty HTML", () => {
+    expect(parseDvdCompareReleasesHtml(""))
+    .toEqual([])
+  })
+
+  test("parses each <input> + sibling <a> as a separate release", () => {
+    // Real-world HTML sample from a DVDCompare film page.
+    const html = `<p>
+        <input type="checkbox" name="1" checked=""> <a href="#1">Blu-ray ALL America - Arrow Films - Limited Edition <span class="disc-release-year">[2026]</span></a><br><input type="checkbox" name="2" checked=""> <a href="#2">Blu-ray ALL Canada - Arrow Films - Limited Edition <span class="disc-release-year">[2026]</span></a><br><input type="checkbox" name="3" checked=""> <a href="#3">Blu-ray ALL United Kingdom - Arrow Films - Limited Edition <span class="disc-release-year">[2026]</span></a><br>
+        <br>
+        <input type="hidden" name="sel" value="on">
+        <input type="submit" name="submit" value="Apply Filter">
+    </p>`
+
+    expect(parseDvdCompareReleasesHtml(html))
+    .toEqual([
+      { hash: "1", label: "Blu-ray ALL America - Arrow Films - Limited Edition [2026]" },
+      { hash: "2", label: "Blu-ray ALL Canada - Arrow Films - Limited Edition [2026]" },
+      { hash: "3", label: "Blu-ray ALL United Kingdom - Arrow Films - Limited Edition [2026]" },
+    ])
+  })
+
+  test("ignores hidden and submit inputs (non-numeric names)", () => {
+    const html = `
+      <input type="hidden" name="sel" value="on">
+      <input type="checkbox" name="1"> <a href="#1">Only Real Release</a>
+      <input type="submit" name="submit" value="Apply Filter">
+    `
+
+    expect(parseDvdCompareReleasesHtml(html))
+    .toEqual([
+      { hash: "1", label: "Only Real Release" },
+    ])
+  })
+
+  test("decodes HTML entities and collapses whitespace inside labels", () => {
+    const html = `<input type="checkbox" name="7"> <a href="#7">Tom &amp; Jerry  Special  Edition</a>`
+
+    expect(parseDvdCompareReleasesHtml(html))
+    .toEqual([
+      { hash: "7", label: "Tom & Jerry Special Edition" },
+    ])
+  })
+})
+
+describe(displayDvdCompareVariant.name, () => {
+  test("relabels Blu-ray 4K as UHD Blu-ray", () => {
+    expect(displayDvdCompareVariant("Blu-ray 4K")).toBe("UHD Blu-ray")
+  })
+
+  test("leaves DVD and Blu-ray untouched", () => {
+    expect(displayDvdCompareVariant("DVD")).toBe("DVD")
+    expect(displayDvdCompareVariant("Blu-ray")).toBe("Blu-ray")
   })
 })

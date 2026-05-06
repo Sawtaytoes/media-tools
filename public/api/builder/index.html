@@ -1317,7 +1317,7 @@ function renderLookupSearchView() {
     { value: 'all', label: 'All' },
     { value: 'DVD', label: 'DVD' },
     { value: 'Blu-ray', label: 'Blu-ray' },
-    { value: 'Blu-ray 4K', label: 'Blu-ray 4K' },
+    { value: 'Blu-ray 4K', label: 'UHD Blu-ray' },
   ]
   const filters = isDvdCompare
     ? `<div class="flex items-center gap-3 text-xs text-slate-400 flex-wrap">
@@ -1370,6 +1370,12 @@ function kbdBadge(index) {
     : ''
 }
 
+// User-facing label for DVDCompare format variants. The internal value
+// stays "Blu-ray 4K" because that's the literal token DVDCompare uses.
+function displayDvdCompareVariant(variant) {
+  return variant === 'Blu-ray 4K' ? 'UHD Blu-ray' : variant
+}
+
 function renderSimpleSearchResults() {
   lookupState._activeResults = lookupState.results
   lookupState._activeOptions = lookupState.results.map((_, index) => () => lookupSelectSimpleByIndex(index))
@@ -1410,7 +1416,7 @@ function renderDvdCompareSearchResults() {
   lookupState._activeOptions = groupArray.map((_, index) => () => lookupSelectGroup(index))
 
   return groupArray.map((group, index) => {
-    const variantBadges = group.variants.map(v => `<span class="text-xs font-mono px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">${esc(v.variant)}</span>`).join(' ')
+    const variantBadges = group.variants.map(v => `<span class="text-xs font-mono px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">${esc(displayDvdCompareVariant(v.variant))}</span>`).join(' ')
     return `<button onclick="lookupSelectGroup(${index})"
       class="text-left text-sm px-3 py-2 rounded-lg border border-slate-600 text-slate-200 hover:bg-blue-700 hover:border-blue-500 transition-colors flex items-center gap-2 flex-wrap">
       ${kbdBadge(index)}
@@ -1427,7 +1433,7 @@ function renderLookupVariantView() {
   const variants = group.variants.map((v, index) => `<button onclick="lookupSelectVariant(${v.id},'${esc(v.variant)}')"
     class="text-left text-sm px-3 py-2 rounded-lg border border-slate-600 text-slate-200 hover:bg-blue-700 hover:border-blue-500 transition-colors flex items-center gap-2">
     ${kbdBadge(index)}
-    <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-700 text-slate-300">${esc(v.variant)}</span>
+    <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-700 text-slate-300">${esc(displayDvdCompareVariant(v.variant))}</span>
     <span class="text-slate-400 text-xs">Film ID</span>
     <span class="font-mono text-xs">#${v.id}</span>
   </button>`).join('')
@@ -1561,7 +1567,7 @@ function lookupSelectRelease(hash, label) {
     const group = lookupState.selectedGroup
     if (group) {
       const variantSuffix = lookupState.selectedVariant && lookupState.selectedVariant !== 'DVD'
-        ? ` (${lookupState.selectedVariant})` : ''
+        ? ` (${displayDvdCompareVariant(lookupState.selectedVariant)})` : ''
       const yearSuffix = group.year ? ` (${group.year})` : ''
       step.params.dvdCompareName = `${group.baseTitle}${variantSuffix}${yearSuffix}`
     }

@@ -12,6 +12,15 @@ import { catchNamedError } from "./catchNamedError.js"
 
 export type DvdCompareVariant = "DVD" | "Blu-ray" | "Blu-ray 4K"
 
+// User-facing label. The internal value stays "Blu-ray 4K" because that's
+// the literal token DVDCompare.net uses in its HTML; we only relabel it
+// for display.
+export const displayDvdCompareVariant = (
+  variant: DvdCompareVariant,
+): string => (
+  variant === "Blu-ray 4K" ? "UHD Blu-ray" : variant
+)
+
 export type DvdCompareResult = {
   baseTitle: string
   id: number
@@ -106,62 +115,42 @@ export const findDvdCompareResults = (
   )
 )
 
+const stripTagsAndCollapse = (html: string): string => (
+  decodeHtmlEntities(html.replace(/<[^>]+>/g, " "))
+  .replace(/\s+/g, " ")
+  .trim()
+)
+
+export const parseDvdCompareReleasesHtml = (
+  html: string,
+): DvdCompareRelease[] => {
+  // Each release is rendered as:
+  //   <input type="checkbox" name="N" ...> <a href="#N">label <span>[year]</span></a>
+  // We only want numeric-named checkboxes (skips the hidden "sel" input etc).
+  const pattern = /<input[^>]*type=["']checkbox["'][^>]*name=["'](\d+)["'][^>]*>\s*<a[^>]*>([\s\S]*?)<\/a>/g
+  const releases: DvdCompareRelease[] = []
+  let match: RegExpExecArray | null
+
+  while ((match = pattern.exec(html)) !== null) {
+    const hash = match[1]
+    const label = stripTagsAndCollapse(match[2])
+    releases.push({ hash, label })
+  }
+
+  return releases
+}
+
 export const listDvdCompareReleases = (
   dvdCompareId: number,
 ): Observable<DvdCompareRelease[]> => (
-  from(launchBrowser())
+  from((async () => {
+    const response = await fetch(
+      `${DVDCOMPARE_BASE}/comparisons/film.php?fid=${dvdCompareId}&sel=on`
+    )
+    const html = await response.text()
+    return parseDvdCompareReleasesHtml(html)
+  })())
   .pipe(
-    mergeMap((browser) => (
-      from(browser.newPage())
-      .pipe(
-        mergeMap((page) => (
-          from(
-            page.goto(
-              `${DVDCOMPARE_BASE}/comparisons/film.php?fid=${dvdCompareId}&sel=on`
-            )
-          )
-          .pipe(
-            mergeMap(async () => {
-              const releases = await page.evaluate(() => {
-                const checkboxes = Array.from(
-                  document.querySelectorAll('form[action^="film.php"] input[type="checkbox"]')
-                ) as HTMLInputElement[]
-
-                return checkboxes.map((checkbox) => {
-                  const hash = checkbox.getAttribute("name") || ""
-                  // The label text is usually in a wrapping <label> or in a sibling element.
-                  // Try several strategies to find the human-readable release description.
-                  let label = ""
-                  const wrappingLabel = checkbox.closest("label")
-                  if (wrappingLabel) {
-                    label = wrappingLabel.textContent?.trim() || ""
-                  }
-                  if (!label) {
-                    // Try parent row text minus the checkbox itself
-                    const parent = checkbox.parentElement
-                    if (parent) {
-                      label = parent.textContent?.trim() || ""
-                    }
-                  }
-                  if (!label) {
-                    // Fall back to next sibling text
-                    const next = checkbox.nextSibling
-                    if (next?.textContent) {
-                      label = next.textContent.trim()
-                    }
-                  }
-                  return { hash, label }
-                }).filter((r) => r.hash)
-              })
-
-              await browser.close()
-
-              return releases as DvdCompareRelease[]
-            }),
-          )
-        )),
-      )
-    )),
     catchNamedError(listDvdCompareReleases),
   )
 )

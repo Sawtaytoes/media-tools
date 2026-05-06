@@ -21,7 +21,7 @@ import {
 import { getMediaInfo } from "../tools/getMediaInfo.js"
 import { parseSpecialFeatures } from "../tools/parseSpecialFeatures.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
-import { findDvdCompareResults, searchDvdCompare } from "../tools/searchDvdCompare.js"
+import { displayDvdCompareVariant, findDvdCompareResults, searchDvdCompare } from "../tools/searchDvdCompare.js"
 import { getUserSearchInput } from "../tools/getUserSearchInput.js"
 
 const getNextFilenameCount = (
@@ -69,7 +69,7 @@ const resolveUrl = ({
                 ...results
                 .map((result, index) => ({
                   index,
-                  label: `${result.baseTitle}${result.variant !== "DVD" ? ` (${result.variant})` : ""}${result.year ? ` (${result.year})` : ""}`,
+                  label: `${result.baseTitle}${result.variant !== "DVD" ? ` (${displayDvdCompareVariant(result.variant)})` : ""}${result.year ? ` (${result.year})` : ""}`,
                 })),
                 {
                   index: -1,
