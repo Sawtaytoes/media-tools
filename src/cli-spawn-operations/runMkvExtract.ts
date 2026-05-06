@@ -76,6 +76,12 @@ export const runMkvExtract = ({
     )
 
     let hasStarted = false
+    // mkvextract writes its 'Extracting track N with CodecID …' banner
+    // and other informational status to stderr. Buffer it so the exit
+    // handler can include it in an error message on non-zero exit
+    // without treating every stderr line as fatal — that's what was
+    // tearing down the SSE stream on PGS subtitle extracts.
+    const stderrChunks: string[] = []
 
     childProcess
     .stdout
@@ -139,18 +145,15 @@ export const runMkvExtract = ({
     .on(
       'data',
       (
-        error,
+        chunk,
       ) => {
-        console
-        .error(
-          error
-          .toString()
-        )
-
-        observer
-        .error(
-          error
-        )
+        const text = chunk.toString()
+        stderrChunks.push(text)
+        // Surface stderr in the log stream so the user can see what
+        // mkvextract is doing, but don't fail the observable on it —
+        // mkvextract reports normal progress (e.g. 'Extracting track N
+        // with the CodecID S_HDMV/PGS to the file …') on stderr.
+        console.info(text)
       },
     )
 
@@ -198,24 +201,26 @@ export const runMkvExtract = ({
       (
         code,
       ) => {
-        if (
-          code
-          === 0
-        ) {
-          observer
-          .next(
-            outputFilePath
-          )
-        }
-
-        observer
-        .complete()
-
         process
         .stdin
         .setRawMode(
           false
         )
+
+        if (code === 0) {
+          observer.next(outputFilePath)
+          observer.complete()
+          return
+        }
+        // code === null is the user-cancel path handled in 'close';
+        // any other non-zero exit is an actual failure and gets the
+        // captured stderr attached so the SSE log shows what went wrong.
+        if (code !== null) {
+          observer.error(new Error(
+            `mkvextract exited with code ${code}`
+            + (stderrChunks.length ? `: ${stderrChunks.join('').trim()}` : '')
+          ))
+        }
       },
     )
 
