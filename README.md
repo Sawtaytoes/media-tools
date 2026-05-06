@@ -55,6 +55,7 @@ yarn media <command> --help        # options for a specific command
 | `mergeTracks` | `<subtitlesPath> <mediaFilesPath> [offsets...]` | Add subtitle tracks (and optionally chapters) from a matching directory into media files. |
 | `moveFiles` | `<sourcePath> <destinationPath>` | Copy all files to a destination then delete the source directory. Equivalent to `copyFiles` + delete. |
 | `nameAnimeEpisodes` | `<sourcePath> <searchTerm>` | Rename episode files using titles from MyAnimeList. |
+| `nameAnimeEpisodesAniDB` | `<sourcePath> <searchTerm>` | Rename episode files using titles from AniDB. Better OVA/special coverage than MAL. See [AniDB command notes](#anidb-command-notes). |
 | `nameSpecialFeatures` | `<sourcePath> <url>` | Rename disc special features using timecodes from a dvdcompare.net URL. |
 | `nameTvShowEpisodes` | `<sourcePath> <searchTerm>` | Rename episode files using titles from TVDB. |
 | `renameDemos` | `<sourcePath>` | Rename demo files to the standard format (see [Demo file format](#demo-file-format)). |
@@ -77,6 +78,24 @@ Most commands support:
 | `--recursiveDepth N` | `-d N` | Limit recursion to N levels deep (use with `-r`). |
 
 Language options accept [ISO 639-2](https://en.wikipedia.org/wiki/List_of_ISO_639-2_codes) three-letter codes (e.g. `eng`, `jpn`, `fra`).
+
+### AniDB command notes
+
+`nameAnimeEpisodesAniDB` is a parallel implementation to `nameAnimeEpisodes` that uses AniDB instead of MAL. AniDB has better coverage of OVAs and specials.
+
+**Search backend.** anidb.net is behind a Cloudflare interactive challenge and the HTTP API has no name-search endpoint. Search uses the [manami-project anime-offline-database](https://github.com/manami-project/anime-offline-database), a community-maintained JSON dataset that cross-references AniDB / MAL / AniList / Kitsu IDs. The dataset is downloaded once (~60 MB) and cached for 7 days under `<ANIDB_CACHE_FOLDER>/manami/` (defaults to `./.cache/anidb/manami/`). Refreshes do a HEAD-redirect version check first and skip the download when the upstream version slug matches what's on disk.
+
+**Lookup backend.** Once you have an aid, episode metadata is fetched from `api.anidb.net:9001` (the AniDB HTTP API, which is on a separate host that bypasses Cloudflare). Per-anime XML is cached for 7 days under `<ANIDB_CACHE_FOLDER>/anime/<aid>.xml`.
+
+**Cache location.** Set `ANIDB_CACHE_FOLDER` in `.env` (or your container env) to point both caches at a directory that survives restarts — important in Docker where the project-relative `./.cache/anidb/` is ephemeral.
+
+**Current scope (MVP).** Filters episodes to type=1 (regular) and maps files to episodes by index after natural-sorting both lists. Output filename format is `<seriesName> - sNNeNN - <episodeTitle>`.
+
+**Planned features (not yet implemented).**
+
+- **Episode range/list filter.** Name only a subset of files — e.g., `episodes: "1-4"` or `"5,7,10"`. Useful when you've already named some episodes and got the rest later.
+- **Regular vs alternate selection.** For series with both type=1 and type=6 sets (e.g., director's-cut "O" episodes), a required prop to pick which set to use.
+- **Specials directory mapping.** Files in a `/specials` subdir get mapped to AniDB special entries (S/C/T/P) via an interactive modal. AniDB provides rough episode lengths (rounded minutes) for auto-suggesting matches, the user drops entries they don't have, and confirms the rest in order.
 
 ### Demo file format
 
@@ -151,7 +170,8 @@ All commands are started with `POST`. The body is JSON. `sourcePath` is required
 | `POST /jobs/keepLanguages` | `sourcePath` | `audioLanguages[]`, `subtitlesLanguages[]`, `useFirstAudioLanguage`, `useFirstSubtitlesLanguage`, `isRecursive` |
 | `POST /jobs/mergeTracks` | `subtitlesPath`, `mediaFilesPath` | `offsets[]`, `automaticOffset`, `globalOffset`, `includeChapters` |
 | `POST /jobs/moveFiles` | `sourcePath`, `destinationPath` | — |
-| `POST /jobs/nameAnimeEpisodes` | `sourcePath`, `searchTerm` | `seasonNumber` |
+| `POST /jobs/nameAnimeEpisodes` | `sourcePath`, `searchTerm` | `seasonNumber`, `malId` |
+| `POST /jobs/nameAnimeEpisodesAniDB` | `sourcePath` | `searchTerm`, `seasonNumber`, `anidbId` (see [AniDB command notes](#anidb-command-notes)) |
 | `POST /jobs/nameSpecialFeatures` | `sourcePath`, `url` | `fixedOffset`, `timecodePadding` |
 | `POST /jobs/nameTvShowEpisodes` | `sourcePath`, `searchTerm`, `seasonNumber` | — |
 | `POST /jobs/renameDemos` | `sourcePath` | `isRecursive` |

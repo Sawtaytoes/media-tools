@@ -227,10 +227,10 @@ export const nameAnimeEpisodesRequestSchema = z.object({
 
 export const nameAnimeEpisodesAniDBRequestSchema = z.object({
   sourcePath: z.string().describe("Source directory path"),
-  searchTerm: z.string().optional().describe("Anime title to search for (DDG fallback when no anidbId)"),
-  seasonNumber: z.number().default(1).describe("Season number"),
-  anidbId: z.number().optional().describe("AniDB anime id (aid) — when provided, skips the interactive search and uses this aid directly"),
-})
+  searchTerm: z.string().optional().describe("Anime title to search for via the manami-project anime-offline-database (used when no anidbId is provided; CLI falls back to interactive picker)"),
+  seasonNumber: z.number().default(1).describe("Season number for the Plex-style sNNeNN output filename"),
+  anidbId: z.number().optional().describe("AniDB anime id (aid) — when provided, skips the search and uses this aid directly"),
+}).describe("Rename anime episodes using AniDB metadata. MVP: filters to regular (type=1) episodes only. Specials (OPs/EDs/trailers/parodies), type=6 alternates (e.g., director's-cut 'O' episodes), and episode-range selection are planned but not yet implemented — see README §AniDB command notes.")
 
 export const nameSpecialFeaturesRequestSchema = z.object({
   sourcePath: z.string().describe("Source directory path"),

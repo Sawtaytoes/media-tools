@@ -493,6 +493,7 @@ const COMMANDS = {
   },
   nameAnimeEpisodesAniDB: {
     summary: "Rename anime episode files using AniDB metadata (better OVA/special coverage than MAL)",
+    note: "MVP: filters to regular episodes only. Specials/OPs/EDs, type=6 alternates (e.g., director's-cut 'O' episodes), and episode-range selection are not yet implemented — see README §AniDB command notes.",
     tag: "Naming Operations",
     outputFolderName: null,
     fields: [
@@ -1195,6 +1196,7 @@ function renderStep(step, index) {
 
   const body = cmd
     ? `<p class="text-xs text-slate-500 mb-2">${esc(cmd.summary)}</p>
+       ${cmd.note ? `<p class="text-xs text-amber-300 bg-amber-950/40 border border-amber-800/50 rounded px-2 py-1 mb-2">${esc(cmd.note)}</p>` : ''}
        ${cmd.outputFolderName ? `<p class="text-xs text-amber-500/80 mb-2">→ outputs to <code class="text-amber-400 bg-slate-900 px-1 rounded">${esc(cmd.outputFolderName)}/</code> subfolder</p>` : ''}
        ${step.error ? `<p class="text-xs text-red-400 bg-red-950/40 rounded px-2 py-1 mb-2 font-mono">${esc(step.error)}</p>` : ''}
        <div class="space-y-2">${renderFields(step, index)}</div>`
