@@ -124,9 +124,6 @@ export const findDvdCompareResults = (
 
     return parseDvdCompareSearchHtml(html)
   })())
-  .pipe(
-    catchNamedError(findDvdCompareResults),
-  )
 )
 
 const stripTagsAndCollapse = (html: string): string => (
@@ -225,9 +222,6 @@ export const listDvdCompareReleases = (
 
     return { debug, releases }
   })())
-  .pipe(
-    catchNamedError(listDvdCompareReleases),
-  )
 )
 
 export const parseDvdCompareFilmTitle = (

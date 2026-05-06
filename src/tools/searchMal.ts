@@ -37,7 +37,6 @@ export const searchMal = (
       }))
       .filter((result) => result.malId > 0)
     )),
-    catchNamedError(searchMal),
   )
 )
 

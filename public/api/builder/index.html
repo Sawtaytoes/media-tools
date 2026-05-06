@@ -1258,12 +1258,15 @@ function openLookup(lookupType, stepId, fieldName) {
     lookupType, stepId, fieldName,
     stage: 'search',
     searchTerm: '',
+    searchError: null,
     results: null,
     formatFilter: 'all',
     selectedGroup: null,
     selectedVariant: null,
     selectedFid: null,
     releases: null,
+    releasesDebug: null,
+    releasesError: null,
     loading: false,
     _activeOptions: [],
     _activeResults: null,
@@ -1342,6 +1345,11 @@ function renderLookupSearchView() {
   let resultsHtml = ''
   if (lookupState.loading) {
     resultsHtml = '<p class="text-xs text-slate-500 text-center py-4">Searching…</p>'
+  } else if (lookupState.searchError) {
+    resultsHtml = `<div class="text-xs text-red-300 bg-red-950/40 border border-red-900/60 rounded px-3 py-2 font-mono break-words">
+      <p class="text-red-400 font-medium mb-1">Search failed</p>
+      <p>${esc(lookupState.searchError)}</p>
+    </div>`
   } else if (lookupState.results === null) {
     resultsHtml = '<p class="text-xs text-slate-500 text-center py-4">Enter a search term and press Enter.</p>'
   } else if (lookupState.results.length === 0) {
@@ -1543,6 +1551,11 @@ function renderLookupReleaseView() {
   lookupState._activeOptions = []
   if (lookupState.loading) {
     body = '<p class="text-xs text-slate-500 text-center py-4">Loading releases…</p>'
+  } else if (lookupState.releasesError) {
+    body = `<div class="text-xs text-red-300 bg-red-950/40 border border-red-900/60 rounded px-3 py-2 font-mono break-words">
+      <p class="text-red-400 font-medium mb-1">Failed to load releases</p>
+      <p>${esc(lookupState.releasesError)}</p>
+    </div>`
   } else if (!lookupState.releases || lookupState.releases.length === 0) {
     const debug = lookupState.releasesDebug
     const debugBlock = debug
@@ -1579,6 +1592,7 @@ function renderLookupReleaseView() {
 async function runLookupSearch(searchTerm) {
   if (!searchTerm || !lookupState) return
   lookupState.searchTerm = searchTerm
+  lookupState.searchError = null
   document.getElementById('lookup-search-input')?.blur()
   lookupState.loading = true
   renderLookupModal()
@@ -1593,8 +1607,11 @@ async function runLookupSearch(searchTerm) {
     })
     const data = await resp.json()
     lookupState.results = data.results ?? []
+    lookupState.searchError = data.error ?? null
+    if (data.error) console.error('[lookup search]', data.error)
   } catch (err) {
     lookupState.results = []
+    lookupState.searchError = err?.message ?? String(err)
     console.error('Lookup search failed', err)
   }
   lookupState.loading = false
@@ -1642,6 +1659,7 @@ async function lookupSelectVariant(fid, variant) {
   lookupState.stage = 'release'
   lookupState.releases = null
   lookupState.releasesDebug = null
+  lookupState.releasesError = null
   lookupState.loading = true
   renderLookupModal()
   try {
@@ -1653,11 +1671,15 @@ async function lookupSelectVariant(fid, variant) {
     const data = await resp.json()
     lookupState.releases = data.releases ?? []
     lookupState.releasesDebug = data.debug ?? null
-    if (lookupState.releases.length === 0) {
+    lookupState.releasesError = data.error ?? null
+    if (data.error) {
+      console.error('[listDvdCompareReleases] error', data.error)
+    } else if (lookupState.releases.length === 0) {
       console.warn('[listDvdCompareReleases] no releases', data.debug)
     }
   } catch (err) {
     lookupState.releases = []
+    lookupState.releasesError = err?.message ?? String(err)
     console.error('listDvdCompareReleases failed', err)
   }
   lookupState.loading = false

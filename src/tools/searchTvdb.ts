@@ -48,7 +48,6 @@ export const searchTvdb = (
       }))
       .filter((result) => result.tvdbId > 0 && result.name)
     )),
-    catchNamedError(searchTvdb),
   )
 )
 

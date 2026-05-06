@@ -14,6 +14,18 @@ import * as schemas from "../schemas.js"
 
 export const queryRoutes = new OpenAPIHono()
 
+// Pulls the most informative message out of an error that may have a
+// nested cause (e.g. Node's TypeError(fetch failed) wraps ConnectTimeoutError).
+const messageFromError = (err: unknown): string => {
+  if (err instanceof Error) {
+    if (err.cause instanceof Error && err.cause.message) {
+      return err.cause.message
+    }
+    return err.message || String(err)
+  }
+  return String(err)
+}
+
 queryRoutes.openapi(
   createRoute({
     method: "post",
@@ -77,8 +89,14 @@ queryRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    const results = await lastValueFrom(searchMal(body.searchTerm))
-    return context.json({ results }, 200)
+    try {
+      const results = await lastValueFrom(searchMal(body.searchTerm))
+      return context.json({ results, error: null }, 200)
+    } catch (err) {
+      const message = messageFromError(err)
+      console.error("[searchMal]", message)
+      return context.json({ results: [], error: message }, 200)
+    }
   },
 )
 
@@ -107,8 +125,14 @@ queryRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    const results = await lastValueFrom(searchTvdb(body.searchTerm))
-    return context.json({ results }, 200)
+    try {
+      const results = await lastValueFrom(searchTvdb(body.searchTerm))
+      return context.json({ results, error: null }, 200)
+    } catch (err) {
+      const message = messageFromError(err)
+      console.error("[searchTvdb]", message)
+      return context.json({ results: [], error: message }, 200)
+    }
   },
 )
 
@@ -137,8 +161,14 @@ queryRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    const results = await lastValueFrom(findDvdCompareResults(body.searchTerm))
-    return context.json({ results }, 200)
+    try {
+      const results = await lastValueFrom(findDvdCompareResults(body.searchTerm))
+      return context.json({ results, error: null }, 200)
+    } catch (err) {
+      const message = messageFromError(err)
+      console.error("[searchDvdCompare]", message)
+      return context.json({ results: [], error: message }, 200)
+    }
   },
 )
 
@@ -167,8 +197,14 @@ queryRoutes.openapi(
   }),
   async (context) => {
     const body = context.req.valid("json")
-    const result = await lastValueFrom(listDvdCompareReleases(body.dvdCompareId))
-    return context.json(result, 200)
+    try {
+      const result = await lastValueFrom(listDvdCompareReleases(body.dvdCompareId))
+      return context.json({ ...result, error: null }, 200)
+    } catch (err) {
+      const message = messageFromError(err)
+      console.error("[listDvdCompareReleases]", message)
+      return context.json({ releases: [], error: message }, 200)
+    }
   },
 )
 

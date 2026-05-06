@@ -311,6 +311,7 @@ export const searchMalResultSchema = z.object({
 
 export const searchMalResponseSchema = z.object({
   results: z.array(searchMalResultSchema).describe("MAL search results"),
+  error: z.string().nullable().optional().describe("Error message if the search failed (e.g. network/server error). When present, results is empty."),
 })
 
 export const searchTvdbResultSchema = z.object({
@@ -323,6 +324,7 @@ export const searchTvdbResultSchema = z.object({
 
 export const searchTvdbResponseSchema = z.object({
   results: z.array(searchTvdbResultSchema).describe("TVDB search results"),
+  error: z.string().nullable().optional().describe("Error message if the search failed (e.g. network/server error). When present, results is empty."),
 })
 
 export const searchDvdCompareResultSchema = z.object({
@@ -334,6 +336,7 @@ export const searchDvdCompareResultSchema = z.object({
 
 export const searchDvdCompareResponseSchema = z.object({
   results: z.array(searchDvdCompareResultSchema).describe("DVDCompare search results"),
+  error: z.string().nullable().optional().describe("Error message if the search failed (e.g. network/server error). When present, results is empty."),
 })
 
 export const listDvdCompareReleasesRequestSchema = z.object({
@@ -355,8 +358,9 @@ export const dvdCompareReleasesDebugSchema = z.object({
 })
 
 export const listDvdCompareReleasesResponseSchema = z.object({
-  debug: dvdCompareReleasesDebugSchema.describe("Diagnostic info for empty-result debugging"),
+  debug: dvdCompareReleasesDebugSchema.optional().describe("Diagnostic info for empty-result debugging"),
   releases: z.array(dvdCompareReleaseSchema).describe("Release packages available for the film"),
+  error: z.string().nullable().optional().describe("Error message if the fetch failed (e.g. network/server error). When present, releases is empty."),
 })
 
 // Reverse-lookup schemas (manual ID edit → name)
