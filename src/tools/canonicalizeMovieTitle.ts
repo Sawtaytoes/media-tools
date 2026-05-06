@@ -1,0 +1,53 @@
+import { catchError, map, of, type Observable } from "rxjs"
+
+import { searchMovieDb } from "./searchMovieDb.js"
+
+export type MovieIdentity = {
+  title: string
+  year: string
+}
+
+// DVDCompare titles often include foreign-language and re-release aliases
+// joined with " AKA ", e.g.
+//   "Dragon Lord AKA Long xiao ye AKA Dragon Strike AKA Young Master in Love"
+// TMDB indexes by the primary release title only, so trim the aliases off
+// the first occurrence of " AKA " before searching.
+const stripAkaAliases = (title: string): string => (
+  title.split(/\s+AKA\s+/iu)[0].trim()
+)
+
+// Looks the DVDCompare-derived title up on TMDB and returns the canonical
+// title + release year of the first match. Falls back to the (alias-stripped)
+// DVDCompare title and the parsed year when TMDB returns nothing or
+// can't be reached — the caller still gets a usable name to render with.
+export const canonicalizeMovieTitle = ({
+  dvdCompareBaseTitle,
+  dvdCompareYear,
+}: {
+  dvdCompareBaseTitle: string
+  dvdCompareYear: string
+}): Observable<MovieIdentity> => {
+  const cleanedTitle = stripAkaAliases(dvdCompareBaseTitle)
+  const fallback: MovieIdentity = { title: cleanedTitle, year: dvdCompareYear }
+
+  if (!cleanedTitle) {
+    return of(fallback)
+  }
+
+  return (
+    searchMovieDb(cleanedTitle)
+    .pipe(
+      map((results) => {
+        const top = results[0]
+        if (!top) return fallback
+        return {
+          title: top.title,
+          // Prefer TMDB's year; fall back to DVDCompare's when TMDB has
+          // no release date on file (rare but happens for early prints).
+          year: top.year || dvdCompareYear,
+        }
+      }),
+      catchError(() => of(fallback)),
+    )
+  )
+}
