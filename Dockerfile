@@ -14,11 +14,14 @@ RUN log() { echo "[$(date +"%Y-%m-%d %H:%M:%S")] $1"; };
 # add-apt-repository ppa:savoury1/ffmpeg7 && \
 
 
-# Install the application dependencies
+# Install the application dependencies. Note: the system 'chromium' apt
+# package is intentionally NOT installed — Playwright manages its own
+# Chromium binary (downloaded by `npx playwright install --with-deps`
+# below, which also pulls the required system libs).
 RUN \
   touch .env && \
   apt update && \
-  apt install -y --no-install-recommends build-essential ca-certificates chromium ffmpeg git locales mediainfo pipx python3 wget && \
+  apt install -y --no-install-recommends build-essential ca-certificates ffmpeg git locales mediainfo pipx python3 wget && \
   \
   sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen && \
   \
@@ -47,6 +50,12 @@ RUN \
   corepack enable yarn && \
   yarn install && \
   yarn add @lydell/node-pty@npm:node-pty@1.0.0
+
+# Playwright Chromium binary + the matching apt-level system libs
+# (libnss3, libxkbcommon0, fonts, etc.). Has to run AFTER yarn install
+# so the playwright CLI is on disk; --with-deps invokes apt under the
+# hood, which is fine since the Docker image runs as root.
+RUN npx playwright install --with-deps chromium
 
 EXPOSE $PORT
 

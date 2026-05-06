@@ -60,7 +60,11 @@ export const uhdDiscForumPostId = "739745"
 export const getUhdDiscForumPostData = (): Observable<UhdDiscForumPostGroup[]> => (
   from((async () => {
     const browser = await chromium.launch({
-      args: platform() === "win32" ? [] : ["--no-sandbox"],
+      // --no-sandbox: required when running as root in a Docker container.
+      // --disable-dev-shm-usage: Docker's default /dev/shm is 64MB which
+      //   isn't enough for Chromium and causes opaque "Target closed" errors.
+      //   Both flags are no-ops on macOS hosts and irrelevant on Windows.
+      args: platform() === "win32" ? [] : ["--no-sandbox", "--disable-dev-shm-usage"],
       headless: true,
     })
     try {
