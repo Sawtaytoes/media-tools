@@ -48,7 +48,7 @@ type MergeTracksRequiredProps = {
 
 type MergeTracksOptionalProps = {
   globalOffsetInMilliseconds?: number
-  hasAutomaticOffset?: boolean
+  hasChapterSyncOffset?: boolean
   hasChapters?: boolean
   // Per-file audio offsets in ms. Defaults to [] when the caller (e.g. a
   // sequence step that doesn't supply offsets) omits it — without the
@@ -62,7 +62,7 @@ export type MergeTracksProps = MergeTracksRequiredProps & MergeTracksOptionalPro
 
 export const mergeTracksDefaultProps = {
   globalOffsetInMilliseconds: 0,
-  hasAutomaticOffset: false,
+  hasChapterSyncOffset: false,
   hasChapters: false,
   offsetsInMilliseconds: [] as number[],
   outputFolderName: mergeSubtitlesMkvMergeDefaultProps.outputFolderName,
@@ -70,7 +70,7 @@ export const mergeTracksDefaultProps = {
 
 export const mergeTracks = ({
   globalOffsetInMilliseconds = mergeTracksDefaultProps.globalOffsetInMilliseconds,
-  hasAutomaticOffset = mergeTracksDefaultProps.hasAutomaticOffset,
+  hasChapterSyncOffset = mergeTracksDefaultProps.hasChapterSyncOffset,
   hasChapters = mergeTracksDefaultProps.hasChapters,
   mediaFilesPath,
   offsetsInMilliseconds = mergeTracksDefaultProps.offsetsInMilliseconds,
@@ -210,7 +210,7 @@ export const mergeTracks = ({
                   )
                 ),
                 (
-                  hasAutomaticOffset
+                  hasChapterSyncOffset
                   ? (
                     getFiles({
                       sourcePath: (

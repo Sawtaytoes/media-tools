@@ -328,7 +328,7 @@ const COMMANDS = {
     fields: [
       { name: "mediaFilesPath", type: "path", label: "Media Files Path", required: true },
       { name: "subtitlesPath", type: "path", label: "Subtitles Path", required: true },
-      { name: "automaticOffset", type: "boolean", label: "Automatic Offset", default: false },
+      { name: "hasChapterSyncOffset", type: "boolean", label: "Chapter-Sync Offset", default: false },
       { name: "globalOffset", type: "number", label: "Global Offset (ms)", default: 0 },
       { name: "includeChapters", type: "boolean", label: "Include Chapters", default: false },
       { name: "offsets", type: "numberArray", label: "Per-file Offsets (ms)", placeholder: "0, -200, 150" },
@@ -353,7 +353,7 @@ const COMMANDS = {
     fields: [
       { name: "sourceFilesPath", type: "path", label: "Source Files Path", required: true },
       { name: "destinationFilesPath", type: "path", label: "Destination Files Path", required: true },
-      { name: "automaticOffset", type: "boolean", label: "Automatic Offset", default: false },
+      { name: "hasChapterSyncOffset", type: "boolean", label: "Chapter-Sync Offset", default: false },
       { name: "globalOffset", type: "number", label: "Global Offset (ms)", default: 0 },
       { name: "includeChapters", type: "boolean", label: "Include Chapters", default: false },
       { name: "audioLanguages", type: "languageCodes", label: "Audio Languages", placeholder: "eng, jpn" },

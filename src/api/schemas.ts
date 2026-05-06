@@ -212,7 +212,7 @@ export const keepLanguagesRequestSchema = z.object({
 export const mergeTracksRequestSchema = z.object({
   mediaFilesPath: z.string().describe("Path to media files"),
   subtitlesPath: z.string().describe("Path to subtitle files"),
-  automaticOffset: z.boolean().default(false).describe("Automatically detect synchronization offset"),
+  hasChapterSyncOffset: z.boolean().default(false).describe("Compute the audio sync offset by aligning chapter 1 between the destination media file's Menu track and a `chapters.xml` inside `subtitlesPath`. Use when the source release the subtitles came from and your destination differ in intro padding — the chapter-1 timestamp diff is shipped to mkvmerge as `--sync -1:<ms>`. Falls back to `globalOffset` (or per-file `offsets[index]`) when false or when no `chapters.xml` is found."),
   globalOffset: z.number().default(0).describe("Global audio offset in milliseconds"),
   includeChapters: z.boolean().default(false).describe("Include chapter markers"),
   offsets: z.array(z.number()).default([]).describe("Per-file audio offsets in milliseconds"),
@@ -279,7 +279,7 @@ export const replaceFlacWithPcmAudioRequestSchema = z.object({
 export const replaceTracksRequestSchema = z.object({
   sourceFilesPath: z.string().describe("Path to source files"),
   destinationFilesPath: z.string().describe("Path to destination files"),
-  automaticOffset: z.boolean().default(false).describe("Automatically detect synchronization offset"),
+  hasChapterSyncOffset: z.boolean().default(false).describe("Compute the audio sync offset by aligning chapter 1 between the destination media file's Menu track and a `chapters.xml` inside `sourceFilesPath`. Use when source and destination releases differ in intro padding — the chapter-1 timestamp diff is shipped to mkvmerge as `--sync -1:<ms>`. Falls back to `globalOffset` (or per-file `offsets[index]`) when false or when no `chapters.xml` is found."),
   globalOffset: z.number().default(0).describe("Global audio offset in milliseconds"),
   includeChapters: z.boolean().default(false).describe("Include chapter markers"),
   audioLanguages: z.array(z.enum(iso6392LanguageCodes)).default([]).describe("Audio languages to include"),

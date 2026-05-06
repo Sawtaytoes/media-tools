@@ -65,11 +65,11 @@ const builder = (yargs: Argv) => (
     },
   )
   .option(
-    "automaticOffset",
+    "hasChapterSyncOffset",
     {
       alias: "a",
       default: false,
-      describe: "Calculate subtitle offsets for each file using differences in chapter markers.",
+      describe: "Compute the audio sync offset by aligning chapter 1 between the destination media file's Menu track and a chapters.xml inside the source files path. Falls back to globalOffset (or per-file offsets) when no chapters.xml is found.",
       nargs: 0,
       type: "boolean",
     },
@@ -141,9 +141,9 @@ export const replaceTracksCommand: CommandModule<{}, Args> = {
         argv
         .globalOffset
       ),
-      hasAutomaticOffset: (
+      hasChapterSyncOffset: (
         argv
-        .automaticOffset
+        .hasChapterSyncOffset
       ),
       hasChapters: (
         argv

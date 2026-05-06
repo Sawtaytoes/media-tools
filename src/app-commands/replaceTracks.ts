@@ -18,7 +18,7 @@ import { replaceTracksMkvMerge, replaceTracksMkvMergeDefaultProps } from "../cli
 type ReplaceTracksRequiredProps = {
   audioLanguages: Iso6392LanguageCode[]
   destinationFilesPath: string
-  hasAutomaticOffset: boolean
+  hasChapterSyncOffset: boolean
   hasChapters: boolean
   offsets: number[]
   sourceFilesPath: string
@@ -41,7 +41,7 @@ export const replaceTracks = ({
   audioLanguages,
   destinationFilesPath,
   globalOffsetInMilliseconds,
-  hasAutomaticOffset,
+  hasChapterSyncOffset,
   hasChapters,
   offsets,
   outputFolderName = replaceTracksDefaultProps.outputFolderName,
@@ -109,7 +109,7 @@ export const replaceTracks = ({
           index,
         ) => (
           (
-            hasAutomaticOffset
+            hasChapterSyncOffset
             ? (
               getAudioOffset({
                 destinationFilePath,

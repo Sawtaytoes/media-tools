@@ -267,7 +267,7 @@ export const commandConfigs: Record<CommandName, CommandConfig> = {
     tags: ["Track Operations"],
   },
   mergeTracks: {
-    getObservable: (body) => mergeTracks({ globalOffsetInMilliseconds: body.globalOffset, hasAutomaticOffset: body.automaticOffset, hasChapters: body.includeChapters, mediaFilesPath: body.mediaFilesPath, offsetsInMilliseconds: body.offsets, subtitlesPath: body.subtitlesPath }),
+    getObservable: (body) => mergeTracks({ globalOffsetInMilliseconds: body.globalOffset, hasChapterSyncOffset: body.hasChapterSyncOffset, hasChapters: body.includeChapters, mediaFilesPath: body.mediaFilesPath, offsetsInMilliseconds: body.offsets, subtitlesPath: body.subtitlesPath }),
     outputFolderName: mergeTracksDefaultProps.outputFolderName,
     schema: schemas.mergeTracksRequestSchema,
     summary: "Merge subtitle tracks into media files",
@@ -343,7 +343,7 @@ export const commandConfigs: Record<CommandName, CommandConfig> = {
     tags: ["Audio Operations"],
   },
   replaceTracks: {
-    getObservable: (body) => replaceTracks({ audioLanguages: body.audioLanguages, destinationFilesPath: body.destinationFilesPath, globalOffsetInMilliseconds: body.globalOffset, hasAutomaticOffset: body.automaticOffset, hasChapters: body.includeChapters, offsets: body.offsets, sourceFilesPath: body.sourceFilesPath, subtitlesLanguages: body.subtitlesLanguages, videoLanguages: body.videoLanguages }),
+    getObservable: (body) => replaceTracks({ audioLanguages: body.audioLanguages, destinationFilesPath: body.destinationFilesPath, globalOffsetInMilliseconds: body.globalOffset, hasChapterSyncOffset: body.hasChapterSyncOffset, hasChapters: body.includeChapters, offsets: body.offsets, sourceFilesPath: body.sourceFilesPath, subtitlesLanguages: body.subtitlesLanguages, videoLanguages: body.videoLanguages }),
     outputFolderName: replaceTracksDefaultProps.outputFolderName,
     schema: schemas.replaceTracksRequestSchema,
     summary: "Replace media tracks in destination files",

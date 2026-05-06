@@ -33,7 +33,7 @@ in module files must be removed before those modules can be used in the API.
 - Hono route handler context: use `context` (not `c`). Example: `app.get("/", (context) => context.json({}))`.
 - Spell out all abbreviations in variable names (e.g. `destination` not `dest`, `source` not `src`, `options` not `opts`, `value` not `val`, `error` not `err`, `response` not `resp`).
 - Function names take an action verb; variables hold the noun the function returns. `linkedVal` is wrong on two counts — it abbreviates `Value`, and as a function it should describe the action: `getLinkedValue` is the function, and the variable that captures its result is `linkedValue`.
-- **Booleans must start with `is` or `has`.** This includes function parameters, object properties, schema fields, CLI flags, and local variables. `deleteSourceOnSuccess` is wrong — `isSourceDeletedOnSuccess` reads as a question and matches the existing `isRecursive` / `hasAutomaticOffset` / `hasFirstAudioLanguage` patterns. The prefix tells a reader at a glance that the value is yes/no, not a string or function.
+- **Booleans must start with `is` or `has`.** This includes function parameters, object properties, schema fields, CLI flags, and local variables. `deleteSourceOnSuccess` is wrong — `isSourceDeletedOnSuccess` reads as a question and matches the existing `isRecursive` / `hasChapterSyncOffset` / `hasFirstAudioLanguage` patterns. The prefix tells a reader at a glance that the value is yes/no, not a string or function.
 
 ### Coding style
 - Functional style; prefer `concatMap` / `mergeMap` over imperative loops
