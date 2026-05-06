@@ -520,10 +520,43 @@ function initPaths() {
 function updateUrl() {
   const params = new URLSearchParams()
   const yaml = toYamlStr()
-  if (yaml !== '# No steps yet') params.set('seq', btoa(unescape(encodeURIComponent(yaml))))
+  if (yaml !== '# No steps yet') {
+    params.set('seq', btoa(unescape(encodeURIComponent(yaml))))
+  }
   const query = params.toString()
   history.replaceState(null, '', window.location.pathname + (query ? '?' + query : ''))
 }
+
+// Debounced URL persistence. updateUrl() is expensive per call (yaml dump
+// + base64 encode + history.replaceState), and rapid setParam calls from
+// per-keystroke oninput handlers were causing typing lag. Wrap that path
+// with scheduleUpdateUrl so successive typing only triggers one URL write
+// after the user pauses; flushScheduledUpdateUrl ensures a pending write
+// still lands if the user hits refresh / closes the tab / blurs the input
+// before the debounce timer fires.
+let updateUrlTimeoutId = null
+
+function scheduleUpdateUrl() {
+  if (updateUrlTimeoutId) {
+    clearTimeout(updateUrlTimeoutId)
+  }
+  updateUrlTimeoutId = setTimeout(() => {
+    updateUrlTimeoutId = null
+    updateUrl()
+  }, 300)
+}
+
+function flushScheduledUpdateUrl() {
+  if (updateUrlTimeoutId) {
+    clearTimeout(updateUrlTimeoutId)
+    updateUrlTimeoutId = null
+    updateUrl()
+  }
+}
+
+window.addEventListener('beforeunload', flushScheduledUpdateUrl)
+// Also flush whenever any input loses focus, so blur acts as an explicit commit.
+window.addEventListener('blur', flushScheduledUpdateUrl, true)
 
 function restoreFromUrl() {
   const params = new URLSearchParams(window.location.search)
@@ -695,9 +728,10 @@ function setParam(id, fieldName, value) {
   step.params[fieldName] = value
   refreshLinkedInputs()
   updateYaml()
-  // Persist to ?seq= so a refresh doesn't lose typed values; the previous
-  // version only updated the URL on full re-renders.
-  updateUrl()
+  // Debounced — setParam fires per-keystroke from oninput, so writing the
+  // URL synchronously every call caused typing lag. The blur / beforeunload
+  // listeners flush any pending write so refresh still preserves the value.
+  scheduleUpdateUrl()
 }
 
 // When the user commits a typed path (onchange = blur or Enter), lift it
@@ -749,7 +783,7 @@ function setLink(id, field, srcIdStr) {
   }
   refreshLinkedInputs()
   updateYaml()
-  updateUrl()
+  scheduleUpdateUrl()
 }
 
 function refreshLinkedInputs() {
@@ -795,7 +829,7 @@ function setPathValue(pvId, value) {
   pv.value = value
   refreshLinkedInputs()
   updateYaml()
-  updateUrl()
+  scheduleUpdateUrl()
 }
 
 function setPathLabel(pvId, label) {
@@ -803,7 +837,7 @@ function setPathLabel(pvId, label) {
   if (!pv) return
   pv.label = label
   updateYaml()
-  updateUrl()
+  scheduleUpdateUrl()
 }
 
 function removePath(pvId) {
@@ -1094,7 +1128,7 @@ function setParamJson(id, field, raw) {
     step.params[field] = raw
   }
   updateYaml()
-  updateUrl()
+  scheduleUpdateUrl()
 }
 
 // ─── YAML ─────────────────────────────────────────────────────────────────────
