@@ -2,7 +2,6 @@ import malScraper from "mal-scraper"
 import {
   basename,
 } from "node:path"
-import readline from "node:readline"
 import {
   concatMap,
   EMPTY,
@@ -11,8 +10,8 @@ import {
   map,
   mergeAll,
   mergeMap,
-  Observable,
   of,
+  switchMap,
   toArray,
   zip,
 } from "rxjs"
@@ -20,9 +19,11 @@ import {
 import { catchNamedError } from "../tools/catchNamedError.js"
 import { cleanupFilename } from "../tools/cleanupFilename.js"
 import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
+import { getUserSearchInput } from "../tools/getUserSearchInput.js"
 import { naturalSort } from "../tools/naturalSort.js"
 import { getFiles } from "../tools/getFiles.js"
 import { logInfo } from "../tools/logMessage.js"
+import { searchMal } from "../tools/searchMal.js"
 
 export const nameAnimeEpisodes = ({
   malId,
@@ -50,97 +51,48 @@ export const nameAnimeEpisodes = ({
             name: "",
             url: `https://myanimelist.net/anime/${malId}`,
           })
-          : from(
-            malScraper
-            .getResultsFromSearch(
-              (
-                searchTerm
-                || (
-                  basename(
-                    sourcePath
+          : (
+            searchMal(
+              searchTerm
+              || basename(sourcePath)
+            )
+            .pipe(
+              switchMap((results) => {
+                if (results.length === 0) {
+                  throw new Error(`No MAL results for: ${searchTerm || basename(sourcePath)}`)
+                }
+
+                return (
+                  getUserSearchInput({
+                    message: `MAL results for "${searchTerm || basename(sourcePath)}":`,
+                    options: [
+                      ...results
+                      .map((result, index) => ({
+                        index,
+                        label: `${result.name}${result.airDate ? ` (${result.airDate})` : ""}${result.mediaType ? ` [${result.mediaType}]` : ""}`,
+                      })),
+                      {
+                        index: -1,
+                        label: "Cancel / skip",
+                      },
+                    ],
+                  })
+                  .pipe(
+                    map((selectedIndex) => {
+                      if (selectedIndex === -1) throw new Error("No selection made.")
+
+                      return results.at(selectedIndex)!
+                    }),
+                    map((result) => ({
+                      id: String(result.malId),
+                      name: result.name,
+                      url: `https://myanimelist.net/anime/${result.malId}`,
+                    })),
                   )
                 )
-              ),
-              "anime",
+              }),
+              filter(Boolean),
             )
-          )
-          .pipe(
-            concatMap((
-              animeList,
-            ) => (
-              new Observable<
-                typeof animeList[0]
-              >((
-                observer,
-              ) => {
-                console
-                .info(
-                  animeList
-                  .map((
-                    anime,
-                    index,
-                  ) => ({
-                    index,
-                    title: (
-                      anime
-                      .name
-                    ),
-                    airDate: (
-                      anime
-                      .payload
-                      ?.aired
-                    ),
-                    type: (
-                      anime
-                      .payload
-                      ?.media_type
-                    ),
-                  }))
-                )
-
-                const readlineInterface = (
-                  readline
-                  .createInterface({
-                    input: (
-                      process
-                      .stdin
-                    ),
-                    output: (
-                      process
-                      .stdout
-                    ),
-                    terminal: false,
-                  })
-                )
-
-                readlineInterface
-                .on(
-                  'line',
-                  (
-                    index,
-                  ) => {
-                    observer
-                    .next(
-                      animeList
-                      .at(
-                        Number(
-                          index
-                        )
-                      )
-                    )
-
-                    readlineInterface
-                    .close()
-
-                    observer
-                    .complete()
-                  },
-                )
-              })
-            )),
-            filter(
-              Boolean
-            ),
           )
       )
       .pipe(

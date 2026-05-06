@@ -1,4 +1,3 @@
-import readline from "node:readline"
 import {
   concatMap,
   filter,
@@ -6,7 +5,7 @@ import {
   map,
   mergeAll,
   mergeMap,
-  Observable,
+  switchMap,
   toArray,
 } from "rxjs"
 
@@ -15,8 +14,10 @@ import { cleanupFilename } from "../tools/cleanupFilename.js"
 import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
 import { getRandomString } from "../tools/getRandomString.js"
 import { getTvdbFetchClient } from "../tools/tvdbApi.js"
+import { getUserSearchInput } from "../tools/getUserSearchInput.js"
 import { naturalSort } from "../tools/naturalSort.js"
 import { getFiles } from "../tools/getFiles.js"
+import { searchTvdb } from "../tools/searchTvdb.js"
 
 export const nameTvShowEpisodes = ({
   searchTerm,
@@ -66,126 +67,51 @@ export const nameTvShowEpisodes = ({
               )
             )
             : (
-              from(
-                tvdbFetchClient
-                .GET(
-                  "/search",
-                  {
-                    params: {
-                      query: {
-                        query: searchTerm,
-                        type: "series",
-                      },
-                    },
-                  },
-                )
-              )
+              searchTvdb(searchTerm)
               .pipe(
-                map(({
-                  data,
-                }) => (
-                  (
-                    data
-                    ?.data
+                switchMap((results) => {
+                  if (results.length === 0) {
+                    throw new Error(`No TVDB results for: ${searchTerm}`)
+                  }
+
+                  return (
+                    getUserSearchInput({
+                      message: `TVDB results for "${searchTerm}":`,
+                      options: [
+                        ...results
+                        .map((result, index) => ({
+                          index,
+                          label: `${result.name}${result.year ? ` (${result.year})` : ""}${result.status ? ` [${result.status}]` : ""}`,
+                        })),
+                        {
+                          index: -1,
+                          label: "Cancel / skip",
+                        },
+                      ],
+                    })
+                    .pipe(
+                      map((selectedIndex) => {
+                        if (selectedIndex === -1) throw new Error("No selection made.")
+
+                        return results.at(selectedIndex)!
+                      }),
+                    )
                   )
-                  || []
-                )),
-                concatMap((
-                  searchResults,
-                ) => (
-                  new Observable<
-                    typeof searchResults[0]
-                  >((
-                    observer,
-                  ) => {
-                    console
-                    .info(
-                      searchResults
-                      .filter(
-                        Boolean
-                      )
-                      .map((
-                        item,
-                        index,
-                      ) => ({
-                        index,
-                        title: (
-                          (
-                            item
-                            .name
-                          )
-                          || ""
-                        ),
-                      }))
-                    )
-
-                    const readlineInterface = (
-                      readline
-                      .createInterface({
-                        input: (
-                          process
-                          .stdin
-                        ),
-                        output: (
-                          process
-                          .stdout
-                        ),
-                        terminal: false,
-                      })
-                    )
-
-                    readlineInterface
-                    .on(
-                      'line',
-                      (
-                        index,
-                      ) => {
-                        observer
-                        .next(
-                          searchResults
-                          .at(
-                            Number(
-                              index
-                            )
-                          )
-                        )
-
-                        readlineInterface
-                        .close()
-
-                        observer
-                        .complete()
-                      },
-                    )
-                  })
-                )),
-                filter(
-                  Boolean
-                ),
-                concatMap((
-                  selectedSearchResult,
-                ) => (
+                }),
+                filter(Boolean),
+                concatMap((selectedSearchResult) => (
                   tvdbFetchClient
                   .GET(
                     "/series/{id}/episodes/{season-type}",
                     {
                       params: {
                         path: {
-                          id: (
-                            Number(
-                              (
-                                selectedSearchResult
-                                ?.tvdb_id
-                              )
-                            )
-                          ),
+                          id: selectedSearchResult.tvdbId,
                           "season-type": "official",
                         },
                         query: {
                           page: 0,
-                          season: (
-                            seasonNumber
-                          ),
+                          season: seasonNumber,
                         },
                       },
                     },
