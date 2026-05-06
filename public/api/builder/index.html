@@ -598,17 +598,7 @@ function moveStep(id, dir) {
 function setParam(id, fieldName, value) {
   const step = steps.find(s => s.id === id)
   if (!step) return
-  const cmd = COMMANDS[step.command]
-  const fieldConfig = cmd?.fields.find(f => f.name === fieldName)
   step.params[fieldName] = value
-  // Manual edit of an ID/hash field clears its companion display name
-  if (fieldConfig?.companionNameField) {
-    delete step.params[fieldConfig.companionNameField]
-    refreshLinkedInputs()
-    updateYaml()
-    renderAll()
-    return
-  }
   refreshLinkedInputs()
   updateYaml()
 }
@@ -812,10 +802,12 @@ function renderFields(step, stepIndex) {
     if (field.type === 'number') {
       const num = val ?? field.default ?? ''
       const companion = field.companionNameField ? step.params[field.companionNameField] : null
+      const reverseLookup = field.companionNameField ? `oninput="scheduleReverseLookup(${step.id},'${field.name}',this.value)"` : ''
       return `<div>${label}<input type="number" value="${esc(num)}"
+        ${reverseLookup}
         onchange="setParam(${step.id},'${field.name}',this.value===''?undefined:Number(this.value))"
         class="w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500" />
-        ${companion ? `<p class="text-xs text-slate-500 mt-0.5 truncate" title="${esc(companion)}">${esc(companion)}</p>` : ''}
+        ${field.companionNameField ? `<p data-step="${step.id}" data-companion="${field.name}" class="text-xs text-slate-500 mt-0.5 truncate ${companion ? '' : 'hidden'}" title="${esc(companion ?? '')}">${esc(companion ?? '')}</p>` : ''}
       </div>`
     }
 
@@ -824,13 +816,14 @@ function renderFields(step, stepIndex) {
       const companion = field.companionNameField ? step.params[field.companionNameField] : null
       return `<div>${label}<div class="flex items-center gap-2">
         <input type="number" value="${esc(num)}" placeholder="${esc(field.placeholder ?? '')}"
+          oninput="scheduleReverseLookup(${step.id},'${field.name}',this.value)"
           onchange="setParam(${step.id},'${field.name}',this.value===''?undefined:Number(this.value))"
           class="flex-1 min-w-0 bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500" />
         <button onclick="openLookup('${field.lookupType}',${step.id},'${field.name}')"
           title="Look up ${esc(field.label)}"
           class="shrink-0 text-xs bg-slate-700 hover:bg-blue-700 text-slate-200 hover:text-white px-2.5 py-1.5 rounded border border-slate-600 hover:border-blue-500">🔍</button>
       </div>
-      ${companion ? `<p class="text-xs text-slate-500 mt-0.5 truncate" title="${esc(companion)}">${esc(companion)}</p>` : ''}
+      <p data-step="${step.id}" data-companion="${field.name}" class="text-xs text-slate-500 mt-0.5 truncate ${companion ? '' : 'hidden'}" title="${esc(companion ?? '')}">${esc(companion ?? '')}</p>
       </div>`
     }
 
@@ -1374,6 +1367,97 @@ function kbdBadge(index) {
 // stays "Blu-ray 4K" because that's the literal token DVDCompare uses.
 function displayDvdCompareVariant(variant) {
   return variant === 'Blu-ray 4K' ? 'UHD Blu-ray' : variant
+}
+
+// ─── Reverse lookup (manual ID/hash edit → fetch display name) ───────────────
+
+const reverseLookupTimers = new Map()  // key=`${stepId}-${fieldName}` → timeoutId
+const reverseLookupTokens = new Map()  // key → latest raw input value (for staleness check)
+
+function setCompanionDisplay(stepId, fieldName, text) {
+  const el = document.querySelector(`[data-step="${stepId}"][data-companion="${fieldName}"]`)
+  if (!el) return
+  el.textContent = text
+  el.title = text
+  if (text) el.classList.remove('hidden')
+  else el.classList.add('hidden')
+}
+
+function scheduleReverseLookup(stepId, fieldName, rawValue) {
+  const key = `${stepId}-${fieldName}`
+  if (reverseLookupTimers.has(key)) {
+    clearTimeout(reverseLookupTimers.get(key))
+    reverseLookupTimers.delete(key)
+  }
+  reverseLookupTokens.set(key, rawValue)
+
+  // Clear stale companion immediately so the user doesn't see stale info while typing.
+  const step = steps.find(s => s.id === stepId)
+  if (!step) return
+  const cmd = COMMANDS[step.command]
+  const field = cmd?.fields.find(f => f.name === fieldName)
+  if (!field?.companionNameField) return
+  delete step.params[field.companionNameField]
+  setCompanionDisplay(stepId, fieldName, '')
+  updateYaml()
+
+  if (!rawValue) return
+  const numericValue = Number(rawValue)
+  if (!Number.isFinite(numericValue) || numericValue <= 0) return
+
+  const timeoutId = setTimeout(() => {
+    reverseLookupTimers.delete(key)
+    runReverseLookup(stepId, fieldName, numericValue, rawValue)
+  }, 600)
+  reverseLookupTimers.set(key, timeoutId)
+}
+
+async function runReverseLookup(stepId, fieldName, id, requestToken) {
+  const key = `${stepId}-${fieldName}`
+  const step = steps.find(s => s.id === stepId)
+  if (!step) return
+  const cmd = COMMANDS[step.command]
+  const field = cmd?.fields.find(f => f.name === fieldName)
+  if (!field?.companionNameField) return
+
+  let endpoint, body
+  if (field.lookupType === 'mal') {
+    endpoint = '/queries/lookupMal'
+    body = { malId: id }
+  } else if (field.lookupType === 'tvdb') {
+    endpoint = '/queries/lookupTvdb'
+    body = { tvdbId: id }
+  } else if (field.lookupType === 'dvdcompare') {
+    endpoint = '/queries/lookupDvdCompare'
+    body = { dvdCompareId: id }
+  } else if (fieldName === 'dvdCompareReleaseHash') {
+    if (!step.params.dvdCompareId) return
+    endpoint = '/queries/lookupDvdCompareRelease'
+    body = { dvdCompareId: step.params.dvdCompareId, hash: String(id) }
+  } else {
+    return
+  }
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!resp.ok) return
+    const data = await resp.json()
+    const name = data.name ?? data.label
+    if (!name) return
+
+    // Stale-check: ignore if the user typed something else after this fetch started.
+    if (reverseLookupTokens.get(key) !== requestToken) return
+
+    step.params[field.companionNameField] = name
+    setCompanionDisplay(stepId, fieldName, name)
+    updateYaml()
+  } catch (err) {
+    console.error('Reverse lookup failed', err)
+  }
 }
 
 function renderSimpleSearchResults() {

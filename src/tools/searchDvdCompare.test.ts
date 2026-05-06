@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest"
 
 import {
   displayDvdCompareVariant,
+  parseDvdCompareFilmTitle,
   parseDvdCompareReleasesHtml,
   parseDvdCompareSearchHtml,
   parseDvdCompareTitleText,
@@ -204,5 +205,57 @@ describe(displayDvdCompareVariant.name, () => {
   test("leaves DVD and Blu-ray untouched", () => {
     expect(displayDvdCompareVariant("DVD")).toBe("DVD")
     expect(displayDvdCompareVariant("Blu-ray")).toBe("Blu-ray")
+  })
+})
+
+describe(parseDvdCompareFilmTitle.name, () => {
+  test("returns null when no <title> tag present", () => {
+    expect(parseDvdCompareFilmTitle("<html></html>", 100))
+    .toBeNull()
+  })
+
+  test("returns null when title has no recognizable year", () => {
+    expect(parseDvdCompareFilmTitle("<title>Some Random Page</title>", 100))
+    .toBeNull()
+  })
+
+  test("strips a leading 'DVD Compare:' prefix and parses base+year (DVD)", () => {
+    expect(parseDvdCompareFilmTitle("<title>DVD Compare: Soldier (1998)</title>", 12345))
+    .toEqual({
+      id: 12345,
+      baseTitle: "Soldier",
+      variant: "DVD",
+      year: "1998",
+    })
+  })
+
+  test("extracts Blu-ray variant from the title", () => {
+    expect(parseDvdCompareFilmTitle("<title>DVDCompare - Soldier (Blu-ray) (1998)</title>", 12346))
+    .toEqual({
+      id: 12346,
+      baseTitle: "Soldier",
+      variant: "Blu-ray",
+      year: "1998",
+    })
+  })
+
+  test("extracts Blu-ray 4K variant from the title", () => {
+    expect(parseDvdCompareFilmTitle("<title>DVD Compare: Soldier (Blu-ray 4K) (1998)</title>", 12347))
+    .toEqual({
+      id: 12347,
+      baseTitle: "Soldier",
+      variant: "Blu-ray 4K",
+      year: "1998",
+    })
+  })
+
+  test("decodes HTML entities and collapses whitespace inside the title", () => {
+    expect(parseDvdCompareFilmTitle("<title>DVD Compare:   Tom &amp; Jerry  (Blu-ray)  (1992)</title>", 99))
+    .toEqual({
+      id: 99,
+      baseTitle: "Tom & Jerry",
+      variant: "Blu-ray",
+      year: "1992",
+    })
   })
 })

@@ -40,3 +40,25 @@ export const searchMal = (
     catchNamedError(searchMal),
   )
 )
+
+export const lookupMalById = (
+  malId: number,
+): Observable<{ name: string } | null> => (
+  from(
+    malScraper
+    .getInfoFromURL(`https://myanimelist.net/anime/${malId}`)
+  )
+  .pipe(
+    map((info) => {
+      const name = (
+        info.englishTitle
+        || info.title
+        || info.synonyms?.[0]
+        || info.japaneseTitle
+        || ""
+      )
+      return name ? { name } : null
+    }),
+    catchNamedError(lookupMalById),
+  )
+)

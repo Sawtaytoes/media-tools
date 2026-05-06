@@ -348,3 +348,29 @@ export const dvdCompareReleaseSchema = z.object({
 export const listDvdCompareReleasesResponseSchema = z.object({
   releases: z.array(dvdCompareReleaseSchema).describe("Release packages available for the film"),
 })
+
+// Reverse-lookup schemas (manual ID edit → name)
+export const lookupMalRequestSchema = z.object({
+  malId: z.number().describe("MyAnimeList ID"),
+})
+
+export const lookupTvdbRequestSchema = z.object({
+  tvdbId: z.number().describe("TVDB ID"),
+})
+
+export const lookupDvdCompareRequestSchema = z.object({
+  dvdCompareId: z.number().describe("DVDCompare film ID"),
+})
+
+export const lookupDvdCompareReleaseRequestSchema = z.object({
+  dvdCompareId: z.number().describe("DVDCompare film ID"),
+  hash: z.string().describe("Release package hash"),
+})
+
+export const nameLookupResponseSchema = z.object({
+  name: z.string().nullable().describe("Display name, or null if not found"),
+})
+
+export const labelLookupResponseSchema = z.object({
+  label: z.string().nullable().describe("Release label, or null if not found"),
+})

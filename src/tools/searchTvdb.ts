@@ -51,3 +51,29 @@ export const searchTvdb = (
     catchNamedError(searchTvdb),
   )
 )
+
+export const lookupTvdbById = (
+  tvdbId: number,
+): Observable<{ name: string } | null> => (
+  from(getTvdbFetchClient())
+  .pipe(
+    mergeMap((tvdbFetchClient) => (
+      from(
+        tvdbFetchClient
+        .GET(
+          "/series/{id}",
+          {
+            params: {
+              path: { id: tvdbId },
+            },
+          },
+        )
+      )
+    )),
+    map(({ data }) => {
+      const name = data?.data?.name ?? ""
+      return name ? { name } : null
+    }),
+    catchNamedError(lookupTvdbById),
+  )
+)

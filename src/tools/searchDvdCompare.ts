@@ -155,6 +155,65 @@ export const listDvdCompareReleases = (
   )
 )
 
+export const parseDvdCompareFilmTitle = (
+  html: string,
+  fid: number,
+): DvdCompareResult | null => {
+  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
+  if (!titleMatch) return null
+  const titleText = (
+    decodeHtmlEntities(titleMatch[1])
+    .replace(/^DVD\s*Compare\s*[-:]\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim()
+  )
+  if (!titleText) return null
+  const parsed = parseDvdCompareTitleText(titleText, fid)
+  // If no year was extracted, treat the title as unparseable.
+  return parsed.year ? parsed : null
+}
+
+export const lookupDvdCompareFilm = (
+  dvdCompareId: number,
+): Observable<{ name: string } | null> => (
+  from((async () => {
+    const response = await fetch(
+      `${DVDCOMPARE_BASE}/comparisons/film.php?fid=${dvdCompareId}`
+    )
+    const html = await response.text()
+    const result = parseDvdCompareFilmTitle(html, dvdCompareId)
+    if (!result) return null
+    const variantSuffix = (
+      result.variant !== "DVD"
+      ? ` (${displayDvdCompareVariant(result.variant)})`
+      : ""
+    )
+    const yearSuffix = result.year ? ` (${result.year})` : ""
+    return { name: `${result.baseTitle}${variantSuffix}${yearSuffix}` }
+  })())
+  .pipe(
+    catchNamedError(lookupDvdCompareFilm),
+  )
+)
+
+export const lookupDvdCompareRelease = (
+  dvdCompareId: number,
+  hash: string,
+): Observable<{ label: string } | null> => (
+  from((async () => {
+    const response = await fetch(
+      `${DVDCOMPARE_BASE}/comparisons/film.php?fid=${dvdCompareId}&sel=on`
+    )
+    const html = await response.text()
+    const releases = parseDvdCompareReleasesHtml(html)
+    const matched = releases.find((r) => r.hash === String(hash))
+    return matched ? { label: matched.label } : null
+  })())
+  .pipe(
+    catchNamedError(lookupDvdCompareRelease),
+  )
+)
+
 export const searchDvdCompare = ({
   url,
 }: {

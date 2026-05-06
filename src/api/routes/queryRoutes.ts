@@ -2,9 +2,14 @@ import { OpenAPIHono, createRoute } from "@hono/zod-openapi"
 import { lastValueFrom } from "rxjs"
 
 import { getSubtitleMetadata } from "../../app-commands/getSubtitleMetadata.js"
-import { listDvdCompareReleases, findDvdCompareResults } from "../../tools/searchDvdCompare.js"
-import { searchMal } from "../../tools/searchMal.js"
-import { searchTvdb } from "../../tools/searchTvdb.js"
+import {
+  findDvdCompareResults,
+  listDvdCompareReleases,
+  lookupDvdCompareFilm,
+  lookupDvdCompareRelease,
+} from "../../tools/searchDvdCompare.js"
+import { lookupMalById, searchMal } from "../../tools/searchMal.js"
+import { lookupTvdbById, searchTvdb } from "../../tools/searchTvdb.js"
 import * as schemas from "../schemas.js"
 
 export const queryRoutes = new OpenAPIHono()
@@ -164,5 +169,125 @@ queryRoutes.openapi(
     const body = context.req.valid("json")
     const releases = await lastValueFrom(listDvdCompareReleases(body.dvdCompareId))
     return context.json({ releases }, 200)
+  },
+)
+
+queryRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/queries/lookupMal",
+    summary: "Reverse-lookup a MAL series by ID",
+    description: "Used by the builder when the user manually edits the MAL ID — returns the display name.",
+    tags: ["Naming Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": { schema: schemas.lookupMalRequestSchema },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: "Series name (or null if not found)",
+        content: {
+          "application/json": { schema: schemas.nameLookupResponseSchema },
+        },
+      },
+    },
+  }),
+  async (context) => {
+    const body = context.req.valid("json")
+    const result = await lastValueFrom(lookupMalById(body.malId))
+    return context.json({ name: result?.name ?? null }, 200)
+  },
+)
+
+queryRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/queries/lookupTvdb",
+    summary: "Reverse-lookup a TVDB series by ID",
+    description: "Used by the builder when the user manually edits the TVDB ID — returns the series name.",
+    tags: ["Naming Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": { schema: schemas.lookupTvdbRequestSchema },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: "Series name (or null if not found)",
+        content: {
+          "application/json": { schema: schemas.nameLookupResponseSchema },
+        },
+      },
+    },
+  }),
+  async (context) => {
+    const body = context.req.valid("json")
+    const result = await lastValueFrom(lookupTvdbById(body.tvdbId))
+    return context.json({ name: result?.name ?? null }, 200)
+  },
+)
+
+queryRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/queries/lookupDvdCompare",
+    summary: "Reverse-lookup a DVDCompare film by ID",
+    description: "Used by the builder when the user manually edits the DVDCompare film ID — returns the formatted display name (with variant + year).",
+    tags: ["Naming Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": { schema: schemas.lookupDvdCompareRequestSchema },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: "Film display name (or null if not found)",
+        content: {
+          "application/json": { schema: schemas.nameLookupResponseSchema },
+        },
+      },
+    },
+  }),
+  async (context) => {
+    const body = context.req.valid("json")
+    const result = await lastValueFrom(lookupDvdCompareFilm(body.dvdCompareId))
+    return context.json({ name: result?.name ?? null }, 200)
+  },
+)
+
+queryRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/queries/lookupDvdCompareRelease",
+    summary: "Reverse-lookup a DVDCompare release package by film ID + hash",
+    description: "Used by the builder when the user manually edits the release hash — returns the release package label.",
+    tags: ["Naming Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": { schema: schemas.lookupDvdCompareReleaseRequestSchema },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: "Release label (or null if not found)",
+        content: {
+          "application/json": { schema: schemas.labelLookupResponseSchema },
+        },
+      },
+    },
+  }),
+  async (context) => {
+    const body = context.req.valid("json")
+    const result = await lastValueFrom(lookupDvdCompareRelease(body.dvdCompareId, body.hash))
+    return context.json({ label: result?.label ?? null }, 200)
   },
 )
