@@ -130,7 +130,7 @@
   <div class="bg-slate-900 border border-slate-600 rounded-xl flex flex-col gap-4 p-6" style="width:min(90vw,560px);max-height:85vh">
     <div>
       <p class="text-xs text-slate-400 mb-1 font-medium">Job requires input</p>
-      <pre id="prompt-message" class="text-sm text-slate-200 font-mono whitespace-pre-wrap"></pre>
+      <pre id="prompt-message" class="text-lg text-slate-100 font-mono font-medium whitespace-pre-wrap break-words"></pre>
     </div>
     <div id="prompt-options" class="flex flex-col gap-2 overflow-y-auto"></div>
     <p class="text-xs text-slate-500">Press a number key to select, or click an option.</p>
@@ -1139,6 +1139,19 @@ function renderFields(step, stepIndex) {
     if (field.type === 'numberWithLookup') {
       const num = val ?? field.default ?? ''
       const companion = field.companionNameField ? step.params[field.companionNameField] : null
+      // Out-link to the DVDCompare release page so the user can spot-
+      // check what the rename heuristic is matching against. Only
+      // surfaces for dvdcompare-typed fields with a populated id; the
+      // hash defaults to 1 when the user hasn't picked a release yet.
+      const externalLink = (
+        field.lookupType === 'dvdcompare' && num
+        ? (() => {
+          const hash = step.params.dvdCompareReleaseHash ?? 1
+          const releaseUrl = `https://www.dvdcompare.net/comparisons/film.php?fid=${esc(String(num))}#${esc(String(hash))}`
+          return `<a href="${releaseUrl}" target="_blank" rel="noopener" class="text-xs text-blue-400 hover:text-blue-300 mt-0.5 inline-flex items-center gap-1">↗ open release on DVDCompare</a>`
+        })()
+        : ''
+      )
       return `<div>${label}<div class="flex items-center gap-2">
         <input type="number" value="${esc(num)}" placeholder="${esc(field.placeholder ?? '')}"
           oninput="scheduleReverseLookup('${step.id}','${field.name}',this.value)"
@@ -1149,6 +1162,7 @@ function renderFields(step, stepIndex) {
           class="shrink-0 text-xs bg-slate-700 hover:bg-blue-700 text-slate-200 hover:text-white px-2.5 py-1.5 rounded border border-slate-600 hover:border-blue-500">🔍</button>
       </div>
       <p data-step="${step.id}" data-companion="${field.name}" class="text-xs text-slate-500 mt-0.5 truncate ${companion ? '' : 'hidden'}" title="${esc(companion ?? '')}">${esc(companion ?? '')}</p>
+      ${externalLink}
       </div>`
     }
 
@@ -1785,7 +1799,19 @@ function showPromptModal(jobId, promptData) {
   document.getElementById('prompt-message').textContent = promptData.message
   const optionsEl = document.getElementById('prompt-options')
   optionsEl.innerHTML = ''
-  promptData.options.forEach(option => {
+  // Reorder so the "0" hotkey lands after 1–9 (matches the physical
+  // keyboard layout). Skip-style options (negative index) stay last.
+  const sortedOptions = [...promptData.options].sort((a, b) => {
+    const isSkipA = a.index < 0
+    const isSkipB = b.index < 0
+    if (isSkipA && isSkipB) return 0
+    if (isSkipA) return 1
+    if (isSkipB) return -1
+    const rankA = a.index === 0 ? 9.5 : a.index
+    const rankB = b.index === 0 ? 9.5 : b.index
+    return rankA - rankB
+  })
+  sortedOptions.forEach(option => {
     const btn = document.createElement('button')
     const isSkip = option.index === -1
     btn.className = `text-left text-sm px-4 py-2.5 rounded-lg border transition-colors ${
@@ -2428,6 +2454,19 @@ function scheduleReverseLookup(stepId, fieldName, rawValue) {
   setCompanionDisplay(stepId, fieldName, '')
   updateYaml()
 
+  // Changing the dvdCompareId invalidates the previously-resolved
+  // release label (it pointed at the old film). Clear it up front so
+  // the user doesn't see a stale label between keystrokes; the chained
+  // lookup at the bottom of runReverseLookup will refresh it once the
+  // film lookup itself succeeds.
+  if (fieldName === 'dvdCompareId') {
+    const hashField = cmd?.fields.find(f => f.name === 'dvdCompareReleaseHash')
+    if (hashField?.companionNameField) {
+      delete step.params[hashField.companionNameField]
+      setCompanionDisplay(stepId, 'dvdCompareReleaseHash', '')
+    }
+  }
+
   if (!rawValue) return
   const numericValue = Number(rawValue)
   if (!Number.isFinite(numericValue) || numericValue <= 0) return
@@ -2485,6 +2524,19 @@ async function runReverseLookup(stepId, fieldName, id, requestToken) {
     step.params[field.companionNameField] = name
     setCompanionDisplay(stepId, fieldName, name)
     updateYaml()
+
+    // The release label depends on which film we're looking at, so a
+    // dvdCompareId change must also refresh the hash field's companion.
+    // We chain the call after this lookup succeeds (rather than firing
+    // both in parallel from scheduleReverseLookup) so the hash lookup
+    // sees a stable, validated dvdCompareId in step.params.
+    if (fieldName === 'dvdCompareId') {
+      const hashField = cmd?.fields.find(f => f.name === 'dvdCompareReleaseHash')
+      if (hashField) {
+        const hashValue = step.params.dvdCompareReleaseHash ?? hashField.default ?? 1
+        runReverseLookup(stepId, 'dvdCompareReleaseHash', Number(hashValue), String(hashValue))
+      }
+    }
   } catch (err) {
     console.error('Reverse lookup failed', err)
   }
@@ -2930,25 +2982,42 @@ function formatStepResults(commandName, results) {
     return results.flat().map(item => `${item?.offsetInMilliseconds}ms`).join('\n')
   }
 
-  // Rename/move pairs — both fields present? Render as 'from → to' per
-  // line. Covers moveFiles ({ source, destination }) and the upcoming
-  // nameSpecialFeatures result shape ({ oldName, newName }) without
-  // having to maintain a per-command branch.
+  // nameSpecialFeatures emits both rename pairs ({ oldName, newName })
+  // and a trailing summary record ({ unrenamedFilenames: [...] }). When
+  // we see the summary alongside renames, render both: the rename table
+  // first, then a "Files not renamed" section. Covers the user's "show
+  // me what didn't get named at the end" request.
   const renameLikeFields = [
     ['source', 'destination'],
     ['oldName', 'newName'],
     ['from', 'to'],
   ]
-  const renameField = renameLikeFields.find(([fromKey, toKey]) => (
-    results.every((item) => (
+  const summaryRecord = results.find((item) => (
+    item && typeof item === 'object'
+    && Array.isArray(item.unrenamedFilenames)
+  ))
+  const renamePairs = summaryRecord
+    ? results.filter((item) => item !== summaryRecord)
+    : results
+  const renameField = renamePairs.length > 0 && renameLikeFields.find(([fromKey, toKey]) => (
+    renamePairs.every((item) => (
       item && typeof item === 'object'
       && typeof item[fromKey] === 'string'
       && typeof item[toKey] === 'string'
     ))
   ))
-  if (renameField) {
-    const [fromKey, toKey] = renameField
-    return results.map((item) => `${item[fromKey]} → ${item[toKey]}`).join('\n')
+  if (renameField || summaryRecord) {
+    const lines = []
+    if (renameField) {
+      const [fromKey, toKey] = renameField
+      lines.push(...renamePairs.map((item) => `${item[fromKey]} → ${item[toKey]}`))
+    }
+    if (summaryRecord && summaryRecord.unrenamedFilenames.length > 0) {
+      if (lines.length > 0) lines.push('')
+      lines.push('Files not renamed:')
+      lines.push(...summaryRecord.unrenamedFilenames.map((filename) => `  • ${filename}`))
+    }
+    if (lines.length > 0) return lines.join('\n')
   }
 
   // Plain string list — render one per line so paths and filenames

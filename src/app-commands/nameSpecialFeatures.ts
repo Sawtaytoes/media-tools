@@ -1,4 +1,5 @@
 import {
+  concat,
   concatMap,
   defaultIfEmpty,
   map,
@@ -134,6 +135,14 @@ const resolveUrl = ({
 
   return throwError(() => new Error("Provide url, dvdCompareId, or searchTerm."))
 }
+
+// Per-rename emission shape. The pipeline emits one of these per file
+// it actually renamed (`{ oldName, newName }`), then a single trailing
+// summary record (`{ unrenamedFilenames }`) so the builder can render
+// "Files not renamed: …" alongside the rename table.
+export type NameSpecialFeaturesResult =
+  | { oldName: string, newName: string }
+  | { unrenamedFilenames: string[] }
 
 // Per-file match outcome. The post-processor walks the buffered list of
 // these and assigns final renamedFilenames, including the (1)/(2) prefix
@@ -331,48 +340,67 @@ export const nameSpecialFeatures = ({
           // Buffer every per-file match so the post-processor can apply
           // the (1)/(2) main-feature fallback after seeing the full set.
           toArray(),
-          concatMap((matches: FileMatch[]) => (
-            of(...postProcessMatches(matches, cuts, movie))
-          )),
-          // Existing duplicate-counter logic — handles same-name
-          // collisions across renames (e.g. multiple "Trailer" extras).
-          // Each rename emits a { oldName, newName } record once it
-          // settles, so the builder's Results panel can render the
-          // mapping instead of a wall of nulls. Names are extension-less
-          // (createRenameFileOrFolder adds the extension internally).
-          scan(
-            (
-              { previousFilenameCount },
-              { fileInfo, renamedFilename },
-            ) => {
-              const finalName = (
-                renamedFilename in previousFilenameCount
-                ? `(${getNextFilenameCount(previousFilenameCount[renamedFilename])}) ${renamedFilename}`
-                : renamedFilename
-              )
-              return {
-                previousFilenameCount: {
-                  ...previousFilenameCount,
-                  [renamedFilename]: getNextFilenameCount(
-                    previousFilenameCount[renamedFilename],
-                  ),
-                },
-                renameFileObservable: (
-                  fileInfo.renameFile(finalName)
-                  .pipe(
-                    map(() => ({ oldName: fileInfo.filename, newName: finalName })),
-                  )
+          concatMap((matches: FileMatch[]) => {
+            const renames = postProcessMatches(matches, cuts, movie)
+            const renamedFullPaths = new Set(renames.map((r) => r.fileInfo.fullPath))
+            // Files that survived the post-processor without a rename —
+            // surfaced as a final summary so the user can see at a glance
+            // which entries the matcher couldn't place. Most common cause
+            // is a special feature DVDCompare lists without a timecode
+            // (e.g. image galleries). Always emitted, even when empty,
+            // so the formatter has a stable result shape.
+            const unrenamedFilenames = matches
+              .filter((match) => !renamedFullPaths.has(match.fileInfo.fullPath))
+              .map((match) => match.fileInfo.filename)
+
+            // Render the renames through the duplicate-counter +
+            // rename-observable scan as before, then append the summary.
+            const renamesStream$ = (
+              of(...renames)
+              .pipe(
+                scan(
+                  (
+                    { previousFilenameCount },
+                    { fileInfo, renamedFilename },
+                  ) => {
+                    const finalName = (
+                      renamedFilename in previousFilenameCount
+                      ? `(${getNextFilenameCount(previousFilenameCount[renamedFilename])}) ${renamedFilename}`
+                      : renamedFilename
+                    )
+                    return {
+                      previousFilenameCount: {
+                        ...previousFilenameCount,
+                        [renamedFilename]: getNextFilenameCount(
+                          previousFilenameCount[renamedFilename],
+                        ),
+                      },
+                      renameFileObservable: (
+                        fileInfo.renameFile(finalName)
+                        .pipe(
+                          map((): NameSpecialFeaturesResult => ({
+                            oldName: fileInfo.filename,
+                            newName: finalName,
+                          })),
+                        )
+                      ),
+                    }
+                  },
+                  {
+                    previousFilenameCount: {} as Record<string, number>,
+                    renameFileObservable: (
+                      new Observable() as Observable<NameSpecialFeaturesResult>
+                    ),
+                  },
                 ),
-              }
-            },
-            {
-              previousFilenameCount: {} as Record<string, number>,
-              renameFileObservable: (
-                new Observable() as Observable<{ oldName: string, newName: string }>
-              ),
-            },
-          ),
-          map(({ renameFileObservable }) => renameFileObservable),
+                map(({ renameFileObservable }) => renameFileObservable),
+              )
+            )
+            const summary$: Observable<Observable<NameSpecialFeaturesResult>> = (
+              of(of<NameSpecialFeaturesResult>({ unrenamedFilenames }))
+            )
+            return concat(renamesStream$, summary$)
+          }),
         )
       )),
       // Wait till all renames are figured out before doing any renaming.
