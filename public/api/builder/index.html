@@ -598,7 +598,10 @@ function randomHex() {
 
 function initPaths() {
   if (!paths.length) {
-    paths = [{ id: 'path_' + randomHex(), label: 'Base Path', value: '' }]
+    // Default to a clean, YAML-friendly id/label rather than a random
+    // hex slug so the toYamlStr output reads `basePath: { value: ... }`
+    // out of the box — matching what a user-uploaded YAML would have.
+    paths = [{ id: 'basePath', label: 'basePath', value: '' }]
   }
 }
 
@@ -1078,9 +1081,13 @@ function esc(v) {
 }
 
 function renderPathVarCard(pv, isFirst) {
-  const labelHtml = isFirst
-    ? `<span class="text-xs font-medium text-slate-300">${esc(pv.label)}</span>`
-    : `<input type="text" value="${esc(pv.label)}" oninput="setPathLabel('${pv.id}',this.value)"
+  // Every path-variable's name is editable now (the first card used to
+  // render a static <span> "Base Path" label). The first card still keeps
+  // its is-not-removable status — only the delete button is gated on
+  // isFirst — so a user can rename the base path freely without
+  // accidentally deleting it. This matches YAML-upload semantics: the
+  // path key is whatever the user types.
+  const labelHtml = `<input type="text" value="${esc(pv.label)}" oninput="setPathLabel('${pv.id}',this.value)"
         class="text-xs font-medium text-slate-300 bg-transparent border-b border-slate-600 focus:outline-none focus:border-blue-500 flex-1 min-w-0" />`
   const deleteBtn = !isFirst
     ? `<button onclick="removePath('${pv.id}')" title="Remove path variable"

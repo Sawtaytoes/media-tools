@@ -88,7 +88,10 @@ test.describe("Sequence Builder", () => {
     // a writable input (no auto-link to a step output, no readonly state).
     // Step path fields end up read-only when they auto-link to a path
     // variable on creation, so the manual-input is hidden by default.
-    const basePathInput = page.locator('[data-path-var]:first-of-type input[type="text"]:last-of-type')
+    // The path-var card now has two text inputs (label + value); match
+    // the value input by its placeholder so we don't accidentally grab
+    // the editable name field.
+    const basePathInput = page.locator('[data-path-var]').first().locator('input[placeholder*="/mnt/media"]')
 
     await basePathInput.fill("/")
     await expect(page.locator("#path-picker-popover")).toBeVisible()
