@@ -1,13 +1,14 @@
 import {
-  concatAll,
   concatMap,
-  ignoreElements,
   map,
   mergeAll,
   mergeMap,
   Observable,
+  of,
   scan,
+  switchMap,
   tap,
+  throwError,
   toArray,
 } from "rxjs"
 
@@ -20,7 +21,8 @@ import {
 import { getMediaInfo } from "../tools/getMediaInfo.js"
 import { parseSpecialFeatures } from "../tools/parseSpecialFeatures.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
-import { searchDvdCompare } from "../tools/searchDvdCompare.js"
+import { findDvdCompareResults, searchDvdCompare } from "../tools/searchDvdCompare.js"
+import { getUserSearchInput } from "../tools/getUserSearchInput.js"
 
 const getNextFilenameCount = (
   previousCount?: number,
@@ -32,22 +34,86 @@ const getNextFilenameCount = (
   + 1
 )
 
+const DVDCOMPARE_FILM_BASE = "https://www.dvdcompare.net/comparisons/film.php?fid="
+
+const resolveUrl = ({
+  dvdCompareId,
+  searchTerm,
+  url,
+}: {
+  dvdCompareId?: number,
+  searchTerm?: string,
+  url?: string,
+}): Observable<string> => {
+  if (url) return of(url)
+
+  if (dvdCompareId != null) return of(`${DVDCOMPARE_FILM_BASE}${dvdCompareId}`)
+
+  if (searchTerm) {
+    return (
+      findDvdCompareResults(searchTerm)
+      .pipe(
+        switchMap((results) => {
+          if (results.length === 0) {
+            throw new Error(`No DVDCompare results found for: ${searchTerm}`)
+          }
+
+          return (
+            getUserSearchInput({
+              message: `Search results for "${searchTerm}":`,
+              options: [
+                ...results
+                .map((result, index) => ({
+                  index,
+                  label: `${result.title}${result.year ? ` (${result.year})` : ""}`,
+                })),
+                {
+                  index: -1,
+                  label: "Cancel / skip",
+                },
+              ],
+            })
+            .pipe(
+              map((selectedIndex) => {
+                if (selectedIndex === -1) return undefined
+
+                return results.at(selectedIndex)
+              }),
+              tap((result) => {
+                if (!result) throw new Error("No result selected.")
+              }),
+              map((result) => `${DVDCOMPARE_FILM_BASE}${result!.id}`),
+            )
+          )
+        }),
+      )
+    )
+  }
+
+  return throwError(() => new Error("Provide url, dvdCompareId, or searchTerm."))
+}
+
 export const nameSpecialFeatures = ({
+  dvdCompareId,
   fixedOffset,
+  searchTerm,
   sourcePath,
   timecodePaddingAmount,
   url,
 }: (
   {
+    dvdCompareId?: number,
+    searchTerm?: string,
     sourcePath: string,
-    url: string,
+    url?: string,
   }
   & TimecodeDeviation
 )) => (
-  searchDvdCompare({
-    url,
-  })
+  resolveUrl({ dvdCompareId, searchTerm, url })
   .pipe(
+    concatMap((resolvedUrl) => (
+      searchDvdCompare({ url: resolvedUrl })
+    )),
     concatMap((
       specialFeatureText,
     ) => (

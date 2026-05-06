@@ -352,7 +352,9 @@ const COMMANDS = {
     outputFolderName: null,
     fields: [
       { name: "sourcePath", type: "path", label: "Source Path", required: true },
-      { name: "url", type: "string", label: "URL", required: true },
+      { name: "dvdCompareId", type: "number", label: "DVDCompare Film ID (bypasses search)", placeholder: "12345" },
+      { name: "searchTerm", type: "string", label: "Search Term (used if no Film ID)", placeholder: "Star Wars" },
+      { name: "url", type: "string", label: "Direct URL (overrides both)", placeholder: "https://dvdcompare.net/..." },
       { name: "fixedOffset", type: "number", label: "Fixed Offset (ms)", default: 0 },
       { name: "timecodePadding", type: "number", label: "Timecode Padding", default: 2 },
     ]

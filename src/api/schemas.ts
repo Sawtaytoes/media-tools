@@ -203,7 +203,9 @@ export const nameAnimeEpisodesRequestSchema = z.object({
 
 export const nameSpecialFeaturesRequestSchema = z.object({
   sourcePath: z.string().describe("Source directory path"),
-  url: z.string().describe("URL containing special features information"),
+  url: z.string().optional().describe("Direct DVDCompare.net URL (overrides dvdCompareId and searchTerm)"),
+  dvdCompareId: z.number().optional().describe("DVDCompare film ID — constructs URL directly, bypasses search"),
+  searchTerm: z.string().optional().describe("Title to search on DVDCompare.net (used when no url or dvdCompareId)"),
   fixedOffset: z.number().default(0).describe("Fixed timecode offset in milliseconds"),
   timecodePadding: z.number().default(0).describe("Timecode padding amount"),
 })

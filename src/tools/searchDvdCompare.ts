@@ -1,3 +1,5 @@
+import { platform } from "node:os"
+
 import puppeteer from "puppeteer"
 import {
   from,
@@ -7,7 +9,67 @@ import {
 } from "rxjs"
 
 import { catchNamedError } from "./catchNamedError.js"
-import { platform } from "node:os"
+
+export type DvdCompareResult = {
+  id: number
+  title: string
+  year: string
+}
+
+const DVDCOMPARE_BASE = "https://www.dvdcompare.net"
+
+const launchBrowser = () => (
+  puppeteer.launch({
+    args: platform() === "win32" ? [] : ["--no-sandbox"],
+    headless: true,
+  })
+)
+
+export const findDvdCompareResults = (
+  searchTerm: string,
+): Observable<DvdCompareResult[]> => (
+  from(launchBrowser())
+  .pipe(
+    mergeMap((browser) => (
+      from(browser.newPage())
+      .pipe(
+        mergeMap((page) => (
+          from(
+            page.goto(
+              `${DVDCOMPARE_BASE}/search.php?search=${encodeURIComponent(searchTerm)}&stype=contains&t=film`
+            )
+          )
+          .pipe(
+            mergeMap(async () => {
+              const results = await page.evaluate(() => {
+                const links = Array.from(
+                  document.querySelectorAll('a[href*="film.php?fid="]')
+                )
+                return links.map((link) => {
+                  const href = (link as HTMLAnchorElement).href
+                  const fidMatch = href.match(/fid=(\d+)/)
+                  const id = fidMatch ? Number(fidMatch[1]) : 0
+                  const text = (link.textContent || "").trim()
+                  const yearMatch = text.match(/\((\d{4})\)/)
+                  return {
+                    id,
+                    title: text.replace(/\s*\(\d{4}\)\s*$/, "").trim(),
+                    year: yearMatch?.[1] ?? "",
+                  }
+                }).filter((r) => r.id > 0)
+              })
+
+              await browser.close()
+
+              return results as DvdCompareResult[]
+            }),
+          )
+        )),
+      )
+    )),
+    catchNamedError(findDvdCompareResults),
+  )
+)
 
 export const searchDvdCompare = ({
   url,
@@ -18,18 +80,7 @@ export const searchDvdCompare = ({
     string
   >
 ) => (
-  from(
-    puppeteer
-    .launch({
-      args: (
-        platform() === "win32"
-        ? []
-        : ["--no-sandbox"] // TODO; Remove this with a better solution: https://stackoverflow.com/a/53975412/1624862.
-      ),
-      headless: true,
-      // headless: false,
-    })
-  )
+  from(launchBrowser())
   .pipe(
     mergeMap((
       browser,
