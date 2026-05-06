@@ -57,6 +57,12 @@ const computeStepFolderOutput = (
     : ""
   )
 
+  // 'parentOfSource': the command writes into dirname(sourcePath), so
+  // downstream chains should anchor on the parent. Used by flattenOutput.
+  if (config.outputComputation === "parentOfSource") {
+    return sourcePath ? sourcePath.replace(/[\\/][^\\/]*$/u, "") : ""
+  }
+
   if (config.outputFolderName) {
     return (
       sourcePath

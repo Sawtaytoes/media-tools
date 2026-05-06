@@ -123,6 +123,12 @@ export type CommandConfig = {
   extractOutputs?: (results: unknown[]) => Record<string, unknown>
   getObservable: (body: any) => Observable<unknown>
   outputFolderName?: string
+  // Override for the synthesized "folder" output when a downstream step
+  // links to this one via { linkedTo, output: 'folder' }. Without it, the
+  // resolver falls back to <sourcePath>/<outputFolderName> (or the source
+  // itself). 'parentOfSource' covers the flattenOutput case where files
+  // are written into dirname(sourcePath).
+  outputComputation?: 'parentOfSource'
   schema: z.ZodTypeAny
   summary: string
   tags: string[]
@@ -158,6 +164,9 @@ export const commandConfigs: Record<CommandName, CommandConfig> = {
   },
   flattenOutput: {
     getObservable: (body) => flattenOutput({ deleteSourceFolder: body.deleteSourceFolder, sourcePath: body.sourcePath }),
+    // Files land in dirname(sourcePath); downstream linkedTo:folder
+    // references should resolve to the parent, not the source itself.
+    outputComputation: "parentOfSource",
     schema: schemas.flattenOutputRequestSchema,
     summary: "Flatten a chained step's output: copies the folder's contents up one level (deletes source only if requested)",
     tags: ["File Operations"],

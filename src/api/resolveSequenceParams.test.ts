@@ -178,6 +178,44 @@ describe(resolveSequenceParams.name, () => {
     expect(errors[0]).toMatch(/step99/)
   })
 
+  test("computes 'parentOfSource' folder output as the parent directory of the source path", () => {
+    const stepsById: Record<string, StepRuntimeRecord> = {
+      flat: {
+        command: "flattenOutput",
+        resolvedParams: { sourcePath: "D:\\Work\\SUBTITLED" },
+        outputs: null,
+      },
+    }
+    const { resolved } = resolveSequenceParams({
+      rawParams: { sourcePath: { linkedTo: "flat", output: "folder" } },
+      pathsById: {},
+      stepsById,
+      commandConfigsByName: {
+        flattenOutput: makeConfig({ outputComputation: "parentOfSource" }),
+      },
+    })
+    expect(resolved.sourcePath).toBe("D:\\Work")
+  })
+
+  test("strips a trailing separator before computing 'parentOfSource'", () => {
+    const stepsById: Record<string, StepRuntimeRecord> = {
+      flat: {
+        command: "flattenOutput",
+        resolvedParams: { sourcePath: "D:\\Work\\SUBTITLED\\" },
+        outputs: null,
+      },
+    }
+    const { resolved } = resolveSequenceParams({
+      rawParams: { sourcePath: { linkedTo: "flat", output: "folder" } },
+      pathsById: {},
+      stepsById,
+      commandConfigsByName: {
+        flattenOutput: makeConfig({ outputComputation: "parentOfSource" }),
+      },
+    })
+    expect(resolved.sourcePath).toBe("D:\\Work")
+  })
+
   test("strips a trailing separator from the source path before joining outputFolderName", () => {
     const stepsById: Record<string, StepRuntimeRecord> = {
       step1: {
