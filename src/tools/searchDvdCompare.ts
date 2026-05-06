@@ -33,59 +33,75 @@ const launchBrowser = () => (
   })
 )
 
+const decodeHtmlEntities = (text: string): string => (
+  text
+  .replace(/&amp;/g, "&")
+  .replace(/&lt;/g, "<")
+  .replace(/&gt;/g, ">")
+  .replace(/&quot;/g, "\"")
+  .replace(/&#0?39;/g, "'")
+  .replace(/&#0?34;/g, "\"")
+)
+
+export const parseDvdCompareTitleText = (
+  text: string,
+  id: number,
+): DvdCompareResult => {
+  const fullMatch = text.match(/^(.+?)(?:\s*\((Blu-ray 4K|Blu-ray)\))?\s*\((\d{4})\)\s*$/)
+
+  if (!fullMatch) {
+    return { id, baseTitle: text, variant: "DVD", year: "" }
+  }
+
+  const [, base, variantToken, year] = fullMatch
+  const variant: DvdCompareVariant = (
+    variantToken === "Blu-ray 4K"
+    ? "Blu-ray 4K"
+    : variantToken === "Blu-ray"
+    ? "Blu-ray"
+    : "DVD"
+  )
+
+  return { id, baseTitle: base.trim(), variant, year }
+}
+
+export const parseDvdCompareSearchHtml = (
+  html: string,
+): DvdCompareResult[] => {
+  const linkPattern = /<a[^>]+href=["'][^"']*film\.php\?fid=(\d+)[^"']*["'][^>]*>([^<]+)<\/a>/g
+  const results: DvdCompareResult[] = []
+  let match: RegExpExecArray | null
+
+  while ((match = linkPattern.exec(html)) !== null) {
+    const id = Number(match[1])
+    if (id <= 0) continue
+    const text = decodeHtmlEntities(match[2]).trim()
+    results.push(parseDvdCompareTitleText(text, id))
+  }
+
+  return results
+}
+
 export const findDvdCompareResults = (
   searchTerm: string,
 ): Observable<DvdCompareResult[]> => (
-  from(launchBrowser())
+  from((async () => {
+    const formData = new URLSearchParams({
+      param: searchTerm,
+      searchtype: "text",
+    })
+    const response = await fetch(
+      `${DVDCOMPARE_BASE}/comparisons/search.php`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData.toString(),
+      },
+    )
+    const html = await response.text()
+    return parseDvdCompareSearchHtml(html)
+  })())
   .pipe(
-    mergeMap((browser) => (
-      from(browser.newPage())
-      .pipe(
-        mergeMap((page) => (
-          from(
-            page.goto(
-              `${DVDCOMPARE_BASE}/search.php?search=${encodeURIComponent(searchTerm)}&stype=contains&t=film`
-            )
-          )
-          .pipe(
-            mergeMap(async () => {
-              const results = await page.evaluate(() => {
-                const links = Array.from(
-                  document.querySelectorAll('a[href*="film.php?fid="]')
-                )
-                return links.map((link) => {
-                  const href = (link as HTMLAnchorElement).href
-                  const fidMatch = href.match(/fid=(\d+)/)
-                  const id = fidMatch ? Number(fidMatch[1]) : 0
-                  const text = (link.textContent || "").trim()
-                  // Match pattern: "Base Title [(Blu-ray 4K|Blu-ray)] (YYYY)"
-                  const fullMatch = text.match(/^(.+?)(?:\s*\((Blu-ray 4K|Blu-ray)\))?\s*\((\d{4})\)\s*$/)
-                  if (!fullMatch) {
-                    return { id, baseTitle: text, variant: "DVD", year: "" }
-                  }
-                  const [, base, variantToken, year] = fullMatch
-                  const variant = variantToken === "Blu-ray 4K"
-                    ? "Blu-ray 4K"
-                    : variantToken === "Blu-ray"
-                    ? "Blu-ray"
-                    : "DVD"
-                  return {
-                    id,
-                    baseTitle: base.trim(),
-                    variant,
-                    year,
-                  }
-                }).filter((r) => r.id > 0)
-              })
-
-              await browser.close()
-
-              return results as DvdCompareResult[]
-            }),
-          )
-        )),
-      )
-    )),
     catchNamedError(findDvdCompareResults),
   )
 )
