@@ -10,6 +10,7 @@ import {
 } from "rxjs"
 
 import { ffmpegPath as defaultFfmpegPath } from "../tools/appPaths.js";
+import { treeKillOnUnsubscribe } from "./treeKillChild.js"
 
 export const runReadlineFfmpeg = ({
   args,
@@ -117,5 +118,7 @@ export const runReadlineFfmpeg = ({
         .close()
       }
     )
+
+    return treeKillOnUnsubscribe(childProcess)
   })
 )

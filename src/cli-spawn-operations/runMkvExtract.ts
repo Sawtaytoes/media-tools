@@ -12,6 +12,7 @@ import { catchNamedError } from "../tools/catchNamedError.js"
 import { createTtyAffordances } from "../tools/createTtyAffordances.js";
 import { unlink } from "node:fs/promises";
 import { logWarning } from "../tools/logMessage.js";
+import { treeKillOnUnsubscribe } from "./treeKillChild.js"
 
 const cliProgressBar = (
   new cliProgress
@@ -206,6 +207,7 @@ export const runMkvExtract = ({
       },
     )
 
+    return treeKillOnUnsubscribe(childProcess)
   })
   .pipe(
     catchNamedError(

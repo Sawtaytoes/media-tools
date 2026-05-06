@@ -9,6 +9,7 @@ import { mkvExtractPath } from "../tools/appPaths.js";
 import { catchNamedError } from "../tools/catchNamedError.js"
 import { createTtyAffordances } from "../tools/createTtyAffordances.js";
 import { logWarning } from "../tools/logMessage.js";
+import { treeKillOnUnsubscribe } from "./treeKillChild.js"
 
 export const runMkvExtractStdOut = ({
   args,
@@ -121,6 +122,7 @@ export const runMkvExtractStdOut = ({
       },
     )
 
+    return treeKillOnUnsubscribe(childProcess)
   })
   .pipe(
     catchNamedError(

@@ -22,6 +22,7 @@ import { getFileDuration } from "../tools/getFileDuration.js";
 import { getMediaInfo } from "../tools/getMediaInfo.js";
 import { convertTimecodeToMilliseconds } from "../tools/parseTimestamps.js";
 import { logWarning } from "../tools/logMessage.js";
+import { treeKillOnUnsubscribe } from "./treeKillChild.js"
 
 const cliProgressBar = (
   new cliProgress
@@ -453,6 +454,7 @@ export const runFfmpeg = ({
           process.stdin.on('data', stdinDataHandler!)
         }
 
+        return treeKillOnUnsubscribe(childProcess)
       })
   )),
     catchNamedError(
