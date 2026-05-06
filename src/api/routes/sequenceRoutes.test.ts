@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises"
+import { vol } from "memfs"
 import { afterEach, beforeAll, afterAll, describe, expect, test } from "vitest"
 
 import { getJob, resetStore } from "../jobStore.js"
@@ -116,6 +118,47 @@ describe("POST /sequences/run", () => {
     const job = getJob(jobId)
     expect(job?.status).toBe("failed")
     expect(job?.error).toMatch(/missing/i)
+  })
+
+  test("flattens single array emissions into named outputs so { linkedTo, output } resolves to a flat list", async () => {
+    // Regression: sequenceRunner used to push() each emission, while
+    // jobRunner concat()s them — so an observable emitting a single
+    // rules-array (e.g. computeDefaultSubtitleRules) would land here as
+    // [[rule1, rule2]] and the downstream `linkedTo: …, output: 'rules'`
+    // resolved to an array-of-array. modifySubtitleMetadata's reduce then
+    // saw each "rule" as an array (no .type), fell through its switch, and
+    // wrote files back unchanged — sequence reported "completed" with no
+    // visible changes. Driving compute → modify end-to-end against a
+    // seeded .ass file proves the projection now matches jobRunner: the
+    // ScriptType bump from v4.00 → v4.00+ actually lands in the file.
+    vol.fromJSON({
+      "G:\\Seq\\episode-01.ass": "[Script Info]\nScriptType: v4.00\nTitle: Test\n",
+    })
+
+    const response = await post("/sequences/run", {
+      paths: { workDir: { value: "G:\\Seq" } },
+      steps: [
+        { id: "compRules", command: "computeDefaultSubtitleRules", params: { sourcePath: "@workDir" } },
+        {
+          id: "applyRules",
+          command: "modifySubtitleMetadata",
+          params: {
+            sourcePath: "@workDir",
+            rules: { linkedTo: "compRules", output: "rules" },
+          },
+        },
+      ],
+    })
+    const { jobId } = await response.json() as { jobId: string }
+
+    await flushAfter(100)
+
+    const job = getJob(jobId)
+    expect(job?.status).toBe("completed")
+    expect(job?.error).toBeNull()
+
+    const after = await readFile("G:\\Seq\\episode-01.ass", "utf8")
+    expect(after).toContain("ScriptType: v4.00+")
   })
 
   test("rejects unknown command names with a 400 before any job is created", async () => {

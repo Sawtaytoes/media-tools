@@ -127,6 +127,18 @@ export const runSequenceJob = (
       )
       .subscribe({
         next: (value) => {
+          // Match jobRunner's `results.concat(value)` flattening so a
+          // command's extractOutputs projector sees the same shape under
+          // both runners. Without this, an observable that emits a single
+          // rules-array (e.g. computeDefaultSubtitleRules) would leave
+          // collectedResults as [[rule1, rule2]] here, and downstream
+          // `linkedTo: …, output: 'rules'` references would resolve to an
+          // array-of-array — silently no-opping modifySubtitleMetadata's
+          // type-switched reduce.
+          if (Array.isArray(value)) {
+            collectedResults.push(...value)
+            return
+          }
           collectedResults.push(value)
         },
         complete: () => {
