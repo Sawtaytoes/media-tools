@@ -11,6 +11,7 @@ import {
   lookupDvdCompareRelease,
 } from "../../tools/searchDvdCompare.js"
 import { listDirectoryEntries } from "../../tools/listDirectoryEntries.js"
+import { lookupAnidbById, pickAnidbSeriesName, searchAnidb } from "../../tools/searchAnidb.js"
 import { lookupMalById, searchMal } from "../../tools/searchMal.js"
 import { lookupMovieDbById, searchMovieDb } from "../../tools/searchMovieDb.js"
 import { lookupTvdbById, searchTvdb } from "../../tools/searchTvdb.js"
@@ -100,6 +101,79 @@ queryRoutes.openapi(
       const message = messageFromError(err)
       console.error("[searchMal]", message)
       return context.json({ results: [], error: message }, 200)
+    }
+  },
+)
+
+queryRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/queries/searchAnidb",
+    summary: "Search AniDB for an anime title",
+    description: "Returns up to 50 anime matching the search term. Backed by the manami-project anime-offline-database (cached locally, refreshed weekly) — anidb.net itself sits behind Cloudflare and the HTTP API has no name-search endpoint.",
+    tags: ["Naming Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": { schema: schemas.searchTermRequestSchema },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: "AniDB search results",
+        content: {
+          "application/json": { schema: schemas.searchAnidbResponseSchema },
+        },
+      },
+    },
+  }),
+  async (context) => {
+    const body = context.req.valid("json")
+    try {
+      const results = await lastValueFrom(searchAnidb(body.searchTerm))
+      return context.json({ results, error: null }, 200)
+    } catch (err) {
+      const message = messageFromError(err)
+      console.error("[searchAnidb]", message)
+      return context.json({ results: [], error: message }, 200)
+    }
+  },
+)
+
+queryRoutes.openapi(
+  createRoute({
+    method: "post",
+    path: "/queries/lookupAnidb",
+    summary: "Reverse-lookup an AniDB anime by aid",
+    description: "Used by the builder when the user manually edits the AniDB ID — returns the display name resolved from the AniDB HTTP API.",
+    tags: ["Naming Operations"],
+    request: {
+      body: {
+        content: {
+          "application/json": { schema: schemas.lookupAnidbRequestSchema },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: "Series name (or null if not found)",
+        content: {
+          "application/json": { schema: schemas.nameLookupResponseSchema },
+        },
+      },
+    },
+  }),
+  async (context) => {
+    const body = context.req.valid("json")
+    try {
+      const anime = await lastValueFrom(lookupAnidbById(body.anidbId))
+      const name = anime ? pickAnidbSeriesName(anime.titles) : ""
+      return context.json({ name: name || null }, 200)
+    } catch (err) {
+      const message = messageFromError(err)
+      console.error("[lookupAnidb]", message)
+      return context.json({ name: null }, 200)
     }
   },
 )

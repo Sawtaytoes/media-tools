@@ -19,19 +19,8 @@ import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
 import { getFiles } from "../tools/getFiles.js"
 import { getUserSearchInput } from "../tools/getUserSearchInput.js"
 import { logInfo } from "../tools/logMessage.js"
-import { lookupAnidbById, searchAnidb } from "../tools/searchAnidb.js"
+import { lookupAnidbById, pickAnidbSeriesName, searchAnidb } from "../tools/searchAnidb.js"
 import { naturalSort } from "../tools/naturalSort.js"
-
-// Picks the most user-recognizable display name for an anime. Preference
-// order: official English title → main (typically romaji) → first official
-// title in any language → whatever's first in the list.
-const pickSeriesName = (titles: AnidbAnime["titles"]): string => (
-  titles.find((t) => t.type === "official" && t.lang === "en")?.value
-  ?? titles.find((t) => t.type === "main")?.value
-  ?? titles.find((t) => t.type === "official")?.value
-  ?? titles[0]?.value
-  ?? ""
-)
 
 // Episode title preference: English → x-jat (romaji) → first available.
 const pickEpisodeTitle = (
@@ -108,7 +97,7 @@ export const nameAnimeEpisodesAniDB = ({
           if (!anime) throw new Error("AniDB returned no anime payload.")
           return {
             episodes: filterAndSortRegularEpisodes(anime.episodes),
-            seriesName: pickSeriesName(anime.titles),
+            seriesName: pickAnidbSeriesName(anime.titles),
           }
         }),
         concatMap(({ episodes, seriesName }) => (

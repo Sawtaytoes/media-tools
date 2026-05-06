@@ -52,6 +52,17 @@ const toArray = <T>(v: T | T[] | undefined): T[] => (
   v == null ? [] : Array.isArray(v) ? v : [v]
 )
 
+// Picks the most user-recognizable display name for an anime from
+// AniDB's titles list. Preference: official English → main (typically
+// romaji) → first official in any language → first available.
+export const pickAnidbSeriesName = (titles: AnidbAnime["titles"]): string => (
+  titles.find((t) => t.type === "official" && t.lang === "en")?.value
+  ?? titles.find((t) => t.type === "main")?.value
+  ?? titles.find((t) => t.type === "official")?.value
+  ?? titles[0]?.value
+  ?? ""
+)
+
 export const parseAnidbAnimeXml = (xml: string): AnidbAnime | null => {
   const root = (xmlParser.parse(xml) as { anime?: any }).anime
   if (!root) return null

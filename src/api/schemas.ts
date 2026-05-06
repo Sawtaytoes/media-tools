@@ -345,6 +345,18 @@ export const searchMalResponseSchema = z.object({
   error: z.string().nullable().optional().describe("Error message if the search failed (e.g. network/server error). When present, results is empty."),
 })
 
+export const searchAnidbResultSchema = z.object({
+  aid: z.number().describe("AniDB anime id"),
+  name: z.string().describe("Primary title from manami-project dataset"),
+  type: z.string().optional().describe("Format type: TV, MOVIE, OVA, ONA, SPECIAL, etc."),
+  episodes: z.number().optional().describe("Total episode count"),
+})
+
+export const searchAnidbResponseSchema = z.object({
+  results: z.array(searchAnidbResultSchema).describe("AniDB search results (sourced from manami-project dataset)"),
+  error: z.string().nullable().optional().describe("Error message if the search failed. When present, results is empty."),
+})
+
 export const searchTvdbResultSchema = z.object({
   imageUrl: z.string().optional().describe("Series image URL"),
   name: z.string().describe("Series name"),
@@ -410,6 +422,10 @@ export const listDvdCompareReleasesResponseSchema = z.object({
 // Reverse-lookup schemas (manual ID edit → name)
 export const lookupMalRequestSchema = z.object({
   malId: z.number().describe("MyAnimeList ID"),
+})
+
+export const lookupAnidbRequestSchema = z.object({
+  anidbId: z.number().describe("AniDB anime id (aid)"),
 })
 
 export const lookupTvdbRequestSchema = z.object({

@@ -497,7 +497,7 @@ const COMMANDS = {
     outputFolderName: null,
     fields: [
       { name: "sourcePath", type: "path", label: "Source Path", required: true },
-      { name: "anidbId", type: "number", label: "AniDB Anime ID (aid)", placeholder: "7206", required: true },
+      { name: "anidbId", type: "numberWithLookup", lookupType: "anidb", label: "AniDB Anime ID", placeholder: "8160", required: true, companionNameField: "anidbName" },
       { name: "seasonNumber", type: "number", label: "Season Number", default: 1 },
     ]
   },
@@ -2010,6 +2010,7 @@ let lookupState = null
 
 const LOOKUP_TITLES = {
   mal: 'Look up MAL ID',
+  anidb: 'Look up AniDB ID',
   tvdb: 'Look up TVDB ID',
   dvdcompare: 'Look up DVDCompare Film ID',
 }
@@ -2630,6 +2631,9 @@ async function runReverseLookup(stepId, fieldName, id, requestToken) {
   if (field.lookupType === 'mal') {
     endpoint = '/queries/lookupMal'
     body = { malId: id }
+  } else if (field.lookupType === 'anidb') {
+    endpoint = '/queries/lookupAnidb'
+    body = { anidbId: id }
   } else if (field.lookupType === 'tvdb') {
     endpoint = '/queries/lookupTvdb'
     body = { tvdbId: id }
@@ -2690,6 +2694,9 @@ function renderSimpleSearchResults() {
     if (lookupState.lookupType === 'mal') {
       id = r.malId
       label = `${esc(r.name)}${r.airDate ? ` <span class="text-slate-500">(${esc(r.airDate)})</span>` : ''}${r.mediaType ? ` <span class="text-slate-500">[${esc(r.mediaType)}]</span>` : ''}`
+    } else if (lookupState.lookupType === 'anidb') {
+      id = r.aid
+      label = `${esc(r.name)}${r.type ? ` <span class="text-slate-500">[${esc(r.type)}]</span>` : ''}${r.episodes ? ` <span class="text-slate-500">(${r.episodes} ep)</span>` : ''}`
     } else if (lookupState.lookupType === 'tvdb') {
       id = r.tvdbId
       label = `${esc(r.name)}${r.year ? ` <span class="text-slate-500">(${esc(r.year)})</span>` : ''}${r.status ? ` <span class="text-slate-500">[${esc(r.status)}]</span>` : ''}`
@@ -2806,6 +2813,7 @@ async function runLookupSearch(searchTerm) {
   renderLookupModal()
   try {
     const endpoint = lookupState.lookupType === 'mal' ? '/queries/searchMal'
+                   : lookupState.lookupType === 'anidb' ? '/queries/searchAnidb'
                    : lookupState.lookupType === 'tvdb' ? '/queries/searchTvdb'
                    : lookupState.lookupType === 'tmdb' ? '/queries/searchMovieDb'
                    : '/queries/searchDvdCompare'
@@ -2837,6 +2845,9 @@ function lookupSelectSimpleByIndex(index) {
   let id, displayName
   if (lookupState.lookupType === 'mal') {
     id = r.malId
+    displayName = r.name
+  } else if (lookupState.lookupType === 'anidb') {
+    id = r.aid
     displayName = r.name
   } else if (lookupState.lookupType === 'tvdb') {
     id = r.tvdbId
