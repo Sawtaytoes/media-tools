@@ -1260,7 +1260,7 @@ function openLookup(lookupType, stepId, fieldName) {
     searchTerm: '',
     searchError: null,
     results: null,
-    formatFilter: 'all',
+    formatFilter: lookupType === 'dvdcompare' ? 'Blu-ray 4K' : 'all',
     selectedGroup: null,
     selectedVariant: null,
     selectedFid: null,
