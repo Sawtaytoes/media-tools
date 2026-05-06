@@ -146,11 +146,29 @@ export type NameSpecialFeaturesResult =
 
 // Per-file match outcome. The post-processor walks the buffered list of
 // these and assigns final renamedFilenames, including the (1)/(2) prefix
-// fallback for unmatched files when no cut matched anything.
+// fallback for unmatched files when no cut matched anything. Each match
+// carries the file's computed timecode so the post-processor's
+// main-feature fallback can apply a minimum-duration filter (image
+// galleries and other short DVDCompare-unlisted extras shouldn't be
+// renamed as the movie just because they didn't match anything).
 export type FileMatch =
-  | { fileInfo: FileInfo, kind: "cut", cut: Cut }
-  | { fileInfo: FileInfo, kind: "extra", renamedFilename: string }
-  | { fileInfo: FileInfo, kind: "unmatched" }
+  | { fileInfo: FileInfo, timecode: string, kind: "cut", cut: Cut }
+  | { fileInfo: FileInfo, timecode: string, kind: "extra", renamedFilename: string }
+  | { fileInfo: FileInfo, timecode: string, kind: "unmatched" }
+
+// Files shorter than this never get the main-feature fallback rename.
+// 30 min is a generous floor — typical movie cuts exceed it by a wide
+// margin, while typical extras (clips, image galleries, trailers,
+// short featurettes) come in well under. Surfaced as a constant so it's
+// easy to retune when a real-world false-positive shows up.
+const MAIN_FEATURE_MIN_DURATION_SECONDS = 30 * 60
+
+const timecodeToSeconds = (timecode: string): number => {
+  const parts = timecode.split(":").map((segment) => Number(segment) || 0)
+  if (parts.length === 1) return parts[0]
+  if (parts.length === 2) return parts[0] * 60 + parts[1]
+  return parts[0] * 3600 + parts[1] * 60 + parts[2]
+}
 
 // Movie-cut matching uses a wider tolerance window than extras matching.
 // Full-feature rips routinely drift 5–10 seconds from DVDCompare's
@@ -221,30 +239,40 @@ export const postProcessMatches = (
   // unmatched files as main features; leave them alone.
   if (!movie.title) return renames
 
-  // Sort unmatched files by filename so the (1)/(2) suffixes are stable
+  // Filter unmatched files to those long enough to plausibly be the
+  // main feature. Image galleries, trailers, and other DVDCompare-
+  // unlisted shorts come in well below 30 minutes; without this filter
+  // a 3:31 image gallery would get renamed "(1) Movie (Year)" alongside
+  // the actual movie. Files below the threshold stay unmatched and end
+  // up in the unrenamedFilenames summary.
+  const mainFeatureCandidates = unmatched.filter((match) => (
+    match.kind === "unmatched"
+    && timecodeToSeconds(match.timecode) >= MAIN_FEATURE_MIN_DURATION_SECONDS
+  ))
+  // Sort the candidates by filename so the (1)/(2) suffixes are stable
   // across runs.
-  unmatched.sort((a, b) => a.fileInfo.filename.localeCompare(b.fileInfo.filename))
+  mainFeatureCandidates.sort((a, b) => a.fileInfo.filename.localeCompare(b.fileInfo.filename))
 
-  if (unmatched.length === 0) return renames
+  if (mainFeatureCandidates.length === 0) return renames
 
-  if (unmatched.length === 1) {
-    // Single unmatched file → it's the movie. Use the sole-named-cut's
-    // edition when DVDCompare published one (e.g. "Director's Cut"
-    // without a timecode), else just `Title (Year)`.
+  if (mainFeatureCandidates.length === 1) {
+    // Single main-feature candidate → it's the movie. Use the sole-
+    // named-cut's edition when DVDCompare published one (e.g.
+    // "Director's Cut" without a timecode), else just `Title (Year)`.
     const soleNamedCut = cuts.length === 1 && cuts[0]?.name ? cuts[0] : null
     renames.push({
-      fileInfo: unmatched[0].fileInfo,
+      fileInfo: mainFeatureCandidates[0].fileInfo,
       renamedFilename: buildMovieFeatureName(movie, soleNamedCut?.name ?? ""),
     })
     return renames
   }
 
-  // Multiple unmatched files, no timecode-driven disambiguation → label
-  // each as "(1) Title (Year)", "(2) Title (Year)", … so the user can
-  // tell at a glance they're the movie even if which-is-which is
-  // ambiguous.
+  // Multiple main-feature candidates, no timecode-driven disambiguation
+  // → label each as "(1) Title (Year)", "(2) Title (Year)", … so the
+  // user can tell at a glance they're the movie even if which-is-which
+  // is ambiguous.
   const baseName = buildMovieBaseName(movie)
-  unmatched.forEach((match, index) => {
+  mainFeatureCandidates.forEach((match, index) => {
     renames.push({
       fileInfo: match.fileInfo,
       renamedFilename: `(${index + 1}) ${baseName}`,
@@ -316,9 +344,9 @@ export const nameSpecialFeatures = ({
           concatMap(({ fileInfo, timecode }): Observable<FileMatch> => {
             const matchedCut = findMatchingCut(cuts, timecode, deviation)
             if (matchedCut) {
-              return of({ fileInfo, kind: "cut", cut: matchedCut })
+              return of({ fileInfo, timecode, kind: "cut", cut: matchedCut })
             }
-            const unmatchedFallback: FileMatch = { fileInfo, kind: "unmatched" }
+            const unmatchedFallback: FileMatch = { fileInfo, timecode, kind: "unmatched" }
             return (
               getSpecialFeatureFromTimecode({
                 filename: fileInfo.filename,
@@ -330,6 +358,7 @@ export const nameSpecialFeatures = ({
               .pipe(
                 map((renamedFilename): FileMatch => ({
                   fileInfo,
+                  timecode,
                   kind: "extra",
                   renamedFilename,
                 })),
