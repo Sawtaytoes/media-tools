@@ -58,6 +58,10 @@ export const runSequenceJob = (
 
   const pathsById: Record<string, SequencePath> = body.paths ?? {}
   const stepsById: Record<string, StepRuntimeRecord> = {}
+  // Parallel to body.steps[i]: holds whichever status was last recorded
+  // for that step. Indices we never reached stay undefined and render as
+  // "skipped" in the end-of-run summary.
+  const stepStatusByIndex: Array<"completed" | "failed" | undefined> = []
   let assignedCounter = 0
 
   const ensureStepId = (step: SequenceStep): string => {
@@ -66,7 +70,19 @@ export const runSequenceJob = (
     return `step${assignedCounter}`
   }
 
+  const logRunSummary = (): void => {
+    if (body.steps.length === 0) return
+    logInfo("SEQUENCE", "Run summary:")
+    body.steps.forEach((step, index) => {
+      const stepId = ensureStepId(step)
+      const recorded = stepStatusByIndex[index]
+      const status = recorded ?? "skipped"
+      logInfo("SEQUENCE", `  ${index + 1}. ${stepId} (${step.command}): ${status}`)
+    })
+  }
+
   const finalize = (status: "completed" | "failed"): void => {
+    logRunSummary()
     updateJob(jobId, {
       completedAt: new Date(),
       status,
@@ -90,6 +106,7 @@ export const runSequenceJob = (
       if (!isKnownCommand(step.command)) {
         logError("SEQUENCE", `Step ${stepId}: unknown command "${step.command}".`)
         updateJob(jobId, { error: `Unknown command "${step.command}"` })
+        stepStatusByIndex[stepIndex] = "failed"
         finalize("failed")
         return
       }
@@ -106,6 +123,7 @@ export const runSequenceJob = (
       if (errors.length > 0) {
         errors.forEach((error) => logError("SEQUENCE", `Step ${stepId}: ${error}`))
         updateJob(jobId, { error: errors.join("; ") })
+        stepStatusByIndex[stepIndex] = "failed"
         finalize("failed")
         return
       }
@@ -119,6 +137,7 @@ export const runSequenceJob = (
       } catch (error) {
         logError("SEQUENCE", `Step ${stepId}: ${String(error)}`)
         updateJob(jobId, { error: String(error) })
+        stepStatusByIndex[stepIndex] = "failed"
         finalize("failed")
         return
       }
@@ -132,6 +151,7 @@ export const runSequenceJob = (
 
           logError("SEQUENCE", `Step ${stepId}: ${String(err)}`)
           updateJob(jobId, { error: String(err) })
+          stepStatusByIndex[stepIndex] = "failed"
           finalize("failed")
           return EMPTY
         }),
@@ -180,6 +200,7 @@ export const runSequenceJob = (
             resolvedParams: resolved,
           }
 
+          stepStatusByIndex[stepIndex] = "completed"
           logInfo("SEQUENCE", `Step ${stepId} (${step.command}): completed.`)
           runStep(stepIndex + 1)
         },
