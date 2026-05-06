@@ -35,12 +35,12 @@
       <a href="/" class="text-slate-100 hover:text-blue-300 transition-colors">Sequence Builder</a>
     </h1>
     <div class="flex items-center gap-2">
-      <button onclick="startNewSequence()" title="Clear the current sequence and start fresh (Ctrl+Z to undo)"
-        class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded font-medium border border-slate-600">New Sequence</button>
       <button id="undo-btn" onclick="undo()" title="Undo (Ctrl+Z)" disabled
         class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 disabled:opacity-30 disabled:hover:bg-slate-700 px-2 py-1.5 rounded border border-slate-600 w-7">↶</button>
       <button id="redo-btn" onclick="redo()" title="Redo (Ctrl+Y / Ctrl+Shift+Z)" disabled
         class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 disabled:opacity-30 disabled:hover:bg-slate-700 px-2 py-1.5 rounded border border-slate-600 w-7">↷</button>
+      <button onclick="startNewSequence()" title="Clear the current sequence and start fresh (Ctrl+Z to undo)"
+        class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded font-medium border border-slate-600">New Sequence</button>
       <span class="w-px h-6 bg-slate-700 mx-1"></span>
       <button onclick="addPicked()" title="Append an empty step"
         class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium">Add Step</button>
