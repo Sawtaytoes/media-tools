@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { Subject } from "rxjs"
+import { Subject, type Subscription } from "rxjs"
 
 import type { Job, PromptEvent } from "./types.js"
 
@@ -9,6 +9,11 @@ import type { Job, PromptEvent } from "./types.js"
 
 const jobs = new Map<string, Job>()
 const subjects = new Map<string, Subject<string | PromptEvent>>()
+// Live RxJS Subscriptions keyed by jobId. Populated by jobRunner /
+// sequenceRunner when a job starts running, removed on natural completion
+// or by cancelJob below. Not exposed — Subscription objects aren't
+// serializable so we keep them out of the Job type.
+const jobSubscriptions = new Map<string, Subscription>()
 const jobSubject = new Subject<Omit<Job, "logs">>()
 
 export const jobEvents$ = jobSubject.asObservable()
@@ -130,10 +135,60 @@ export const completeSubject = (
 }
 
 // ---------------------------------------------------------------------------
+// Subscription registry — for cancellation.
+// ---------------------------------------------------------------------------
+
+// Called by jobRunner / sequenceRunner once a subscription is live. Skip
+// when the subscription has already closed synchronously (e.g., the
+// observable completed during subscribe()) — registering a closed sub
+// would leak into the map with no way to remove it.
+export const registerJobSubscription = (
+  id: string,
+  subscription: Subscription,
+): void => {
+  if (subscription.closed) return
+  jobSubscriptions.set(id, subscription)
+}
+
+// Called by the runner's complete / error handlers (and cancelJob) to
+// release the slot once the job is truly terminal.
+export const unregisterJobSubscription = (
+  id: string,
+): void => {
+  jobSubscriptions.delete(id)
+}
+
+// Cancellation entry point used by `DELETE /jobs/:id`. Returns true when
+// a running job was cancelled, false when the job is missing or already
+// in a terminal state (caller maps these to 404 / 204 respectively).
+export const cancelJob = (
+  id: string,
+): boolean => {
+  const job = jobs.get(id)
+  if (!job) return false
+  if (job.status !== "running") return false
+
+  const subscription = jobSubscriptions.get(id)
+  if (subscription) {
+    subscription.unsubscribe()
+    jobSubscriptions.delete(id)
+  }
+
+  updateJob(id, {
+    completedAt: new Date(),
+    status: "cancelled",
+  })
+
+  completeSubject(id)
+  return true
+}
+
+// ---------------------------------------------------------------------------
 // Test helper — clears all state between tests.
 // ---------------------------------------------------------------------------
 
 export const resetStore = (): void => {
   jobs.clear()
   subjects.clear()
+  jobSubscriptions.clear()
 }

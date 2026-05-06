@@ -2,6 +2,7 @@ import { EMPTY, of, Subject, throwError } from "rxjs"
 import { afterEach, describe, expect, test } from "vitest"
 
 import {
+  cancelJob,
   createJob,
   getJob,
   resetStore,
@@ -73,6 +74,43 @@ describe(runJob.name, () => {
     await flushMicrotasks()
 
     expect(getJob(job.id)?.status).toBe("failed")
+  })
+
+  test("preserves cancelled status when the upstream observable later completes", async () => {
+    const job = createJob({ commandName: "hasBetterAudio" })
+    const upstream = new Subject<string>()
+
+    runJob(job.id, upstream.asObservable())
+
+    // Cancel mid-flight before any emission — this is the cancelJob path
+    // the DELETE route will exercise.
+    cancelJob(job.id)
+    expect(getJob(job.id)?.status).toBe("cancelled")
+
+    // The Subject is now closed (cancelJob unsubscribed it), but simulate
+    // the worst case where the upstream finishes naturally a tick later.
+    // The runner's complete/error guards must keep the status sticky.
+    upstream.complete()
+    await flushMicrotasks()
+
+    expect(getJob(job.id)?.status).toBe("cancelled")
+  })
+
+  test("preserves cancelled status when the upstream observable later errors", async () => {
+    const job = createJob({ commandName: "hasBetterAudio" })
+    const upstream = new Subject<string>()
+
+    runJob(job.id, upstream.asObservable())
+
+    cancelJob(job.id)
+    expect(getJob(job.id)?.status).toBe("cancelled")
+
+    upstream.error(new Error("late explosion"))
+    await flushMicrotasks()
+
+    expect(getJob(job.id)?.status).toBe("cancelled")
+    // Error message should NOT have been written — cancellation wins.
+    expect(getJob(job.id)?.error).toBeNull()
   })
 
   test("populates job.outputs when extractOutputs is provided and the job completes", async () => {

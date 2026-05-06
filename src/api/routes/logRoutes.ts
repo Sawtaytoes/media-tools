@@ -67,6 +67,7 @@ logsRoutes.openapi(
       if (
         job.status === "completed"
         || job.status === "failed"
+        || job.status === "cancelled"
       ) {
         await send({ done: true, status: job.status, results: job.results, outputs: job.outputs })
 

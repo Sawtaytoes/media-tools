@@ -1,15 +1,18 @@
-import { firstValueFrom } from "rxjs"
-import { afterEach, describe, expect, test } from "vitest"
+import { firstValueFrom, Subject } from "rxjs"
+import { afterEach, describe, expect, test, vi } from "vitest"
 
 import {
   appendJobLog,
+  cancelJob,
   completeSubject,
   createJob,
   createSubject,
   getAllJobs,
   getJob,
   getSubject,
+  registerJobSubscription,
   resetStore,
+  unregisterJobSubscription,
   updateJob,
 } from "./jobStore.js"
 
@@ -143,5 +146,97 @@ describe(completeSubject.name, () => {
 
     expect(completed).toBe(true)
     expect(getSubject(job.id)).toBeUndefined()
+  })
+})
+
+describe(cancelJob.name, () => {
+  test("returns false for unknown id", () => {
+    expect(cancelJob("does-not-exist")).toBe(false)
+  })
+
+  test("returns false for a job that is not running", () => {
+    const job = createJob({ commandName: "hasBetterAudio" })
+    // status is "pending"; cancel is a no-op until the runner flips it to running.
+    expect(cancelJob(job.id)).toBe(false)
+    expect(getJob(job.id)?.status).toBe("pending")
+  })
+
+  test("returns false for a job already in a terminal state", () => {
+    const job = createJob({ commandName: "hasBetterAudio" })
+    updateJob(job.id, { status: "completed" })
+
+    expect(cancelJob(job.id)).toBe(false)
+    expect(getJob(job.id)?.status).toBe("completed")
+  })
+
+  test("transitions a running job to cancelled, sets completedAt, and completes the subject", () => {
+    const job = createJob({ commandName: "hasBetterAudio" })
+    updateJob(job.id, { status: "running", startedAt: new Date() })
+    const subject = createSubject(job.id)
+    let subjectCompleted = false
+    subject.subscribe({ complete: () => { subjectCompleted = true } })
+
+    expect(cancelJob(job.id)).toBe(true)
+
+    expect(getJob(job.id)?.status).toBe("cancelled")
+    expect(getJob(job.id)?.completedAt).toBeInstanceOf(Date)
+    expect(subjectCompleted).toBe(true)
+    expect(getSubject(job.id)).toBeUndefined()
+  })
+
+  test("unsubscribes the registered subscription so the upstream observable tears down", () => {
+    const job = createJob({ commandName: "hasBetterAudio" })
+    updateJob(job.id, { status: "running", startedAt: new Date() })
+
+    // Stand-in for any long-running pipeline. The subject never emits
+    // complete, so without unsubscribe its observers stay attached.
+    const upstream = new Subject<string>()
+    const sub = upstream.subscribe()
+    registerJobSubscription(job.id, sub)
+
+    expect(sub.closed).toBe(false)
+
+    cancelJob(job.id)
+
+    expect(sub.closed).toBe(true)
+  })
+})
+
+describe(registerJobSubscription.name, () => {
+  test("does not register a subscription that is already closed", () => {
+    // If the observable completes synchronously inside subscribe(), the
+    // returned Subscription is born closed — registering it would leak
+    // into the map with no chance of cleanup since complete already fired.
+    const job = createJob({ commandName: "hasBetterAudio" })
+    updateJob(job.id, { status: "running" })
+
+    const closedSub = new Subject<string>().subscribe()
+    closedSub.unsubscribe()
+    expect(closedSub.closed).toBe(true)
+
+    registerJobSubscription(job.id, closedSub)
+
+    // cancelJob would normally find a sub to unsubscribe; with nothing
+    // registered the call still flips the status (we still want the
+    // user-facing semantics) but the unsubscribe path is a no-op.
+    expect(cancelJob(job.id)).toBe(true)
+    expect(getJob(job.id)?.status).toBe("cancelled")
+  })
+})
+
+describe(unregisterJobSubscription.name, () => {
+  test("releases the slot so a later cancelJob does not see a stale sub", () => {
+    const job = createJob({ commandName: "hasBetterAudio" })
+    updateJob(job.id, { status: "running" })
+    const sub = new Subject<string>().subscribe()
+    registerJobSubscription(job.id, sub)
+
+    unregisterJobSubscription(job.id)
+    const spy = vi.spyOn(sub, "unsubscribe")
+
+    cancelJob(job.id)
+
+    // No sub in the map → cancelJob doesn't try to unsubscribe it.
+    expect(spy).not.toHaveBeenCalled()
   })
 })

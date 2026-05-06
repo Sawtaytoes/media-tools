@@ -8,7 +8,7 @@ import * as schemas from "../schemas.js"
 const jobDetailSchema = z.object({
   id: z.string().describe("Job ID"),
   commandName: z.string().describe("Command name"),
-  status: z.enum(["pending", "running", "completed", "failed"]).describe("Job status"),
+  status: z.enum(["pending", "running", "completed", "failed", "cancelled"]).describe("Job status"),
   params: z.unknown().describe("Command parameters"),
   results: z.array(z.unknown()).optional().describe("Job results"),
   outputs: z.record(z.string(), z.unknown()).nullable().describe("Named runtime outputs declared by the command (null when none were produced or the job is in flight)"),
