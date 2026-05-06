@@ -44,12 +44,14 @@ const startCommandJob = ({
   command,
   commandObservable,
   context,
+  extractOutputs,
   outputFolderName = null,
   params,
 }: {
   command: string,
   commandObservable: Observable<unknown>,
   context: Context,
+  extractOutputs?: (results: unknown[]) => Record<string, unknown>,
   outputFolderName?: string | null,
   params: unknown,
 }) => {
@@ -59,7 +61,7 @@ const startCommandJob = ({
     outputFolderName,
   })
 
-  runJob(job.id, commandObservable)
+  runJob(job.id, commandObservable, { extractOutputs })
 
   return context.json(
     {
@@ -111,6 +113,12 @@ const commandNames = [
 export type CommandName = typeof commandNames[number]
 
 type CommandConfig = {
+  // Optional projector that maps the collected emission stream into a
+  // named-outputs record once the command completes. Surfaced on the job
+  // for downstream sequence steps to consume via the linkedTo/output
+  // mechanism. Distinct from `outputFolderName` — that is static metadata
+  // declared up-front; this is computed at runtime.
+  extractOutputs?: (results: unknown[]) => Record<string, unknown>
   getObservable: (body: any) => Observable<unknown>
   outputFolderName?: string
   schema: z.ZodTypeAny
@@ -377,7 +385,7 @@ commandRoutes.openapi(
 )
 
 commandNames.forEach((commandName) => {
-  const { getObservable, outputFolderName, schema, summary, tags } = commandConfigs[commandName]
+  const { extractOutputs, getObservable, outputFolderName, schema, summary, tags } = commandConfigs[commandName]
 
   commandRoutes.openapi(
     createRoute({
@@ -413,6 +421,7 @@ commandNames.forEach((commandName) => {
         command: commandName,
         commandObservable: getObservable(body),
         context,
+        extractOutputs,
         outputFolderName,
         params: body,
       })

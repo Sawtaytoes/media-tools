@@ -11,6 +11,7 @@ const jobDetailSchema = z.object({
   status: z.enum(["pending", "running", "completed", "failed"]).describe("Job status"),
   params: z.unknown().describe("Command parameters"),
   results: z.array(z.unknown()).optional().describe("Job results"),
+  outputs: z.record(z.string(), z.unknown()).nullable().describe("Named runtime outputs declared by the command (null when none were produced or the job is in flight)"),
   logs: z.array(z.string()).describe("Log lines"),
   error: z.string().nullable().describe("Error message if job failed"),
   startedAt: z.string().nullable().describe("Job start timestamp"),

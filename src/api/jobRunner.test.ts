@@ -74,4 +74,67 @@ describe(runJob.name, () => {
 
     expect(getJob(job.id)?.status).toBe("failed")
   })
+
+  test("populates job.outputs when extractOutputs is provided and the job completes", async () => {
+    const job = createJob({ commandName: "computeDefaultSubtitleRules" })
+
+    // runJob's `next` handler does job.results.concat(value), which flattens
+    // arrays by one level. So an observable that emits one rules-array ends
+    // up with results = [rule, rule, …], not [[rule, rule]]. The extractor
+    // therefore lifts the whole results array as the named output.
+    runJob(
+      job.id,
+      of(
+        { type: "setScriptInfo", key: "Title", value: "Example" },
+        { type: "setScriptInfo", key: "ScriptType", value: "v4.00+" },
+      ),
+      {
+        extractOutputs: (results) => ({ rules: results }),
+      },
+    )
+
+    await flushMicrotasks()
+
+    const completedJob = getJob(job.id)
+    expect(completedJob?.status).toBe("completed")
+    expect(completedJob?.outputs).toEqual({
+      rules: [
+        { type: "setScriptInfo", key: "Title", value: "Example" },
+        { type: "setScriptInfo", key: "ScriptType", value: "v4.00+" },
+      ],
+    })
+  })
+
+  test("leaves job.outputs null when no extractOutputs is provided", async () => {
+    const job = createJob({ commandName: "copyFiles" })
+
+    runJob(job.id, of("/dst/foo"))
+
+    await flushMicrotasks()
+
+    expect(getJob(job.id)?.status).toBe("completed")
+    expect(getJob(job.id)?.outputs).toBeNull()
+  })
+
+  test("does not run extractOutputs when the job ends in failure", async () => {
+    const job = createJob({ commandName: "computeDefaultSubtitleRules" })
+
+    let extractCalled = false
+    runJob(
+      job.id,
+      throwError(() => new Error("boom")),
+      {
+        extractOutputs: (results) => {
+          extractCalled = true
+          return { rules: results }
+        },
+      },
+    )
+
+    await flushMicrotasks()
+
+    expect(getJob(job.id)?.status).toBe("failed")
+    expect(getJob(job.id)?.outputs).toBeNull()
+    expect(extractCalled).toBe(false)
+  })
 })

@@ -33,6 +33,7 @@ export const createJob = ({
     id: randomUUID(),
     logs: [],
     outputFolderName,
+    outputs: null,
     params,
     results: [],
     startedAt: null,

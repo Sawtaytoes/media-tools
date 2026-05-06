@@ -7,6 +7,12 @@ export type Job = {
   id: string
   logs: string[]
   outputFolderName: string | null
+  // Named runtime outputs, populated when the job completes via the
+  // command's `extractOutputs` config. Distinct from `outputFolderName`
+  // (static metadata declared per command) and from `results` (the raw
+  // emission stream). null while the job is in flight or when the
+  // command does not declare any outputs.
+  outputs: Record<string, unknown> | null
   params: unknown
   results: unknown[]
   startedAt: Date | null

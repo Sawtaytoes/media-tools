@@ -12,6 +12,13 @@ import { withJobContext } from "./logCapture.js"
 export const runJob = (
   jobId: string,
   observable: Observable<unknown>,
+  options: {
+    // Optional projector that turns the collected emission stream into a
+    // named-outputs object once the observable completes successfully.
+    // The result is stored on the job's `outputs` field and surfaced in
+    // the SSE done event so downstream sequence steps can reference it.
+    extractOutputs?: (results: unknown[]) => Record<string, unknown>,
+  } = {},
 ): void => {
   createSubject(jobId)
 
@@ -59,8 +66,15 @@ export const runJob = (
           )
           !== "failed"
         ) {
+          const outputs = (
+            options.extractOutputs && job
+            ? options.extractOutputs(job.results)
+            : null
+          )
+
           updateJob(jobId, {
             completedAt: new Date(),
+            outputs,
             status: "completed",
           })
         }

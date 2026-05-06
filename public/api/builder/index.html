@@ -1382,6 +1382,7 @@ async function runSequence() {
     step.error = null
     step.results = null
     step.logs = null
+    step.outputs = null
     updateStepUI(step)
   }
 
@@ -1406,6 +1407,7 @@ async function runStep(stepId) {
   step.error = null
   step.results = null
   step.logs = null
+  step.outputs = null
   updateStepUI(step)
 
   await runOneStep(step)
@@ -1427,6 +1429,12 @@ function waitForJob(jobId, stepId) {
           const step = steps.find(s => s.id === stepId)
           if (step && Array.isArray(data.results) && data.results.length > 0) {
             step.results = data.results
+          }
+          // Named outputs (declared by the command's extractOutputs config)
+          // — null on commands that don't declare any. Stored on the step
+          // so downstream steps can resolve { linkedTo, output: name }.
+          if (step && data.outputs && typeof data.outputs === 'object') {
+            step.outputs = data.outputs
           }
           if (data.status === 'completed') resolve()
           else reject(`Job ended with status: ${data.status}`)
