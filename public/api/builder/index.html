@@ -2447,6 +2447,17 @@ function buildLinkPickerItems(stepId, fieldName) {
 }
 
 function openLinkPicker(stepId, fieldName, anchorElement) {
+  // Toggle: clicking the same trigger while its popover is open closes
+  // it. Matches what a native <select> does (a second click dismisses
+  // the dropdown) and is what users tried first.
+  if (
+    linkPickerState
+    && linkPickerState.stepId === stepId
+    && linkPickerState.fieldName === fieldName
+  ) {
+    closeLinkPicker()
+    return
+  }
   const step = steps.find((candidate) => candidate.id === stepId)
   if (!step) {
     return
