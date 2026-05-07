@@ -527,6 +527,62 @@ describe("POST /sequences/run — groups", () => {
     expect(vol.existsSync("/after-group")).toBe(false)
   })
 
+  test("parallel group: inner steps actually run concurrently (lifetimes overlap)", async () => {
+    // Promise.all in the runner subscribes to every inner-step
+    // observable synchronously before any of them get to do work, so
+    // each child's `startedAt` lands before any sibling's
+    // `completedAt`. Equivalent: the two children's lifetimes overlap
+    // (each started while the other was still running).
+    //
+    // Seed enough copyFiles work that the operations have to yield to
+    // the event loop a few times — copyFiles awaits fs.readdir and
+    // fs.copyFile, which gives the parallel sibling a turn. Serial
+    // execution would force child2.startedAt > child1.completedAt and
+    // the overlap assertion would fail.
+    const seedFiles: Record<string, string> = {}
+    for (let i = 0; i < 8; i += 1) {
+      seedFiles[`/par-src-a/file${i}.txt`] = "alpha-".repeat(100) + i
+      seedFiles[`/par-src-b/file${i}.txt`] = "beta-".repeat(100) + i
+    }
+    vol.fromJSON(seedFiles)
+
+    const response = await post("/sequences/run", {
+      steps: [{
+        kind: "group",
+        id: "para",
+        isParallel: true,
+        steps: [
+          { id: "concA", command: "copyFiles", params: { sourcePath: "/par-src-a", destinationPath: "/par-dst-a" } },
+          { id: "concB", command: "copyFiles", params: { sourcePath: "/par-src-b", destinationPath: "/par-dst-b" } },
+        ],
+      }],
+    })
+    const { jobId } = await response.json() as { jobId: string }
+    await flushAfter(150)
+
+    expect(getJob(jobId)?.status).toBe("completed")
+
+    const children = getChildJobs(jobId)
+    const a = children.find((c) => c.stepId === "concA")
+    const b = children.find((c) => c.stepId === "concB")
+    expect(a?.status).toBe("completed")
+    expect(b?.status).toBe("completed")
+    const aStart = a?.startedAt?.getTime()
+    const aEnd = a?.completedAt?.getTime()
+    const bStart = b?.startedAt?.getTime()
+    const bEnd = b?.completedAt?.getTime()
+    expect(typeof aStart).toBe("number")
+    expect(typeof aEnd).toBe("number")
+    expect(typeof bStart).toBe("number")
+    expect(typeof bEnd).toBe("number")
+
+    // Lifetimes overlap: each step started before the other completed.
+    // This is the proof of concurrent execution — serial would have
+    // bStart > aEnd (or vice versa), violating one of these.
+    expect(bStart!).toBeLessThan(aEnd!)
+    expect(aStart!).toBeLessThan(bEnd!)
+  })
+
   test("isCollapsed on a step parses without affecting runtime", async () => {
     // isCollapsed is pure view state. It must not perturb either the
     // child-job creation pass or the runtime — a sequence with a
