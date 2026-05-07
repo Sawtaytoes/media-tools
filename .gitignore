@@ -16,3 +16,6 @@ installed_packages.txt
 # Playwright Test artifacts
 playwright-report/
 test-results/
+
+# Vitest browser-mode failure screenshots
+**/__screenshots__/

@@ -18,7 +18,8 @@ export function renderPathVarCard(pv, isFirst) {
         data-action="set-path-label" data-pv-id="${pv.id}"
         class="text-xs font-medium text-slate-300 bg-transparent border-b border-slate-600 focus:outline-none focus:border-blue-500 flex-1 min-w-0" />`
   const deleteBtn = !isFirst
-    ? `<button data-action="remove-path" data-pv-id="${pv.id}" title="Remove path variable"
+    ? `<button data-action="remove-path" data-pv-id="${pv.id}"
+        title="Remove path variable" aria-label="Remove path variable"
         class="ml-auto text-xs text-slate-500 hover:text-red-400 w-5 h-5 flex items-center justify-center rounded hover:bg-slate-700">✕</button>`
     : ''
   return `<div data-path-var="${pv.id}" class="col-span-full bg-slate-800/40 rounded-xl border border-dashed border-slate-600 px-4 py-3">
