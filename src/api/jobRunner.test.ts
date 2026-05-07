@@ -196,4 +196,38 @@ describe(runJob.name, () => {
     expect(getJob(job.id)?.outputs).toBeNull()
     expect(extractCalled).toBe(false)
   })
+
+  test("returned promise resolves with the final job snapshot on natural completion", async () => {
+    const job = createJob({ commandName: "hasBetterAudio" })
+
+    const final = await runJob(job.id, of("done"))
+
+    expect(final?.status).toBe("completed")
+    expect(final?.results).toEqual(["done"])
+  })
+
+  test("returned promise resolves on error with status=failed", async () => {
+    const job = createJob({ commandName: "hasBetterAudio" })
+
+    const final = await runJob(job.id, throwError(() => new Error("kaboom")))
+
+    expect(final?.status).toBe("failed")
+    expect(final?.error).toContain("kaboom")
+  })
+
+  test("returned promise resolves on external cancel — sequenceRunner relies on this so its loop doesn't hang", async () => {
+    // Without the subscription.add(() => resolve(...)) teardown in
+    // jobRunner, an external unsubscribe (cancelJob) tears the chain
+    // down without firing complete or error, leaving the await in
+    // sequenceRunner pending forever and pinning a child job's promise
+    // chain in memory. This test guards against regressing that.
+    const job = createJob({ commandName: "hasBetterAudio" })
+    const upstream = new Subject<string>()
+
+    const promise = runJob(job.id, upstream.asObservable())
+    cancelJob(job.id)
+
+    const final = await promise
+    expect(final?.status).toBe("cancelled")
+  })
 })

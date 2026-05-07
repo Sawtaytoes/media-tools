@@ -8,7 +8,8 @@ import * as schemas from "../schemas.js"
 const jobDetailSchema = z.object({
   id: z.string().describe("Job ID"),
   commandName: z.string().describe("Command name"),
-  status: z.enum(["pending", "running", "completed", "failed", "cancelled"]).describe("Job status"),
+  status: z.enum(["pending", "running", "completed", "failed", "cancelled", "skipped"])
+    .describe("Job status. `skipped` is set on sequence-step child jobs that never ran because an earlier step failed or the umbrella was cancelled before reaching them; distinct from `cancelled`, which means the job was actively running when it got interrupted."),
   params: z.unknown().describe("Command parameters"),
   results: z.array(z.unknown()).optional().describe("Job results"),
   outputs: z.record(z.string(), z.unknown()).nullable().describe("Named runtime outputs declared by the command (null when none were produced or the job is in flight)"),
@@ -16,6 +17,8 @@ const jobDetailSchema = z.object({
   error: z.string().nullable().describe("Error message if job failed"),
   startedAt: z.string().nullable().describe("Job start timestamp"),
   completedAt: z.string().nullable().describe("Job completion timestamp"),
+  parentJobId: z.string().nullable().describe("If this job is a step inside a sequence, the umbrella sequence job's id. null for top-level jobs."),
+  stepId: z.string().nullable().describe("Sequence-step identifier (matches the SequenceStep `id` field — either user-supplied or auto-assigned `step1`, `step2`, …). Only set on sequence-step child jobs; null for top-level jobs."),
 })
 
 const jobListSchema = z.array(

@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises"
 import { vol } from "memfs"
 import { afterEach, beforeAll, afterAll, describe, expect, test } from "vitest"
 
-import { getJob, resetStore } from "../jobStore.js"
+import { getAllJobs, getChildJobs, getJob, resetStore } from "../jobStore.js"
 import { installLogCapture, uninstallLogCapture } from "../logCapture.js"
 import { sequenceRoutes } from "./sequenceRoutes.js"
 
@@ -196,6 +196,92 @@ describe("POST /sequences/run", () => {
 
     const after = await readFile("G:\\Seq\\episode-01.ass", "utf8")
     expect(after).toContain("ScriptType: v4.00+")
+  })
+
+  test("creates a child job per step linked to the umbrella via parentJobId, with correct stepId + commandName", async () => {
+    const response = await post("/sequences/run", {
+      paths: { root: { value: "/seq-children" } },
+      steps: [
+        { id: "alpha", command: "makeDirectory", params: { filePath: "@root" } },
+        { command: "makeDirectory", params: { filePath: "@root" } },
+      ],
+    })
+    const { jobId } = await response.json() as { jobId: string }
+
+    await flushAfter(50)
+
+    const children = getChildJobs(jobId)
+    expect(children).toHaveLength(2)
+    expect(children[0].commandName).toBe("makeDirectory")
+    expect(children[0].stepId).toBe("alpha")
+    // assignedCounter increments only for unnamed steps. The first step
+    // had an explicit id ("alpha") and didn't consume a slot, so the
+    // second (unnamed) step is the first auto-assigned id.
+    expect(children[1].stepId).toBe("step1")
+    expect(children.every((c) => c.parentJobId === jobId)).toBe(true)
+    expect(children.every((c) => c.status === "completed")).toBe(true)
+  })
+
+  test("marks downstream child jobs as skipped when an earlier step fails", async () => {
+    vol.fromJSON({ "/work/keep": "" })
+
+    const response = await post("/sequences/run", {
+      steps: [
+        { id: "ok", command: "makeDirectory", params: { filePath: "/ok" } },
+        { id: "boom", command: "deleteFolder", params: { folderPath: "/work", confirm: false } },
+        { id: "downstream1", command: "makeDirectory", params: { filePath: "/down1" } },
+        { id: "downstream2", command: "makeDirectory", params: { filePath: "/down2" } },
+      ],
+    })
+    const { jobId } = await response.json() as { jobId: string }
+
+    await flushAfter(80)
+
+    const children = getChildJobs(jobId)
+    const byStepId = Object.fromEntries(children.map((c) => [c.stepId, c]))
+
+    expect(byStepId.ok.status).toBe("completed")
+    expect(byStepId.boom.status).toBe("failed")
+    expect(byStepId.downstream1.status).toBe("skipped")
+    expect(byStepId.downstream2.status).toBe("skipped")
+
+    // The runner must not have advanced into either downstream step's
+    // observable — the directories are not on disk.
+    expect(vol.existsSync("/down1")).toBe(false)
+    expect(vol.existsSync("/down2")).toBe(false)
+  })
+
+  test("marks the offending step's child as failed when its params reference a missing path", async () => {
+    const response = await post("/sequences/run", {
+      steps: [
+        { id: "broken", command: "makeDirectory", params: { filePath: "@missing" } },
+        { id: "after", command: "makeDirectory", params: { filePath: "/never" } },
+      ],
+    })
+    const { jobId } = await response.json() as { jobId: string }
+
+    await flushAfter(20)
+
+    const children = getChildJobs(jobId)
+    const byStepId = Object.fromEntries(children.map((c) => [c.stepId, c]))
+    expect(byStepId.broken.status).toBe("failed")
+    expect(byStepId.broken.error).toMatch(/missing/i)
+    expect(byStepId.after.status).toBe("skipped")
+  })
+
+  test("umbrella sequence job has parentJobId=null so it stays at the top of the Jobs UI list", async () => {
+    const response = await post("/sequences/run", {
+      paths: { root: { value: "/top-level-check" } },
+      steps: [{ id: "only", command: "makeDirectory", params: { filePath: "@root" } }],
+    })
+    const { jobId } = await response.json() as { jobId: string }
+
+    await flushAfter(20)
+
+    expect(getJob(jobId)?.parentJobId).toBeNull()
+    expect(getJob(jobId)?.stepId).toBeNull()
+    // Sanity: total jobs = 1 umbrella + 1 child.
+    expect(getAllJobs()).toHaveLength(2)
   })
 
   test("rejects unknown command names with a 400 before any job is created", async () => {

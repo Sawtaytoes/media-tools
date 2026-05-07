@@ -1,20 +1,13 @@
-import {
-  catchError,
-  EMPTY,
-  type Observable,
-  Subscription,
-} from "rxjs"
-
 import { logError, logInfo } from "../tools/logMessage.js"
 import { withJobContext } from "./logCapture.js"
 import {
   completeSubject,
+  createJob,
   createSubject,
   getJob,
-  registerJobSubscription,
-  unregisterJobSubscription,
   updateJob,
 } from "./jobStore.js"
+import { runJob } from "./jobRunner.js"
 import {
   resolveSequenceParams,
   type SequencePath,
@@ -41,11 +34,14 @@ const isKnownCommand = (name: string): name is CommandName => (
   Object.prototype.hasOwnProperty.call(commandConfigs, name)
 )
 
-// Drives a sequence under a single umbrella job: resolves each step's
-// params against accumulated runtime state, dispatches the matching app-
-// command observable, captures its emissions to compute named outputs, and
-// stops on the first failure. Every step's logs route through the umbrella
-// job's SSE stream (withJobContext keeps them in the same async context).
+// Drives a sequence under a single umbrella job. Each step is a real,
+// first-class child Job (parentJobId = umbrellaId) with its own status,
+// log stream, results, and cancel affordance — the Jobs UI groups by
+// parentJobId on the client. Steps are pre-created up front in `pending`
+// so the UI can render the entire step list immediately; each one then
+// transitions through running → completed | failed | cancelled | skipped
+// as the runner advances. The umbrella's own logs carry the cross-step
+// "Step X starting / Run summary" markers.
 export const runSequenceJob = (
   jobId: string,
   body: SequenceBody,
@@ -58,26 +54,51 @@ export const runSequenceJob = (
 
   const pathsById: Record<string, SequencePath> = body.paths ?? {}
   const stepsById: Record<string, StepRuntimeRecord> = {}
-  // Parallel to body.steps[i]: holds whichever status was last recorded
-  // for that step. Indices we never reached stay undefined and render as
-  // "skipped" in the end-of-run summary.
-  const stepStatusByIndex: Array<"completed" | "failed" | undefined> = []
-  let assignedCounter = 0
 
-  const ensureStepId = (step: SequenceStep): string => {
+  // Pre-assign step ids so they're stable for both the child Job
+  // creation pass below and any later resolveSequenceParams lookups.
+  let assignedCounter = 0
+  const stepIds: string[] = body.steps.map((step) => {
     if (typeof step.id === "string" && step.id.length > 0) return step.id
     assignedCounter += 1
     return `step${assignedCounter}`
+  })
+
+  // Pre-create one child job per step in `pending`. Carries the raw
+  // (unresolved) params — the resolved snapshot lives on the running
+  // child only after we kick its observable off via runJob. Surfacing
+  // raw params keeps the UI honest about what the user wrote and stays
+  // consistent with how params are shown for un-started steps.
+  const childJobIds: string[] = body.steps.map((step, index) => {
+    const child = createJob({
+      commandName: step.command,
+      params: step.params ?? {},
+      parentJobId: jobId,
+      stepId: stepIds[index],
+    })
+    return child.id
+  })
+
+  const markRemainingSkipped = (fromIndex: number): void => {
+    for (let i = fromIndex; i < childJobIds.length; i += 1) {
+      const childId = childJobIds[i]
+      if (getJob(childId)?.status === "pending") {
+        updateJob(childId, {
+          completedAt: new Date(),
+          status: "skipped",
+        })
+        completeSubject(childId)
+      }
+    }
   }
 
   const logRunSummary = (): void => {
     if (body.steps.length === 0) return
     logInfo("SEQUENCE", "Run summary:")
     body.steps.forEach((step, index) => {
-      const stepId = ensureStepId(step)
-      const recorded = stepStatusByIndex[index]
-      const status = recorded ?? "skipped"
-      logInfo("SEQUENCE", `  ${index + 1}. ${stepId} (${step.command}): ${status}`)
+      const stepId = stepIds[index]
+      const childStatus = getJob(childJobIds[index])?.status ?? "pending"
+      logInfo("SEQUENCE", `  ${index + 1}. ${stepId} (${step.command}): ${childStatus}`)
     })
   }
 
@@ -90,23 +111,34 @@ export const runSequenceJob = (
     completeSubject(jobId)
   }
 
-  withJobContext(jobId, () => {
-    const runStep = (
-      stepIndex: number,
-    ): void => {
-      if (stepIndex >= body.steps.length) {
-        logInfo("SEQUENCE", `Completed all ${body.steps.length} step(s).`)
-        finalize("completed")
-        return
-      }
+  // Kick the loop off without awaiting — the route handler treats this
+  // as fire-and-forget. The loop awaits each child job's runJob promise
+  // and finalizes the umbrella when it terminates.
+  void withJobContext(jobId, async () => {
+    for (let stepIndex = 0; stepIndex < body.steps.length; stepIndex += 1) {
+      // Bail-out gates checked at the top of every iteration: cancelJob
+      // on the umbrella runs a cascade that flips the currently-running
+      // child to cancelled and any still-pending children to skipped, so
+      // by the time we resume after `await runJob` the umbrella may have
+      // already moved into a terminal state.
+      const umbrella = getJob(jobId)
+      if (!umbrella || umbrella.status !== "running") return
 
       const step = body.steps[stepIndex]
-      const stepId = ensureStepId(step)
+      const stepId = stepIds[stepIndex]
+      const childId = childJobIds[stepIndex]
 
       if (!isKnownCommand(step.command)) {
-        logError("SEQUENCE", `Step ${stepId}: unknown command "${step.command}".`)
-        updateJob(jobId, { error: `Unknown command "${step.command}"` })
-        stepStatusByIndex[stepIndex] = "failed"
+        const error = `Unknown command "${step.command}"`
+        logError("SEQUENCE", `Step ${stepId}: ${error}.`)
+        updateJob(childId, {
+          completedAt: new Date(),
+          error,
+          status: "failed",
+        })
+        completeSubject(childId)
+        updateJob(jobId, { error })
+        markRemainingSkipped(stepIndex + 1)
         finalize("failed")
         return
       }
@@ -122,97 +154,85 @@ export const runSequenceJob = (
 
       if (errors.length > 0) {
         errors.forEach((error) => logError("SEQUENCE", `Step ${stepId}: ${error}`))
-        updateJob(jobId, { error: errors.join("; ") })
-        stepStatusByIndex[stepIndex] = "failed"
+        const message = errors.join("; ")
+        updateJob(childId, {
+          completedAt: new Date(),
+          error: message,
+          status: "failed",
+        })
+        completeSubject(childId)
+        updateJob(jobId, { error: message })
+        markRemainingSkipped(stepIndex + 1)
         finalize("failed")
         return
       }
 
       logInfo("SEQUENCE", `Step ${stepId} (${step.command}): starting.`)
 
-      const collectedResults: unknown[] = []
-      let stepObservable: Observable<unknown>
+      let stepObservable
       try {
         stepObservable = config.getObservable(resolved)
       } catch (error) {
-        logError("SEQUENCE", `Step ${stepId}: ${String(error)}`)
-        updateJob(jobId, { error: String(error) })
-        stepStatusByIndex[stepIndex] = "failed"
+        const message = String(error)
+        logError("SEQUENCE", `Step ${stepId}: ${message}`)
+        updateJob(childId, {
+          completedAt: new Date(),
+          error: message,
+          status: "failed",
+        })
+        completeSubject(childId)
+        updateJob(jobId, { error: message })
+        markRemainingSkipped(stepIndex + 1)
         finalize("failed")
         return
       }
 
-      const subscription: Subscription = stepObservable
-      .pipe(
-        catchError((err) => {
-          // cancelJob already wrote the terminal state and tore down the
-          // chain; the catchError reaching here is fallout — don't clobber.
-          if (getJob(jobId)?.status === "cancelled") return EMPTY
-
-          logError("SEQUENCE", `Step ${stepId}: ${String(err)}`)
-          updateJob(jobId, { error: String(err) })
-          stepStatusByIndex[stepIndex] = "failed"
-          finalize("failed")
-          return EMPTY
-        }),
-      )
-      .subscribe({
-        next: (value) => {
-          // Match jobRunner's `results.concat(value)` flattening so a
-          // command's extractOutputs projector sees the same shape under
-          // both runners. Without this, an observable that emits a single
-          // rules-array (e.g. computeDefaultSubtitleRules) would leave
-          // collectedResults as [[rule1, rule2]] here, and downstream
-          // `linkedTo: …, output: 'rules'` references would resolve to an
-          // array-of-array — silently no-opping modifySubtitleMetadata's
-          // type-switched reduce.
-          if (Array.isArray(value)) {
-            collectedResults.push(...value)
-            return
-          }
-          collectedResults.push(value)
-        },
-        complete: () => {
-          subscription.unsubscribe()
-          unregisterJobSubscription(jobId)
-
-          // If this step's catchError already finalized as failed, or the
-          // umbrella was cancelled mid-step, bail without recording
-          // outputs and without advancing the recursion.
-          //
-          // TODO: refactor this runner to compose with concatMap so a
-          // single subscription cascades — then cancelJob unsubscribing
-          // the parent would automatically tear down the in-flight step.
-          // For now we track the current step's subscription on the
-          // umbrella job and rely on cancelJob to unsubscribe it directly.
-          const status = getJob(jobId)?.status
-          if (status === "failed" || status === "cancelled") return
-
-          const outputs = (
-            config.extractOutputs
-            ? config.extractOutputs(collectedResults)
-            : null
-          )
-
-          stepsById[stepId] = {
-            command: step.command,
-            outputs,
-            resolvedParams: resolved,
-          }
-
-          stepStatusByIndex[stepIndex] = "completed"
-          logInfo("SEQUENCE", `Step ${stepId} (${step.command}): completed.`)
-          runStep(stepIndex + 1)
-        },
+      // runJob installs its own withJobContext(childId, ...) inside —
+      // per-step command logs route to the child's log stream, while
+      // SEQUENCE-prefixed lines around it (above/below this await) stay
+      // on the umbrella's stream because we're inside withJobContext(jobId).
+      const finalChild = await runJob(childId, stepObservable, {
+        extractOutputs: config.extractOutputs,
       })
 
-      // Register the current step's subscription on the umbrella job so
-      // cancelJob(jobId) can tear it down. Each step overwrites the
-      // previous step's slot — the umbrella's "live" subscription is
-      // always the in-flight step.
-      registerJobSubscription(jobId, subscription)
+      const childStatus = finalChild?.status
+
+      if (childStatus === "cancelled") {
+        // cancelJob(jobId) already cascaded — the umbrella is cancelled
+        // and any later children are skipped. Nothing for us to do but bail.
+        return
+      }
+
+      if (childStatus === "failed") {
+        const message = finalChild?.error ?? "Step failed"
+        updateJob(jobId, { error: message })
+        markRemainingSkipped(stepIndex + 1)
+        finalize("failed")
+        return
+      }
+
+      // Completed. Flatten single-array emissions into named outputs the
+      // way the old in-line subscriber did, so a command that emits a
+      // single rules-array (e.g. computeDefaultSubtitleRules) doesn't
+      // leave downstream `linkedTo: ..., output: 'rules'` references
+      // resolving to an array-of-array. jobRunner uses concat() which
+      // already produces the flat shape — but extractOutputs is called
+      // on `job.results`, which is whatever next-callbacks pushed. Since
+      // jobRunner does `results.concat(value)` (which itself flattens
+      // a single-level array via Array.prototype.concat), the outputs
+      // here are already flat for the array-emission case.
+      const outputs = finalChild?.outputs ?? null
+
+      stepsById[stepId] = {
+        command: step.command,
+        outputs,
+        resolvedParams: resolved,
+      }
+
+      logInfo("SEQUENCE", `Step ${stepId} (${step.command}): completed.`)
     }
 
-    runStep(0)
+    logInfo("SEQUENCE", `Completed all ${body.steps.length} step(s).`)
+    finalize("completed")
   })
 }

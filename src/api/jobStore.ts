@@ -26,10 +26,14 @@ export const createJob = ({
   commandName,
   params,
   outputFolderName = null,
+  parentJobId = null,
+  stepId = null,
 }: {
   commandName: string,
   params?: unknown,
   outputFolderName?: string | null,
+  parentJobId?: string | null,
+  stepId?: string | null,
 }): Job => {
   const job: Job = {
     commandName,
@@ -40,9 +44,11 @@ export const createJob = ({
     outputFolderName,
     outputs: null,
     params,
+    parentJobId,
     results: [],
     startedAt: null,
     status: "pending",
+    stepId,
   }
 
   jobs.set(job.id, job)
@@ -63,6 +69,14 @@ export const getAllJobs = (): Job[] => (
   Array.from(
     jobs.values()
   )
+)
+
+export const getChildJobs = (
+  parentJobId: string,
+): Job[] => (
+  Array
+  .from(jobs.values())
+  .filter((j) => j.parentJobId === parentJobId)
 )
 
 // Returns a new Job object (spread-based update, no direct property mutation).
@@ -161,6 +175,13 @@ export const unregisterJobSubscription = (
 // Cancellation entry point used by `DELETE /jobs/:id`. Returns true when
 // a running job was cancelled, false when the job is missing or already
 // in a terminal state (caller maps these to 404 / 204 respectively).
+//
+// Cascade: when an umbrella sequence job is cancelled, any of its child
+// jobs that are still `running` get the same teardown (subscription
+// unsubscribe + status flip), and any still `pending` jump to `skipped`
+// — distinct status so the UI can show "this step never ran because the
+// parent was interrupted" vs "this step was actively running and got
+// killed".
 export const cancelJob = (
   id: string,
 ): boolean => {
@@ -168,18 +189,48 @@ export const cancelJob = (
   if (!job) return false
   if (job.status !== "running") return false
 
+  // Order matters: write the cancelled status BEFORE unsubscribing.
+  // jobRunner's runJob() registers a teardown on the subscription that
+  // resolves its returned promise to a snapshot of the job at unsubscribe
+  // time. If the status flip happened after unsubscribe, that snapshot
+  // would still read "running" and the sequenceRunner await would see a
+  // stale status when it resumes.
+  updateJob(id, {
+    completedAt: new Date(),
+    status: "cancelled",
+  })
+
   const subscription = jobSubscriptions.get(id)
   if (subscription) {
     subscription.unsubscribe()
     jobSubscriptions.delete(id)
   }
 
-  updateJob(id, {
-    completedAt: new Date(),
-    status: "cancelled",
-  })
-
   completeSubject(id)
+
+  for (const child of jobs.values()) {
+    if (child.parentJobId !== id) continue
+
+    if (child.status === "running") {
+      updateJob(child.id, {
+        completedAt: new Date(),
+        status: "cancelled",
+      })
+      const childSub = jobSubscriptions.get(child.id)
+      if (childSub) {
+        childSub.unsubscribe()
+        jobSubscriptions.delete(child.id)
+      }
+      completeSubject(child.id)
+    } else if (child.status === "pending") {
+      updateJob(child.id, {
+        completedAt: new Date(),
+        status: "skipped",
+      })
+      completeSubject(child.id)
+    }
+  }
+
   return true
 }
 

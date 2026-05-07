@@ -64,6 +64,7 @@
   .status.completed { background: #064e3b; color: #34d399; }
   .status.failed   { background: #7f1d1d; color: #f87171; }
   .status.cancelled { background: #334155; color: #cbd5e1; }
+  .status.skipped  { background: #1f2937; color: #6b7280; }
 
   .cancel-btn {
     background: transparent;
@@ -80,8 +81,25 @@
   .job-footer {
     display: flex;
     justify-content: flex-end;
+    gap: 8px;
     margin-top: 12px;
+    flex-wrap: wrap;
   }
+
+  .builder-btn {
+    background: transparent;
+    border: 1px solid #2563eb;
+    color: #60a5fa;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .builder-btn:hover { background: #1d4ed833; }
 
   @keyframes pulse {
     0%, 100% { opacity: 1; }
@@ -158,6 +176,60 @@
   .log-pane > div { word-break: break-word; white-space: pre-wrap; }
   .log-pane .log-empty { color: #64748b; font-style: italic; }
 
+  .steps {
+    margin-top: 12px;
+    border-top: 1px solid #334155;
+    padding-top: 10px;
+  }
+  .steps-heading {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
+  .step {
+    background: #0f172a;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    border: 1px solid #1e293b;
+  }
+  .step-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .step-title {
+    font-size: 0.9rem;
+    color: #e2e8f0;
+    word-break: break-all;
+  }
+  .step-index {
+    color: #475569;
+    font-variant-numeric: tabular-nums;
+    margin-right: 6px;
+  }
+  .step-id {
+    color: #64748b;
+    font-family: monospace;
+    font-size: 0.78rem;
+    margin-left: 6px;
+  }
+  .step-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .step .error {
+    margin-top: 6px;
+    font-size: 0.78rem;
+    padding: 6px 8px;
+  }
+  .step .log-pane { max-height: 220px; }
+
   #status-bar {
     max-width: 900px;
     margin: 0 auto 12px;
@@ -178,19 +250,38 @@
 const statusBar = document.getElementById("status-bar");
 const jobsEl = document.getElementById("jobs");
 
+// Authoritative client-side mirror of every job we've seen over the
+// /jobs/stream SSE. Indexed by id so we can look up either a top-level
+// parent or one of its children in O(1) when an event lands. Children
+// are not rendered as standalone cards — they're rendered inside their
+// parent's card under the Steps section, so on every event we figure
+// out which top-level card to re-render and refresh the whole subtree.
+const jobsById = new Map();
+
 function makeEl(tag, className) {
   const el = document.createElement(tag);
   if (className) el.className = className;
   return el;
 }
 
+function getChildren(parentId) {
+  // Stable order: children are pre-created up front by sequenceRunner
+  // in step order, and Map preserves insertion order, so iterating
+  // jobsById and filtering yields steps 1..N in the right order.
+  const out = [];
+  for (const job of jobsById.values()) {
+    if (job.parentJobId === parentId) out.push(job);
+  }
+  return out;
+}
+
 // /jobs/stream pushes whole-job updates without `logs` (jobStore strips
-// them to keep the firehose lean). For sequence jobs we want the live
-// log lines visible in-card so the user can see which step is running
-// — so we open a per-job /jobs/:id/logs EventSource and accumulate
-// lines client-side. Lifetime: opens on first render of a sequence
-// job, closes when the SSE sends `{ done: true }`. The maps survive
-// across upsertJob's whole-card replacements.
+// them to keep the firehose lean). For sequence parents AND each child
+// step we want live log lines visible in-card so the user can watch
+// progress — so we open per-job /jobs/:id/logs EventSources and
+// accumulate lines client-side. Lifetime: opens on first render of a
+// job whose card needs logs, closes when the SSE sends `{ done: true }`.
+// The maps survive across upsertJob's whole-card replacements.
 const logsByJobId = new Map();
 const logEventSourcesByJobId = new Map();
 
@@ -200,7 +291,7 @@ function appendLogLine(jobId, line) {
   logsByJobId.set(jobId, lines);
   // Direct DOM append on the currently-mounted pane (the card may have
   // been swapped by a status-change upsertJob since we opened the ES).
-  const pane = document.querySelector(`[data-id="${jobId}"] .log-pane`);
+  const pane = document.querySelector(`[data-log-id="${jobId}"]`);
   if (pane) {
     const empty = pane.querySelector(".log-empty");
     if (empty) empty.remove();
@@ -211,13 +302,8 @@ function appendLogLine(jobId, line) {
   }
 }
 
-function ensureLogStream(jobId, jobStatus) {
+function ensureLogStream(jobId) {
   if (logEventSourcesByJobId.has(jobId)) return;
-  // Skip already-completed jobs that already have their lines in the
-  // map (e.g. from a prior open) — re-opening would just replay.
-  // Terminal jobs WITHOUT a cached log array still need a one-shot
-  // fetch to populate, which the SSE handles by replaying buffered
-  // logs and emitting done immediately. So we always open.
   const es = new EventSource(`/jobs/${jobId}/logs`);
   logEventSourcesByJobId.set(jobId, es);
   es.onmessage = (event) => {
@@ -235,6 +321,132 @@ function ensureLogStream(jobId, jobStatus) {
     es.close();
     logEventSourcesByJobId.delete(jobId);
   };
+}
+
+// Encodes a sequence-shaped object as the base64 payload the builder's
+// ?seq= URL parameter expects. The builder loads via jsyaml.load which
+// accepts JSON natively (YAML is a superset), so we don't need to load
+// js-yaml on this page just to round-trip out.
+function buildBuilderUrl(sequenceBody) {
+  const json = JSON.stringify(sequenceBody);
+  // unescape(encodeURIComponent(...)) is the standard browser idiom for
+  // turning a Unicode string into a Latin-1 byte string that btoa can
+  // accept — same trick the builder uses on the way in.
+  const b64 = btoa(unescape(encodeURIComponent(json)));
+  return `/builder?seq=${b64}`;
+}
+
+function builderUrlForJob(job) {
+  if (job.commandName === "sequence" && job.params && typeof job.params === "object") {
+    // Sequence umbrella — params is already the {paths, steps} body.
+    return buildBuilderUrl(job.params);
+  }
+  // Single-command job — synthesize a 1-step sequence so the builder
+  // opens with this command preloaded. Useful for re-running or tweaking.
+  return buildBuilderUrl({
+    paths: {},
+    steps: [{
+      id: "step1",
+      command: job.commandName,
+      params: (job.params && typeof job.params === "object") ? job.params : {},
+    }],
+  });
+}
+
+function renderCancelButton(jobId) {
+  const cancelBtn = makeEl("button", "cancel-btn");
+  cancelBtn.textContent = "⏹ Cancel";
+  cancelBtn.title = `Cancel this job (DELETE /jobs/${jobId})`;
+  cancelBtn.onclick = async () => {
+    cancelBtn.disabled = true;
+    try {
+      await fetch(`/jobs/${jobId}`, { method: "DELETE" });
+    } catch (err) {
+      console.error("cancel failed", err);
+      cancelBtn.disabled = false;
+    }
+  };
+  return cancelBtn;
+}
+
+// Mounts a logs <details> for the given job. Re-renders existing
+// accumulated lines on every render so upsertJob's whole-card swap
+// doesn't lose scrollback. Opens by default while the job is running
+// so the user can watch state without an extra click. Lazy-opens the
+// SSE for terminal jobs on first disclosure-toggle so a page reload
+// with N old jobs doesn't blast N parallel SSE requests up front.
+function mountLogsDisclosure(parent, jobId, jobStatus, openByDefault) {
+  const details = makeEl("details");
+  if (openByDefault && jobStatus === "running") details.open = true;
+  const summary = makeEl("summary");
+  summary.textContent = "Logs";
+  const pane = makeEl("div", "log-pane");
+  pane.dataset.logId = jobId;
+  const lines = logsByJobId.get(jobId);
+  if (lines && lines.length) {
+    for (const line of lines) {
+      const node = document.createElement("div");
+      node.textContent = line;
+      pane.append(node);
+    }
+  } else {
+    const empty = makeEl("div", "log-empty");
+    empty.textContent = "Waiting for log lines…";
+    pane.append(empty);
+  }
+  details.append(summary, pane);
+  parent.append(details);
+  queueMicrotask(() => { pane.scrollTop = pane.scrollHeight; });
+  if (jobStatus === "running") {
+    ensureLogStream(jobId);
+  } else {
+    details.addEventListener("toggle", () => {
+      if (details.open) ensureLogStream(jobId);
+    }, { once: true });
+  }
+}
+
+function renderStepRow(child, index) {
+  const row = makeEl("div", "step");
+
+  const header = makeEl("div", "step-header");
+  const title = makeEl("div", "step-title");
+  const idx = makeEl("span", "step-index");
+  idx.textContent = `${index + 1}.`;
+  const cmdName = document.createElement("strong");
+  cmdName.textContent = child.commandName;
+  title.append(idx, cmdName);
+  if (child.stepId) {
+    const sid = makeEl("span", "step-id");
+    sid.textContent = child.stepId;
+    title.append(sid);
+  }
+
+  const actions = makeEl("div", "step-actions");
+  const badge = makeEl("div", `status ${child.status}`);
+  badge.textContent = child.status;
+  actions.append(badge);
+  if (child.status === "running") {
+    actions.append(renderCancelButton(child.id));
+  }
+
+  header.append(title, actions);
+  row.append(header);
+
+  if (child.error) {
+    const err = makeEl("div", "error");
+    err.textContent = child.error;
+    row.append(err);
+  }
+
+  // Skipped steps never ran — they have no logs to stream and no params
+  // to flesh out beyond what the parent already shows. Keep them as
+  // single-row placeholders so the list stays scannable.
+  if (child.status !== "skipped" && child.status !== "pending") {
+    mountLogsDisclosure(row, child.id, child.status, true);
+  }
+
+  return row;
 }
 
 function renderJob(job) {
@@ -281,28 +493,6 @@ function renderJob(job) {
     card.append(err);
   }
 
-  if (job.status === "running") {
-    // Footer-positioned so it doesn't crowd the status badge in the
-    // header. SSE re-render via upsertJob() rebuilds the whole card on
-    // the cancelled status flip, so the button just disappears once
-    // cancelJob lands — no manual cleanup needed.
-    const footer = makeEl("div", "job-footer");
-    const cancelBtn = makeEl("button", "cancel-btn");
-    cancelBtn.textContent = "⏹ Cancel";
-    cancelBtn.title = "Cancel this job (DELETE /jobs/" + job.id + ")";
-    cancelBtn.onclick = async () => {
-      cancelBtn.disabled = true;
-      try {
-        await fetch(`/jobs/${job.id}`, { method: "DELETE" });
-      } catch (err) {
-        console.error("cancel failed", err);
-        cancelBtn.disabled = false;
-      }
-    };
-    footer.append(cancelBtn);
-    card.append(footer);
-  }
-
   if (job.results?.length) {
     const details = makeEl("details");
     const summary = makeEl("summary");
@@ -316,49 +506,64 @@ function renderJob(job) {
     card.append(details);
   }
 
-  // Live log pane for sequence jobs — running ones stream in via the
-  // per-job SSE; terminal ones get their buffered lines replayed once.
-  // Open by default while running so the user can watch state without
-  // an extra click; closed by default afterwards to keep the list
-  // scannable. Replays existing accumulated lines on every render so
-  // upsertJob's whole-card replacement doesn't lose scrollback.
-  // Terminal jobs open the SSE lazily on first disclosure-toggle so a
-  // page reload with N old sequence jobs doesn't blast N parallel SSE
-  // requests up front.
-  if (job.commandName === "sequence") {
-    const details = makeEl("details");
-    if (job.status === "running") details.open = true;
-    const summary = makeEl("summary");
-    summary.textContent = "Logs";
-    const pane = makeEl("div", "log-pane");
-    const lines = logsByJobId.get(job.id);
-    if (lines && lines.length) {
-      for (const line of lines) {
-        const node = document.createElement("div");
-        node.textContent = line;
-        pane.append(node);
-      }
-    } else {
-      const empty = makeEl("div", "log-empty");
-      empty.textContent = "Waiting for log lines…";
-      pane.append(empty);
-    }
-    details.append(summary, pane);
-    card.append(details);
-    queueMicrotask(() => { pane.scrollTop = pane.scrollHeight; });
-    if (job.status === "running") {
-      ensureLogStream(job.id, job.status);
-    } else {
-      details.addEventListener("toggle", () => {
-        if (details.open) ensureLogStream(job.id, job.status);
-      }, { once: true });
-    }
+  // Live log pane for the job's own log stream. For sequence umbrellas
+  // these are the cross-step SEQUENCE markers; for single-command jobs
+  // it's the command's own console output. Either way, mounting here
+  // gives the user a single scrollable pane per top-level job.
+  mountLogsDisclosure(card, job.id, job.status, true);
+
+  // Steps — children of this job (only present when this is a sequence
+  // umbrella). Rendered as a compact list with each step's own status,
+  // logs disclosure, cancel button (if running), and error (if any).
+  const children = getChildren(job.id);
+  if (children.length > 0) {
+    const stepsBox = makeEl("div", "steps");
+    const heading = makeEl("div", "steps-heading");
+    heading.textContent = `Steps (${children.length})`;
+    stepsBox.append(heading);
+    children.forEach((child, index) => {
+      stepsBox.append(renderStepRow(child, index));
+    });
+    card.append(stepsBox);
   }
+
+  // Action footer: Open-in-Builder for every job + Cancel when running.
+  // Builder link goes to /builder?seq=<base64-JSON> — for sequences
+  // it's the saved {paths, steps} body, for single-command jobs it's
+  // a synthesized 1-step sequence so the user can edit + re-run.
+  const footer = makeEl("div", "job-footer");
+  const builderLink = makeEl("a", "builder-btn");
+  builderLink.textContent = "✎ Open in Sequence Builder";
+  builderLink.href = builderUrlForJob(job);
+  builderLink.target = "_blank";
+  builderLink.rel = "noopener";
+  footer.append(builderLink);
+  if (job.status === "running") {
+    footer.append(renderCancelButton(job.id));
+  }
+  card.append(footer);
 
   return card;
 }
 
 function upsertJob(job) {
+  jobsById.set(job.id, job);
+
+  // Children are rendered inside their parent's card. If the event is
+  // for a child, find its parent and re-render the parent's whole card
+  // so the Steps section refreshes. If the parent isn't in the map yet
+  // (out-of-order delivery), bail — we'll catch it when the parent's
+  // own event lands and getChildren picks the now-stored child up.
+  if (job.parentJobId) {
+    const parent = jobsById.get(job.parentJobId);
+    if (parent) renderTopLevel(parent);
+    return;
+  }
+
+  renderTopLevel(job);
+}
+
+function renderTopLevel(job) {
   const existing = jobsEl.querySelector(`[data-id="${job.id}"]`);
   const card = renderJob(job);
   if (existing) {

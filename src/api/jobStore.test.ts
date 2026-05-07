@@ -202,6 +202,55 @@ describe(cancelJob.name, () => {
   })
 })
 
+describe(`${cancelJob.name} — parent / child cascade`, () => {
+  test("cancelling a parent unsubscribes a running child and flips it to cancelled", () => {
+    const parent = createJob({ commandName: "sequence" })
+    updateJob(parent.id, { status: "running", startedAt: new Date() })
+
+    const child = createJob({ commandName: "makeDirectory", parentJobId: parent.id })
+    updateJob(child.id, { status: "running", startedAt: new Date() })
+    const childSub = new Subject<string>().subscribe()
+    registerJobSubscription(child.id, childSub)
+
+    expect(cancelJob(parent.id)).toBe(true)
+
+    expect(getJob(parent.id)?.status).toBe("cancelled")
+    expect(getJob(child.id)?.status).toBe("cancelled")
+    expect(childSub.closed).toBe(true)
+  })
+
+  test("cancelling a parent flips still-pending children to skipped", () => {
+    const parent = createJob({ commandName: "sequence" })
+    updateJob(parent.id, { status: "running", startedAt: new Date() })
+
+    const c1 = createJob({ commandName: "makeDirectory", parentJobId: parent.id })
+    const c2 = createJob({ commandName: "makeDirectory", parentJobId: parent.id })
+    // Leave both as pending — they were pre-created by sequenceRunner but
+    // never reached because the cancel landed before the loop got there.
+
+    cancelJob(parent.id)
+
+    expect(getJob(c1.id)?.status).toBe("skipped")
+    expect(getJob(c2.id)?.status).toBe("skipped")
+    expect(getJob(c1.id)?.completedAt).toBeInstanceOf(Date)
+  })
+
+  test("cancelling a parent leaves already-terminal children alone", () => {
+    const parent = createJob({ commandName: "sequence" })
+    updateJob(parent.id, { status: "running", startedAt: new Date() })
+
+    const completedChild = createJob({ commandName: "makeDirectory", parentJobId: parent.id })
+    updateJob(completedChild.id, { status: "completed", completedAt: new Date() })
+    const failedChild = createJob({ commandName: "makeDirectory", parentJobId: parent.id })
+    updateJob(failedChild.id, { status: "failed", completedAt: new Date(), error: "boom" })
+
+    cancelJob(parent.id)
+
+    expect(getJob(completedChild.id)?.status).toBe("completed")
+    expect(getJob(failedChild.id)?.status).toBe("failed")
+  })
+})
+
 describe(registerJobSubscription.name, () => {
   test("does not register a subscription that is already closed", () => {
     // If the observable completes synchronously inside subscribe(), the
