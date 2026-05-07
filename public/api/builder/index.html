@@ -1086,6 +1086,28 @@ function refreshLinkedInputs() {
   }
 }
 
+// Same display formula renderPathField uses, factored out so the live
+// refresh below can reuse it without re-rendering the whole UI.
+function pathVarOptionText(pv) {
+  const display = pv.value || pv.label || '(unset)'
+  const annotation = pv.value && pv.label ? ` (${pv.label})` : ''
+  return `${display}${annotation}`
+}
+
+// Step cards bake their path-link <select> options into HTML at render
+// time. Editing a path's label or value in the path-variable card has to
+// rewrite those option labels live — re-rendering everything would steal
+// focus from the input the user is typing into.
+function refreshPathVarOptions() {
+  const pvById = Object.fromEntries(paths.map((pv) => [pv.id, pv]))
+  for (const select of document.querySelectorAll('select[data-path-link]')) {
+    for (const option of select.querySelectorAll('option[data-pv-id]')) {
+      const pv = pvById[option.dataset.pvId]
+      if (pv) option.textContent = pathVarOptionText(pv)
+    }
+  }
+}
+
 // ─── Render ───────────────────────────────────────────────────────────────────
 
 function esc(v) {
@@ -1124,6 +1146,7 @@ function setPathValue(pvId, value) {
   if (!pv) return
   pv.value = value
   refreshLinkedInputs()
+  refreshPathVarOptions()
   updateYaml()
   scheduleUpdateUrl()
 }
@@ -1132,6 +1155,7 @@ function setPathLabel(pvId, label) {
   const pv = paths.find(p => p.id === pvId)
   if (!pv) return
   pv.label = label
+  refreshPathVarOptions()
   updateYaml()
   scheduleUpdateUrl()
 }
@@ -1456,9 +1480,7 @@ function renderPathField(step, field, stepIndex) {
   // reported the previous "label → value" form looked mismatched against
   // Source Path because the eye latches onto the label first.)
   const pathVarOptions = paths.map((pv) => {
-    const display = pv.value || pv.label || '(unset)'
-    const annotation = pv.value && pv.label ? ` (${pv.label})` : ''
-    return `<option value="path:${pv.id}"${isLinkedPath(pv.id) ? ' selected' : ''}>${esc(display)}${esc(annotation)}</option>`
+    return `<option value="path:${pv.id}" data-pv-id="${pv.id}"${isLinkedPath(pv.id) ? ' selected' : ''}>${esc(pathVarOptionText(pv))}</option>`
   }).join('')
 
   // Build previous step options. Empty steps (command: null) have nothing
@@ -1475,7 +1497,7 @@ function renderPathField(step, field, stepIndex) {
   return `<div>
     <div class="flex items-center gap-2 mb-1">
       <label class="text-xs text-slate-400">${esc(field.label)}${field.required ? ' <span class="text-red-400">*</span>' : ''}</label>
-      <select onchange="setLink('${step.id}','${field.name}',this.value)"
+      <select data-path-link onchange="setLink('${step.id}','${field.name}',this.value)"
         class="ml-auto text-xs bg-slate-700 text-slate-300 rounded px-1.5 py-0.5 border border-slate-600 focus:outline-none focus:border-blue-500 min-w-0 max-w-full">
         <option value="">— manual —</option>
         ${pathVarOptions}
