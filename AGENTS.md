@@ -151,6 +151,24 @@ export const someCommandCommand: CommandModule<{}, Args> = {
 
 In `cli.ts`, register it with `.command(someCommandCommand)`.
 
+## Multi-agent workflow
+
+This repo can be cloned into sibling working trees named `media-tools-worker-<name>/` so several Claudes can work in parallel without stepping on each other. **Identify your role from your repo's folder name:**
+
+- **Primary** (`media-tools/`, no suffix): you're the canonical Claude. `master` lives here; worker trees clone from it. Existing push rule applies unchanged: do NOT push to `master` unless the user explicitly says so.
+- **Worker** (`media-tools-worker-<name>/`): you're the worker named `<name>`. Work happens on a feature branch and is pushed continuously, not held until the user asks.
+
+### Worker workflow
+
+If your repo folder name starts with `media-tools-worker-`:
+
+1. **Create a feature branch** at the start of any non-trivial work — don't commit directly to `master`. Naming: `<name>/<short-description>` (e.g. `claude-x/jobs-progress-followup`). If a feature branch is already checked out and matches the task, keep using it.
+2. **Commit AND push** to that branch as you go. This is the explicit reversal of the primary's "never push" rule — the push is what makes your work visible to the user and lets the primary (and other workers) see what you're up to. Push after every commit; don't batch.
+3. **Don't merge to `master` autonomously.** Wait for the user to explicitly say "merge it" or equivalent. Once told, merge your feature branch into local `master` and push.
+4. Everything in `Commit conventions` below (commit-as-you-go, partial-file splits, focused commits) still applies — you're just additionally pushing the branch on every commit.
+
+The push-as-you-go rule is what keeps multiple workers from drifting into each other's blast radius — when the user can see all branches at once, conflicts get spotted early instead of at merge time.
+
 ## Commit conventions
 
 Commit *as you go*, not at the end of the session. After each logical group of changes lands and tests pass, commit it — one phase at a time. Don't batch a multi-step task into a single end-of-session commit just because the work all happened in one conversation; the user reviews incrementally, and a single 10-file commit is much harder to read than three focused 3-file commits.
@@ -159,7 +177,7 @@ If a single file legitimately touches two unrelated concerns (e.g. a feature cha
 
 Natural commit points: a todo item flips to completed, a phase of a Plan-mode plan finishes, tests pass for a self-contained change, a refactor wraps up before the next one starts.
 
-Do not push unless explicitly asked.
+Push rule depends on which role you are — see `Multi-agent workflow` above. Primary: never push without explicit instruction. Worker: push every commit to your feature branch; only merge to `master` when told.
 
 ## makeDirectory
 
