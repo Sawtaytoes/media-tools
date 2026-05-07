@@ -1,6 +1,5 @@
 import { join } from "node:path"
 import {
-  concatAll,
   concatMap,
   filter,
   map,
@@ -16,6 +15,7 @@ import { keepSpecifiedLanguageTracks, keepSpecifiedLanguageTracksDefaultProps } 
 import { logInfo } from "../tools/logMessage.js"
 import { makeDirectory } from "../tools/makeDirectory.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
+import { withFileProgress } from "../tools/progressEmitter.js"
 
 type KeepLanguagesRequiredProps = {
   audioLanguages: Iso6392LanguageCode[]
@@ -61,9 +61,7 @@ export const keepLanguages = ({
       sourcePath,
     })),
     filterIsVideoFile(),
-    map((
-      fileInfo,
-    ) => (
+    withFileProgress((fileInfo) => (
       getTrackLanguages(
         fileInfo
         .fullPath
@@ -213,7 +211,6 @@ export const keepLanguages = ({
         )),
       )
     )),
-    concatAll(),
     toArray(),
     logAndRethrow(
       keepLanguages

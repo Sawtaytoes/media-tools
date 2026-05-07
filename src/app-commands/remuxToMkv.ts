@@ -14,6 +14,7 @@ import { remuxMkvMerge } from "../cli-spawn-operations/remuxMkvMerge.js"
 import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 import { logInfo } from "../tools/logMessage.js"
+import { withFileProgress } from "../tools/progressEmitter.js"
 
 // Pass-through container remux for every file in `sourcePath` whose
 // extension matches `extensions`. Each match is fed to mkvmerge with no
@@ -56,7 +57,7 @@ export const remuxToMkv = ({
         )
         return normalizedExtensions.includes(fileExtension)
       }),
-      concatMap((fileInfo) => {
+      withFileProgress((fileInfo) => {
         const outputFilePath = join(
           dirname(fileInfo.fullPath),
           `${basename(fileInfo.fullPath, extname(fileInfo.fullPath))}.mkv`,

@@ -1,9 +1,6 @@
 import {
-  concatAll,
   concatMap,
-  map,
   of,
-  tap,
   toArray,
 } from "rxjs"
 
@@ -16,6 +13,7 @@ import {
   type VideoEncoder,
 } from "../cli-spawn-operations/inverseTelecineVideo.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
+import { withFileProgress } from "../tools/progressEmitter.js"
 
 /**
  * @experimental This doesn't work correctly and will probably be removed in the future unless something different than ffmpeg is used.
@@ -43,9 +41,7 @@ export const inverseTelecineDiscRips = ({
   })
   .pipe(
     filterIsVideoFile(),
-    map((
-      fileInfo,
-    ) => (
+    withFileProgress((fileInfo) => (
       (
         isConstantBitrate
         ? (
@@ -77,7 +73,6 @@ export const inverseTelecineDiscRips = ({
         )),
       )
     )),
-    concatAll(),
     toArray(),
     logAndRethrow(
       inverseTelecineDiscRips

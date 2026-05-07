@@ -1,9 +1,7 @@
 import {
-  concatAll,
   concatMap,
   filter,
   map,
-  mergeAll,
   of,
   tap,
   toArray,
@@ -18,6 +16,7 @@ import {
 } from "../tools/getMediaInfo.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 import { logInfo } from "../tools/logMessage.js"
+import { withFileProgress } from "../tools/progressEmitter.js"
 
 type ReplaceFlacWithPcmAudioRequiredProps = {
   isRecursive: boolean
@@ -49,9 +48,7 @@ export const replaceFlacWithPcmAudio = ({
   })
   .pipe(
     filterIsVideoFile(),
-    map((
-      fileInfo,
-    ) => (
+    withFileProgress((fileInfo) => (
       getMediaInfo(
         fileInfo
         .fullPath
@@ -136,7 +133,6 @@ export const replaceFlacWithPcmAudio = ({
         ),
       )
     )),
-    concatAll(),
     toArray(),
     logAndRethrow(
       replaceFlacWithPcmAudio

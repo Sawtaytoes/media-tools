@@ -1,7 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises"
 import { extname } from "node:path"
 import {
-  concatAll,
   concatMap,
   defer,
   EMPTY,
@@ -16,6 +15,7 @@ import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 import { logInfo } from "../tools/logMessage.js"
 import { parseAssFile, serializeAssFile } from "../tools/assFileTools.js"
+import { withFileProgress } from "../tools/progressEmitter.js"
 
 type ModifySubtitleMetadataRequiredProps = {
   isRecursive: boolean
@@ -61,7 +61,7 @@ export const modifySubtitleMetadata = ({
     filter((fileInfo) => (
       extname(fileInfo.fullPath).toLowerCase() === ".ass"
     )),
-    map((fileInfo) => (
+    withFileProgress((fileInfo) => (
       defer(() => (
         readFile(
           fileInfo.fullPath,
@@ -96,7 +96,6 @@ export const modifySubtitleMetadata = ({
         map(() => ({ filePath: fileInfo.fullPath })),
       )
     )),
-    concatAll(),
     logAndRethrow(modifySubtitleMetadata),
   )
   )

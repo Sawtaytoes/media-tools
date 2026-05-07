@@ -1,6 +1,4 @@
 import {
-  concatAll,
-  concatMap,
   tap,
   toArray,
 } from "rxjs"
@@ -9,6 +7,7 @@ import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 import { setDisplayWidthMkvPropEdit } from "../cli-spawn-operations/setDisplayWidthMkvPropEdit.js"
 import { logInfo } from "../tools/logMessage.js"
+import { withFileProgress } from "../tools/progressEmitter.js"
 
 export const setDisplayWidth = ({
   displayWidth,
@@ -33,32 +32,18 @@ export const setDisplayWidth = ({
     sourcePath,
   })
   .pipe(
-    toArray(),
-    concatAll(),
-    concatMap((
-      fileInfo,
-    ) => (
+    withFileProgress((fileInfo) => (
       setDisplayWidthMkvPropEdit({
         displayWidth,
-        filePath: (
-          fileInfo
-          .fullPath
-        ),
+        filePath: fileInfo.fullPath,
       })
       .pipe(
-        tap((
-          outputFilePath,
-        ) => {
-          logInfo(
-            "SET DISPLAY WIDTH IN FILE",
-            outputFilePath,
-          )
+        tap((outputFilePath) => {
+          logInfo("SET DISPLAY WIDTH IN FILE", outputFilePath)
         }),
       )
     )),
     toArray(),
-    logAndRethrow(
-      setDisplayWidth
-    ),
+    logAndRethrow(setDisplayWidth),
   )
 )

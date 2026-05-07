@@ -2,6 +2,7 @@ import {
   concatMap,
   finalize as rxFinalize,
   from,
+  mergeMap,
   type Observable,
   type OperatorFunction,
   toArray,
@@ -199,12 +200,23 @@ export const createProgressEmitter = (
   }
 }
 
+type WithFileProgressOptions = {
+  // Number of inner observables to run in parallel. Defaults to 1
+  // (sequential, matching `concatMap`). Set higher (e.g. cpus().length)
+  // to match an app-command's existing `mergeAll(threadCount)` flow.
+  // Inner-observable completions tick the emitter regardless of
+  // ordering — filesDone increments correctly even when files finish
+  // out of order.
+  concurrency?: number
+}
+
 // Sugar for the per-file-iterator pattern that ~all app-commands share:
 // `getFiles(...).pipe(concatMap(fileInfo => …))`. Materializes the
 // upstream into an array first (so totalFiles is known), then re-emits
-// through `concatMap(perFile)` while ticking the emitter on each
-// inner-observable completion. Wires `emitter.finalize()` into the
-// pipeline's `finalize` operator so cancellation/error paths clear
+// through `concatMap(perFile)` (or `mergeMap(perFile, concurrency)`
+// when an opts.concurrency > 1 is supplied) while ticking the emitter
+// on each inner-observable completion. Wires `emitter.finalize()` into
+// the pipeline's `finalize` operator so cancellation/error paths clear
 // pending timers without the call site having to remember.
 //
 // The job id is pulled from the active AsyncLocalStorage context (the
@@ -215,25 +227,32 @@ export const createProgressEmitter = (
 // invocation), in which case the emitter has no subject to publish to.
 export const withFileProgress = <T, U>(
   perFile: (fileInfo: T) => Observable<U>,
+  options: WithFileProgressOptions = {},
 ): OperatorFunction<T, U> => (source) => (
   source
   .pipe(
     toArray(),
     concatMap((files) => {
+      const concurrency = options.concurrency ?? 1
       const jobId = getActiveJobId()
       if (jobId === undefined) {
-        return from(files).pipe(concatMap(perFile))
+        return from(files).pipe(
+          mergeMap((file) => perFile(file), concurrency),
+        )
       }
       const emitter = createProgressEmitter(jobId, {
         totalFiles: files.length,
       })
       return from(files).pipe(
-        concatMap((file) => (
-          perFile(file)
-          .pipe(
-            rxFinalize(() => emitter.finishFile()),
-          )
-        )),
+        mergeMap(
+          (file) => (
+            perFile(file)
+            .pipe(
+              rxFinalize(() => emitter.finishFile()),
+            )
+          ),
+          concurrency,
+        ),
         rxFinalize(() => emitter.finalize()),
       )
     }),

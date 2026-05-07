@@ -1,5 +1,4 @@
 import {
-  concatMap,
   map,
   toArray,
 } from "rxjs"
@@ -8,6 +7,7 @@ import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { filterIsVideoFile } from "../tools/filterIsVideoFile.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 import { setOnlyFirstTracksAsDefault } from "../cli-spawn-operations/setOnlyFirstTracksAsDefault.js"
+import { withFileProgress } from "../tools/progressEmitter.js"
 
 export const fixIncorrectDefaultTracks = ({
   isRecursive,
@@ -30,7 +30,7 @@ export const fixIncorrectDefaultTracks = ({
     // emissions with toArray, then emit one { filePath, modificationCount }
     // record so job.results lists every video that was inspected (and
     // how many tracks were retouched), not a chain of nulls.
-    concatMap((fileInfo) => (
+    withFileProgress((fileInfo) => (
       setOnlyFirstTracksAsDefault({ filePath: fileInfo.fullPath })
       .pipe(
         toArray(),

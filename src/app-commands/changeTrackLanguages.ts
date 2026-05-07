@@ -1,5 +1,4 @@
 import {
-  concatAll,
   concatMap,
   filter,
   from,
@@ -15,6 +14,7 @@ import {
 import { type Iso6392LanguageCode } from "../tools/iso6392LanguageCodes.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 import { updateTrackLanguage } from "../cli-spawn-operations/updateTrackLanguage.js"
+import { withFileProgress } from "../tools/progressEmitter.js"
 
 export const changeTrackLanguages = ({
   audioLanguage: selectedAudioLanguage,
@@ -54,9 +54,7 @@ export const changeTrackLanguages = ({
     })
     .pipe(
       filterIsVideoFile(),
-      map((
-        fileInfo,
-      ) => (
+      withFileProgress((fileInfo) => (
         getMkvInfo(
           fileInfo
           .fullPath
@@ -125,7 +123,6 @@ export const changeTrackLanguages = ({
           )),
         )
       )),
-      concatAll(),
       logAndRethrow(
         changeTrackLanguages
       ),

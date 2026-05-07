@@ -1,10 +1,8 @@
 import {
-  concatAll,
   concatMap,
   EMPTY,
   filter,
   from,
-  map,
   toArray,
 } from "rxjs"
 
@@ -15,6 +13,7 @@ import { getMkvInfo } from "../tools/getMkvInfo.js"
 import { type Iso6392LanguageCode } from "../tools/iso6392LanguageCodes.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 import { logInfo } from "../tools/logMessage.js"
+import { withFileProgress } from "../tools/progressEmitter.js"
 
 // Image-format subtitle codecs. mkvextract can pull them but the
 // resulting binary file (e.g. .sup) isn't useful for downstream
@@ -55,7 +54,7 @@ export const extractSubtitles = ({
   })
   .pipe(
     filterIsVideoFile(),
-    map((fileInfo) => (
+    withFileProgress((fileInfo) => (
       getMkvInfo(fileInfo.fullPath)
       .pipe(
         concatMap(({ tracks }) => {
@@ -104,7 +103,6 @@ export const extractSubtitles = ({
         }),
       )
     )),
-    concatAll(),
     toArray(),
     logAndRethrow(extractSubtitles),
   )

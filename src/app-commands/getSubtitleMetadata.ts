@@ -1,7 +1,6 @@
 import { readFile } from "node:fs/promises"
 import { extname } from "node:path"
 import {
-  concatAll,
   defer,
   filter,
   map,
@@ -12,6 +11,7 @@ import { type AssScriptInfoProperty } from "../tools/assTypes.js"
 import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 import { parseAssFile } from "../tools/assFileTools.js"
+import { withFileProgress } from "../tools/progressEmitter.js"
 
 export type SubtitleFileMetadata = {
   filePath: string
@@ -50,7 +50,7 @@ export const getSubtitleMetadata = ({
     filter((fileInfo) => (
       extname(fileInfo.fullPath).toLowerCase() === ".ass"
     )),
-    map((fileInfo) => (
+    withFileProgress((fileInfo) => (
       defer(() => (
         readFile(
           fileInfo.fullPath,
@@ -94,7 +94,6 @@ export const getSubtitleMetadata = ({
         }),
       )
     )),
-    concatAll(),
     toArray(),
     logAndRethrow(getSubtitleMetadata),
   )

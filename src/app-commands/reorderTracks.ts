@@ -11,6 +11,7 @@ import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 import { logInfo } from "../tools/logMessage.js"
 import { reorderTracksFfmpeg, reorderTracksFfmpegDefaultProps } from "../cli-spawn-operations/reorderTracksFfmpeg.js"
 import { setOnlyFirstTracksAsDefault } from "../cli-spawn-operations/setOnlyFirstTracksAsDefault.js"
+import { withFileProgress } from "../tools/progressEmitter.js"
 
 type ReorderTracksRequiredProps = {
   audioTrackIndexes: number[]
@@ -68,7 +69,7 @@ export const reorderTracks = ({
     // record once both inner steps complete so job.results lists every
     // file that was actually reordered (instead of an array of nulls
     // from the discarded toArray of the inner setOnlyFirst pipe).
-    concatMap((fileInfo) => (
+    withFileProgress((fileInfo) => (
       reorderTracksFfmpeg({
         audioTrackIndexes,
         filePath: fileInfo.fullPath,

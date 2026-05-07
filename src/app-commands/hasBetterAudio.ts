@@ -1,9 +1,7 @@
 import {
-  concatAll,
   concatMap,
   filter,
   map,
-  mergeAll,
   reduce,
   tap,
 } from "rxjs"
@@ -16,6 +14,7 @@ import {
 } from "../tools/getMediaInfo.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 import { logInfo } from "../tools/logMessage.js"
+import { withFileProgress } from "../tools/progressEmitter.js"
 
 export const hasBetterAudio = ({
   isRecursive,
@@ -39,9 +38,7 @@ export const hasBetterAudio = ({
   })
   .pipe(
     filterIsVideoFile(),
-    map((
-      fileInfo,
-    ) => (
+    withFileProgress((fileInfo) => (
       getMediaInfo(
         fileInfo
         .fullPath
@@ -248,7 +245,6 @@ export const hasBetterAudio = ({
         }),
       )
     )),
-    concatAll(),
     logAndRethrow(
       hasBetterAudio
     ),

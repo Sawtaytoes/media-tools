@@ -3,7 +3,6 @@ import {
   join,
 } from "node:path"
 import {
-  concatAll,
   concatMap,
   filter,
   ignoreElements,
@@ -24,6 +23,7 @@ import { mergeMediaFiles } from "../cli-spawn-operations/mergeMediaFiles.js"
 import { getFiles } from "../tools/getFiles.js"
 import { segmentSplitsFolderName, splitSegmentFfmpeg } from "../cli-spawn-operations/splitChaptersFfmpeg.js"
 import { getChaptersOld } from "../cli-spawn-operations/getChapters-old.js"
+import { withFileProgress } from "../tools/progressEmitter.js"
 
 export const FALLBACK_INTRO_FILENAME = "merge-intro.mkv"
 export const FALLBACK_OUTRO_FILENAME = "merge-outro.mkv"
@@ -64,9 +64,7 @@ export const mergeOrderedChapters = ({
         !== outroFilename
       )
     )),
-    map((
-      fileInfo,
-    ) => (
+    withFileProgress((fileInfo) => (
       // ------------- OLD START
       // getChaptersOld(
       //   fileInfo
@@ -273,7 +271,6 @@ export const mergeOrderedChapters = ({
         )),
       )
     )),
-    concatAll(),
     toArray(),
     logAndRethrow(
       mergeOrderedChapters

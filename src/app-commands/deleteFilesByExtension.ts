@@ -1,7 +1,6 @@
 import { unlink } from "node:fs/promises"
 import { extname } from "node:path"
 import {
-  concatMap,
   defer,
   filter,
   map,
@@ -11,6 +10,7 @@ import {
 import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 import { logInfo } from "../tools/logMessage.js"
+import { withFileProgress } from "../tools/progressEmitter.js"
 
 export type DeleteFilesByExtensionRequiredProps = {
   isRecursive: boolean
@@ -53,7 +53,7 @@ export const deleteFilesByExtension = ({
 
       return normalizedExtensions.includes(fileExtension)
     }),
-    concatMap((fileInfo) => (
+    withFileProgress((fileInfo) => (
       defer(() => unlink(fileInfo.fullPath))
       .pipe(
         tap(() => {

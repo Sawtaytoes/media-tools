@@ -1,6 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises"
 import {
-  concatAll,
   concatMap,
   defer,
   map,
@@ -12,6 +11,7 @@ import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { filterIsSubtitlesFile } from "../tools/filterIsSubtitlesFile.js"
 import { getFilesAtDepth } from "../tools/getFilesAtDepth.js"
 import { logInfo } from "../tools/logMessage.js"
+import { withFileProgress } from "../tools/progressEmitter.js"
 
 export const adjustPositionString = (
   positionString: string,
@@ -52,9 +52,7 @@ export const adjustSubtitlePositions = ({
   })
   .pipe(
     filterIsSubtitlesFile(),
-    map((
-      fileInfo,
-    ) => (
+    withFileProgress((fileInfo) => (
       defer(() => (
         readFile(
           (
@@ -135,7 +133,6 @@ export const adjustSubtitlePositions = ({
         }),
       )
     )),
-    concatAll(),
     toArray(),
     logAndRethrow(
       adjustSubtitlePositions
