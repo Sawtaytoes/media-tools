@@ -55,10 +55,10 @@ test.describe("Sequence Builder", () => {
 
     // Filtering by "copy" should show copyFiles + copyOutSubtitles + flattenOutput's tag... actually only commands whose name OR tag matches "copy".
     await search.fill("copy")
-    await expect(page.getByRole("button", { name: /^copyFiles\s/ })).toBeVisible()
+    await expect(page.getByRole("button", { name: /^Copy Files\s/ })).toBeVisible()
 
     // Click the copyFiles entry → picker closes, step shows the command name.
-    await page.getByRole("button", { name: /^copyFiles\s/ }).click()
+    await page.getByRole("button", { name: /^Copy Files\s/ }).click()
     await expect(search).toBeHidden()
     // The trigger now shows copyFiles instead of the placeholder.
     await expect(page.getByText("— pick a command —")).toBeHidden()
@@ -69,7 +69,7 @@ test.describe("Sequence Builder", () => {
     await addStep(page)
     await page.getByText("— pick a command —").click()
     await page.getByPlaceholder("Search commands…").fill("copyFiles")
-    await page.getByRole("button", { name: /^copyFiles\s/ }).click()
+    await page.getByRole("button", { name: /^Copy Files\s/ }).click()
 
     await page.getByRole("button", { name: "View YAML" }).click()
 
@@ -150,12 +150,12 @@ test.describe("Sequence Builder", () => {
     await addStep(page)
     await page.getByText("— pick a command —").click()
     await page.getByPlaceholder("Search commands…").fill("copyFiles")
-    await page.getByRole("button", { name: /^copyFiles\s/ }).click()
+    await page.getByRole("button", { name: /^Copy Files\s/ }).click()
 
     await addStep(page)
     await page.getByText("— pick a command —").click()
     await page.getByPlaceholder("Search commands…").fill("moveFiles")
-    await page.getByRole("button", { name: /^moveFiles\s/ }).click()
+    await page.getByRole("button", { name: /^Move Files\s/ }).click()
 
     // Order is now [copyFiles, moveFiles]. Move moveFiles up via its ↑.
     const stepCards = page.locator('[id^="step-"]')
@@ -163,8 +163,8 @@ test.describe("Sequence Builder", () => {
     await stepCards.nth(1).getByRole("button", { name: "↑" }).click()
 
     // First card should now be moveFiles.
-    await expect(stepCards.nth(0)).toContainText("moveFiles")
-    await expect(stepCards.nth(1)).toContainText("copyFiles")
+    await expect(stepCards.nth(0)).toContainText("Move Files")
+    await expect(stepCards.nth(1)).toContainText("Copy Files")
   })
 
   test("step delete via ✕ removes the card after the leave animation", async ({ page }) => {
@@ -186,12 +186,12 @@ test.describe("Sequence Builder", () => {
     await addStep(page)
     await page.getByText("— pick a command —").click()
     await page.getByPlaceholder("Search commands…").fill("copyFiles")
-    await page.getByRole("button", { name: /^copyFiles\s/ }).click()
+    await page.getByRole("button", { name: /^Copy Files\s/ }).click()
 
     await addStep(page)
     await page.getByText("— pick a command —").click()
     await page.getByPlaceholder("Search commands…").fill("moveFiles")
-    await page.getByRole("button", { name: /^moveFiles\s/ }).click()
+    await page.getByRole("button", { name: /^Move Files\s/ }).click()
 
     // Click the divider between the two steps. Layout is:
     //   [divider 0 — before step 1] [step 1] [divider 1 — between] [step 2] [divider 2 — after]
@@ -201,16 +201,16 @@ test.describe("Sequence Builder", () => {
     // Three step cards now, middle one empty.
     const stepCards = page.locator('[id^="step-"]')
     await expect(stepCards).toHaveCount(3)
-    await expect(stepCards.nth(0)).toContainText("copyFiles")
+    await expect(stepCards.nth(0)).toContainText("Copy Files")
     await expect(stepCards.nth(1)).toContainText("— pick a command —")
-    await expect(stepCards.nth(2)).toContainText("moveFiles")
+    await expect(stepCards.nth(2)).toContainText("Move Files")
   })
 
   test("typing a path into a step field auto-promotes it to a path variable on commit", async ({ page }) => {
     await addStep(page)
     await page.getByText("— pick a command —").click()
     await page.getByPlaceholder("Search commands…").fill("copyFiles")
-    await page.getByRole("button", { name: /^copyFiles\s/ }).click()
+    await page.getByRole("button", { name: /^Copy Files\s/ }).click()
 
     // destinationPath has no auto-link (only the main source field does), so
     // its manual input is visible and ready to take typed input.
@@ -230,7 +230,7 @@ test.describe("Sequence Builder", () => {
     await addStep(page)
     await page.getByText("— pick a command —").click()
     await page.getByPlaceholder("Search commands…").fill("copyFiles")
-    await page.getByRole("button", { name: /^copyFiles\s/ }).click()
+    await page.getByRole("button", { name: /^Copy Files\s/ }).click()
 
     // After picking a command, renderAll runs synchronously and updateUrl
     // writes the ?seq= param. Verify the param is present, then reload.
@@ -239,7 +239,7 @@ test.describe("Sequence Builder", () => {
 
     // Same step survives the round-trip via the URL state.
     await expect(page.locator('[id^="step-"]')).toHaveCount(1)
-    await expect(page.locator('[id^="step-"]').first()).toContainText("copyFiles")
+    await expect(page.locator('[id^="step-"]').first()).toContainText("Copy Files")
   })
 
   test("Run via API posts the YAML to /sequences/run, opens the modal, and reflects the umbrella job's status", async ({ page }) => {
@@ -277,7 +277,7 @@ test.describe("Sequence Builder", () => {
     await addStep(page)
     await page.getByText("— pick a command —").click()
     await page.getByPlaceholder("Search commands…").fill("copyFiles")
-    await page.getByRole("button", { name: /^copyFiles\s/ }).click()
+    await page.getByRole("button", { name: /^Copy Files\s/ }).click()
 
     await page.getByRole("button", { name: "▶ Run via API" }).click()
 
@@ -300,12 +300,12 @@ test.describe("Sequence Builder", () => {
     await addStep(page)
     await page.getByText("— pick a command —").click()
     await page.getByPlaceholder("Search commands…").fill("copyFiles")
-    await page.getByRole("button", { name: /^copyFiles\s/ }).click()
+    await page.getByRole("button", { name: /^Copy Files\s/ }).click()
 
     await addStep(page)
     await page.getByText("— pick a command —").last().click()
     await page.getByPlaceholder("Search commands…").fill("moveFiles")
-    await page.getByRole("button", { name: /^moveFiles\s/ }).click()
+    await page.getByRole("button", { name: /^Move Files\s/ }).click()
 
     await page.getByRole("button", { name: "View YAML" }).click()
 
@@ -528,12 +528,12 @@ test.describe("Sequence Builder — groups", () => {
     await addStep(page)
     await page.getByText("— pick a command —").click()
     await page.getByPlaceholder("Search commands…").fill("makeDirectory")
-    await page.getByRole("button", { name: /^makeDirectory\s/ }).click()
+    await page.getByRole("button", { name: /^Make Directory\s/ }).click()
 
     await addStep(page)
     await page.getByText("— pick a command —").click()
     await page.getByPlaceholder("Search commands…").fill("copyFiles")
-    await page.getByRole("button", { name: /^copyFiles\s/ }).click()
+    await page.getByRole("button", { name: /^Copy Files\s/ }).click()
 
     // Divider layout:
     //   [d 0] [step 1] [d 1] [step 2] [d 2]
@@ -550,7 +550,7 @@ test.describe("Sequence Builder — groups", () => {
     await addStep(page)
     await page.getByText("— pick a command —").click()
     await page.getByPlaceholder("Search commands…").fill("makeDirectory")
-    await page.getByRole("button", { name: /^makeDirectory\s/ }).click()
+    await page.getByRole("button", { name: /^Make Directory\s/ }).click()
 
     // Body is open by default — the field label is visible.
     await expect(page.getByText("File Path")).toBeVisible()
