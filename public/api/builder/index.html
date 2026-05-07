@@ -205,19 +205,35 @@
         </div>
         <span class="page-menu-sep w-px h-6 bg-slate-700 mx-1"></span>
         <div class="page-menu-group">
-          <button onclick="addPicked()" title="Append an empty step"
-            class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium">Add Step</button>
-          <button onclick="addGroupBlock(false)" title="Append a serial group (visual grouping; inner steps run in order)"
-            class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium">Add Group</button>
-          <button onclick="addGroupBlock(true)" title="Append a parallel group (inner steps run concurrently and lay out side-by-side)"
-            class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium">Add Parallel Group</button>
+          <!-- Per-divider "+ Step / + Group / + Parallel" buttons in the
+               step list cover step/group inserts at any position, so the
+               header keeps only the one affordance that doesn't have an
+               inline equivalent: adding a path variable. -->
           <button data-action="add-path" title="Add a path variable"
             class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium">Add Path</button>
           <div class="page-menu-row">
+            <!-- Page-wide collapse / expand. Same double-chevron icons as
+                 each group's "collapse-all-children" header buttons so the
+                 vocabulary scales: one chevron toggles a card, two chevrons
+                 toggle a subtree. SVG is inlined here (rather than rendered
+                 by the JS helper) because this markup is static and the
+                 inline script hasn't run yet at parse time. -->
             <button onclick="setAllCollapsed(true)" title="Collapse every step + group"
-              class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-2 py-1.5 rounded border border-slate-600">− All</button>
+              class="flex items-center gap-1 text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-2 py-1.5 rounded border border-slate-600">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 -rotate-90">
+                <polyline points="5,5 10,10 15,5" />
+                <polyline points="5,11 10,16 15,11" />
+              </svg>
+              <span>All</span>
+            </button>
             <button onclick="setAllCollapsed(false)" title="Expand every step + group"
-              class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-2 py-1.5 rounded border border-slate-600">+ All</button>
+              class="flex items-center gap-1 text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-2 py-1.5 rounded border border-slate-600">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5">
+                <polyline points="5,5 10,10 15,5" />
+                <polyline points="5,11 10,16 15,11" />
+              </svg>
+              <span>All</span>
+            </button>
           </div>
           <button id="run-btn" onclick="runSequence()" title="Run the entire sequence (client-side: each step posts to /commands and tails its job)"
             class="text-xs bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white px-3 py-1.5 rounded font-medium">
@@ -1217,10 +1233,14 @@ function setAllCollapsed(isCollapsed) {
   renderAll()
 }
 
-// "Add step" inside an existing group.
+// "Add step" inside an existing group. If the group was collapsed,
+// expand it first so the user can see the card they just added —
+// otherwise the new step is invisible behind the collapsed group
+// header and the action feels broken.
 function addStepToGroup(groupId) {
   const group = steps.find((item) => isGroup(item) && item.id === groupId)
   if (!group) return
+  if (group.isCollapsed) group.isCollapsed = false
   const step = makeStep(null)
   group.steps.push(step)
   renderAllAnimated((behavior) => scrollStepIntoView(step.id, behavior))
@@ -1360,20 +1380,50 @@ function removeStep(id) {
   }
 }
 
-// Moves a step within its container. Top-level steps stay at the top
-// level; inside-group steps stay in their group. (Cross-container moves
-// are not supported yet — the user can drag-and-drop in a future pass.)
+// Moves a step within its container. Top-level steps swap with whatever
+// adjacent top-level item they hit — including a group, in which case
+// the step jumps past the entire group as a single unit (the user
+// doesn't lose the ability to walk a step past a group with the arrows).
+// Inside-group steps stay within the group; jumping between containers
+// belongs to drag-and-drop, not the up/down arrows.
 function moveStep(id, dir) {
   const location = findStepLocation(id)
   if (!location) return
-  const siblings = location.parentGroup ? location.parentGroup.steps : steps
-  const localIndex = location.indexInParent
-  const targetLocalIndex = localIndex + dir
-  if (targetLocalIndex < 0 || targetLocalIndex >= siblings.length) return
-  if (isGroup(siblings[targetLocalIndex])) return  // can't swap a step past a sibling group at top level
-  ;[siblings[localIndex], siblings[targetLocalIndex]] = [siblings[targetLocalIndex], siblings[localIndex]]
-  // Clear any step-output link that now points to a step at or after the
-  // linking step's position in document order.
+  if (location.parentGroup) {
+    const siblings = location.parentGroup.steps
+    const localIndex = location.indexInParent
+    const targetLocalIndex = localIndex + dir
+    if (targetLocalIndex < 0 || targetLocalIndex >= siblings.length) return
+    ;[siblings[localIndex], siblings[targetLocalIndex]] = [siblings[targetLocalIndex], siblings[localIndex]]
+  } else {
+    const localIndex = location.itemIndex
+    const targetLocalIndex = localIndex + dir
+    if (targetLocalIndex < 0 || targetLocalIndex >= steps.length) return
+    // Adjacent item may be a step OR a group — either way, swap as a
+    // single unit so the step "jumps over" the group.
+    ;[steps[localIndex], steps[targetLocalIndex]] = [steps[targetLocalIndex], steps[localIndex]]
+  }
+  clearStaleStepLinksAfterMove()
+  renderAllAnimated()
+}
+
+// Moves a group within the top-level item array. Same swap-with-
+// adjacent semantics as a top-level step.
+function moveGroup(groupId, dir) {
+  const groupItemIndex = steps.findIndex((item) => isGroup(item) && item.id === groupId)
+  if (groupItemIndex < 0) return
+  const targetIndex = groupItemIndex + dir
+  if (targetIndex < 0 || targetIndex >= steps.length) return
+  ;[steps[groupItemIndex], steps[targetIndex]] = [steps[targetIndex], steps[groupItemIndex]]
+  clearStaleStepLinksAfterMove()
+  renderAllAnimated()
+}
+
+// Walks every step in document order and drops any object-form
+// step-output link whose source step now sits at the same position as,
+// or after, the linking step. Shared by moveStep and moveGroup so the
+// stale-link cleanup stays consistent across both move flavors.
+function clearStaleStepLinksAfterMove() {
   const flatOrder = flattenSteps()
   flatOrder.forEach((entry, flatIndex) => {
     for (const [field, source] of Object.entries(entry.step.links)) {
@@ -1382,7 +1432,15 @@ function moveStep(id, dir) {
       if (sourceFlatIndex < 0 || sourceFlatIndex >= flatIndex) delete entry.step.links[field]
     }
   })
-  renderAllAnimated()
+}
+
+// Insert a new empty group at a specific top-level position (mirrors
+// the existing insertAt for plain steps). Used by the per-divider
+// "+ Group" / "+ Parallel" buttons.
+function insertGroupAt(index, isParallel) {
+  const group = makeGroup({ isParallel })
+  steps.splice(index, 0, group)
+  renderAllAnimated((behavior) => scrollStepIntoView(group.steps[0].id, behavior))
 }
 
 // ─── Param handlers ───────────────────────────────────────────────────────────
@@ -1486,12 +1544,26 @@ function esc(v) {
 // (stage 1 refactor).
 
 function renderInsertDivider(index) {
+  // Three insert buttons so the user can choose what kind of item lands
+  // between any two siblings — a bare step, a serial group, or a
+  // parallel group. Hover-only chrome (group-hover) keeps the divider
+  // unobtrusive when the user isn't aiming at it.
   return `<div class="col-span-full flex items-center group -my-0.5">
     <div class="flex-1 h-px bg-slate-700/50 group-hover:bg-slate-600 transition-colors"></div>
-    <button onclick="insertAt(${index})" title="Insert step here"
-      class="flex items-center gap-1 px-2.5 py-0.5 mx-1 text-xs text-slate-600 hover:text-blue-400 rounded-full border border-transparent hover:border-blue-500/40 hover:bg-slate-800 transition-all whitespace-nowrap">
-      ➕ Add
-    </button>
+    <div class="flex items-center gap-1 mx-1">
+      <button onclick="insertAt(${index})" title="Insert a step here"
+        class="flex items-center gap-1 px-2.5 py-0.5 text-xs text-slate-600 hover:text-blue-400 rounded-full border border-transparent hover:border-blue-500/40 hover:bg-slate-800 transition-all whitespace-nowrap">
+        ➕ Step
+      </button>
+      <button onclick="insertGroupAt(${index}, false)" title="Insert a serial group here"
+        class="flex items-center gap-1 px-2.5 py-0.5 text-xs text-slate-600 hover:text-blue-400 rounded-full border border-transparent hover:border-blue-500/40 hover:bg-slate-800 transition-all whitespace-nowrap">
+        ➕ Group
+      </button>
+      <button onclick="insertGroupAt(${index}, true)" title="Insert a parallel group here"
+        class="flex items-center gap-1 px-2.5 py-0.5 text-xs text-slate-600 hover:text-blue-400 rounded-full border border-transparent hover:border-blue-500/40 hover:bg-slate-800 transition-all whitespace-nowrap">
+        ➕ Parallel
+      </button>
+    </div>
     <div class="flex-1 h-px bg-slate-700/50 group-hover:bg-slate-600 transition-colors"></div>
   </div>`
 }
@@ -1563,14 +1635,28 @@ function renderAll() {
   updateUrl()
 }
 
-// Collapse-chevron icon. Inline so renderStep / renderGroup don't need
-// a shared template helper. Rotation indicates open vs closed:
-//   open (default): chevron points down (▾ feel)
-//   collapsed:      chevron points right (▸ feel)
+// Accordion-style chevron. Stroke (not fill) so it reads as an
+// outline triangle at small sizes, with thicker stroke + bigger glyph
+// than a typical icon so it communicates "click me to toggle." Open
+// state points down, collapsed rotates -90° to point right — the
+// usual accordion convention.
 function renderCollapseChevron(isCollapsed) {
   const rotateClass = isCollapsed ? '-rotate-90' : ''
-  return `<svg viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 transition-transform ${rotateClass}">
-    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.06l3.71-3.83a.75.75 0 1 1 1.08 1.04l-4.25 4.39a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06z" clip-rule="evenodd" />
+  return `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 transition-transform ${rotateClass}">
+    <polyline points="5,8 10,13 15,8" />
+  </svg>`
+}
+
+// Double-chevron icon for the "collapse all / expand all" actions on
+// groups + the page header. Visually scales the single-chevron
+// vocabulary: one chevron toggles ONE thing, two chevrons toggles
+// MANY. Same rotation rule (down = expand, right = collapse) so the
+// two icons feel like they're in the same family.
+function renderDoubleChevron(isCollapsedDirection) {
+  const rotateClass = isCollapsedDirection ? '-rotate-90' : ''
+  return `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 transition-transform ${rotateClass}">
+    <polyline points="5,5 10,10 15,5" />
+    <polyline points="5,11 10,16 15,11" />
   </svg>`
 }
 
@@ -1587,7 +1673,6 @@ function renderCollapseChevron(isCollapsed) {
 function renderGroup(group, itemIndex, startingFlatIndex) {
   const isParallel = group.isParallel === true
   const stepCount = group.steps.length
-  const labelText = group.label || (isParallel ? 'Parallel group' : 'Group')
   const parallelBadge = isParallel
     ? '<span class="text-[10px] uppercase tracking-wide font-semibold text-blue-300 bg-blue-950/60 border border-blue-700/50 rounded px-1.5 py-0.5">parallel</span>'
     : '<span class="text-[10px] uppercase tracking-wide font-semibold text-slate-400 bg-slate-800 border border-slate-600 rounded px-1.5 py-0.5">serial</span>'
@@ -1603,6 +1688,12 @@ function renderGroup(group, itemIndex, startingFlatIndex) {
     ? 'parallel-group flex flex-row flex-wrap gap-3'
     : 'serial-group flex flex-col gap-3'
 
+  // Disabled flags for group up/down: a top-level group can move past
+  // any sibling top-level item (step OR group), so the only disabled
+  // states are the very first and very last positions.
+  const isFirstItem = itemIndex === 0
+  const isLastItem = itemIndex === steps.length - 1
+
   return `
 <div data-group="${group.id}" class="group-card ${isParallel ? 'group-card-parallel' : 'group-card-serial'} bg-slate-900/50 rounded-xl border border-slate-700/70 overflow-hidden">
   <div class="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-slate-700/70 bg-slate-900/70">
@@ -1617,11 +1708,18 @@ function renderGroup(group, itemIndex, startingFlatIndex) {
       class="flex-1 min-w-0 bg-transparent text-sm font-medium text-slate-200 px-1.5 py-0.5 rounded border-0 focus:outline-none focus:bg-slate-900/40 placeholder:text-slate-300 placeholder:font-medium" />
     ${parallelBadge}
     <button onclick="setGroupChildrenCollapsed('${group.id}', true)" title="Collapse all inner steps"
-      class="text-[10px] text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded border border-slate-700 hover:border-slate-500">−</button>
+      class="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700">${renderDoubleChevron(true)}</button>
     <button onclick="setGroupChildrenCollapsed('${group.id}', false)" title="Expand all inner steps"
-      class="text-[10px] text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded border border-slate-700 hover:border-slate-500">+</button>
+      class="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700">${renderDoubleChevron(false)}</button>
     <button onclick="addStepToGroup('${group.id}')" title="Add a step inside this group"
       class="text-[10px] text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded border border-slate-700 hover:border-slate-500">+ Step</button>
+    <!-- Group move arrows: same affordance as a step's, but they swap
+         the entire group with its top-level neighbor (which can itself
+         be a step or another group). -->
+    <button onclick="moveGroup('${group.id}',-1)" title="Move group up" ${isFirstItem ? 'disabled' : ''}
+      class="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700 disabled:opacity-30 text-xs">↑</button>
+    <button onclick="moveGroup('${group.id}',1)" title="Move group down" ${isLastItem ? 'disabled' : ''}
+      class="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700 disabled:opacity-30 text-xs">↓</button>
     <button onclick="removeGroup('${group.id}')" title="Remove this group (its inner steps go too)"
       class="text-[10px] text-slate-500 hover:text-red-400 px-2 py-0.5 rounded border border-slate-700 hover:border-red-500/40">✕</button>
   </div>
