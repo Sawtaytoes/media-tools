@@ -2475,8 +2475,12 @@ function openLinkPicker(stepId, fieldName, anchorElement) {
   const popoverMaxHeight = 400
   const margin = 8
 
-  // Horizontal: align to trigger's left, but stay inside the viewport.
-  let left = triggerRect.left
+  // Horizontal: align the popover's RIGHT edge to the trigger's right
+  // edge — the trigger lives on the right side of the field row, so
+  // expanding leftward keeps the popover on-screen and visually anchored
+  // to the chip the user just clicked. Clamp to the viewport on both
+  // sides so a small window can't push it off either edge.
+  let left = triggerRect.right - popoverWidth
   if (left + popoverWidth > window.innerWidth - margin) {
     left = window.innerWidth - popoverWidth - margin
   }
