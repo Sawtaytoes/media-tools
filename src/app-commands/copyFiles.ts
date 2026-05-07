@@ -1,4 +1,3 @@
-import { copyFile } from "node:fs/promises"
 import { extname, join } from "node:path"
 import {
   concatMap,
@@ -7,6 +6,7 @@ import {
   tap,
 } from "rxjs"
 
+import { aclSafeCopyFile } from "../tools/aclSafeFileTools.js"
 import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { getFiles } from "../tools/getFiles.js"
 import { logInfo } from "../tools/logMessage.js"
@@ -49,7 +49,7 @@ export const copyFiles = ({
         )
         .pipe(
           concatMap(() => (
-            copyFile(
+            aclSafeCopyFile(
               (
                 fileInfo
                 .fullPath

@@ -1,4 +1,4 @@
-import { copyFile, rm } from "node:fs/promises"
+import { rm } from "node:fs/promises"
 import { extname, join } from "node:path"
 import {
   concatMap,
@@ -9,6 +9,7 @@ import {
   toArray,
 } from "rxjs"
 
+import { aclSafeCopyFile } from "../tools/aclSafeFileTools.js"
 import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { getFiles } from "../tools/getFiles.js"
 import { logInfo } from "../tools/logMessage.js"
@@ -38,7 +39,7 @@ export const moveFiles = ({
       return (
         makeDirectory(destinationPath)
         .pipe(
-          concatMap(() => copyFile(fileInfo.fullPath, destinationFilePath)),
+          concatMap(() => aclSafeCopyFile(fileInfo.fullPath, destinationFilePath)),
           tap(() => {
             logInfo("COPIED", fileInfo.fullPath, destinationFilePath)
           }),

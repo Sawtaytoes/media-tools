@@ -1,4 +1,4 @@
-import { copyFile, rm } from "node:fs/promises"
+import { rm } from "node:fs/promises"
 import { basename, dirname, join } from "node:path"
 import {
   concatMap,
@@ -10,6 +10,7 @@ import {
   type Observable,
 } from "rxjs"
 
+import { aclSafeCopyFile } from "../tools/aclSafeFileTools.js"
 import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { getFiles } from "../tools/getFiles.js"
 import { logInfo } from "../tools/logMessage.js"
@@ -40,7 +41,7 @@ export const flattenOutput = ({
       concatMap((fileInfo) => {
         const targetPath = join(targetParentPath, basename(fileInfo.fullPath))
         return (
-          defer(() => copyFile(fileInfo.fullPath, targetPath))
+          defer(() => aclSafeCopyFile(fileInfo.fullPath, targetPath))
           .pipe(
             tap(() => {
               logInfo("COPIED BACK", fileInfo.fullPath, targetPath)
