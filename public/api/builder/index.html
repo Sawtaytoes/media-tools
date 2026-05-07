@@ -24,6 +24,32 @@
   ::view-transition-new(*) {
     animation-duration: 220ms;
   }
+
+  /* Each step card establishes its own size container so headers adapt
+     to the card's actual width, not the viewport — matters because the
+     pane width changes with the YAML modal / load panel toggles. */
+  .step-card { container-type: inline-size; container-name: step-card; }
+
+  .step-alias { flex: 1 1 8rem; min-width: 6rem; }
+  .step-hamburger-btn { display: none; }
+
+  /* Below ~480px of card width: alias breaks to its own row above the
+     other header controls (cmd-picker keeps its flex-1 fill behavior). */
+  @container step-card (max-width: 480px) {
+    .step-alias { flex-basis: 100%; order: -1; }
+  }
+
+  /* Below ~380px: collapse action icons into a hamburger toggle. The
+     icons reappear in a wrapped row when the toggle is open. */
+  @container step-card (max-width: 380px) {
+    .step-hamburger-btn { display: inline-flex; }
+    .step-actions { display: none; }
+    .step-actions.open {
+      display: flex;
+      flex-basis: 100%;
+      justify-content: flex-end;
+    }
+  }
 </style>
 </head>
 <body class="bg-slate-900 text-slate-200 font-sans text-sm">
@@ -947,6 +973,14 @@ function setStepAlias(stepId, alias) {
   scheduleUpdateUrl()
 }
 
+// Hamburger toggle for the step-card action icons. Only meaningful at
+// container widths < 380px — at wider widths the hamburger button is
+// hidden via CSS, so the .open class is harmless if it lingers.
+function toggleStepActions(stepId) {
+  const actions = document.querySelector(`[data-step-actions="${stepId}"]`)
+  if (actions) actions.classList.toggle('open')
+}
+
 // Wraps renderAll in document.startViewTransition (Chromium 111+) so existing
 // cards smoothly slide to their new positions when a step is added, inserted,
 // removed, or moved. Optional afterRender runs *inside* the transition's
@@ -1306,24 +1340,25 @@ function renderStep(step, index) {
     : `<p class="text-xs text-slate-500 italic">No command selected — choose one from the dropdown above.</p>`
 
   return `
-<div id="step-${step.id}" style="view-transition-name: step-${step.id}" class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-  <div class="border-b border-slate-700 bg-slate-800/80">
+<div id="step-${step.id}" style="view-transition-name: step-${step.id}" class="step-card bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+  <div class="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-slate-700 bg-slate-800/80">
+    <span class="text-xs font-mono text-slate-500 shrink-0 w-5 text-center">${index + 1}</span>
     <input type="text" value="${esc(step.alias)}"
       placeholder="${esc(step.command || 'Click to name this step')}"
       data-step-alias="${step.id}"
       onfocus="stepAliasFocus(this)"
       onkeydown="stepAliasKeydown(event,'${step.id}')"
       onblur="stepAliasBlur(this,'${step.id}')"
-      class="w-full bg-transparent text-sm font-medium text-slate-200 px-3 pt-2 pb-1.5 border-0 focus:outline-none focus:bg-slate-900/40 placeholder:text-slate-200 placeholder:font-medium" />
-    <div class="flex items-center gap-2 px-3 pb-2">
-    <span class="text-xs font-mono text-slate-500 shrink-0 w-5 text-center">${index + 1}</span>
+      class="step-alias bg-transparent text-sm font-medium text-slate-200 px-1.5 py-0.5 rounded border-0 focus:outline-none focus:bg-slate-900/40 placeholder:text-slate-200 placeholder:font-medium" />
     <button onclick="openCmdPicker('${step.id}', this)" data-cmd-picker-trigger
       class="flex-1 min-w-0 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded px-2 py-1 border border-slate-600 focus:outline-none focus:border-blue-500 text-left flex items-center gap-2 cursor-pointer">
       <span class="flex-1 min-w-0 truncate flex items-center">${triggerLabel}</span>
       <span class="text-slate-400 shrink-0">▾</span>
     </button>
     ${statusBadge}
-    <div class="flex items-center gap-1 shrink-0">
+    <button onclick="toggleStepActions('${step.id}')" title="Step actions"
+      class="step-hamburger-btn w-6 h-6 items-center justify-center rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700 text-base leading-none">≡</button>
+    <div class="step-actions flex items-center gap-1 shrink-0" data-step-actions="${step.id}">
       <button onclick="runStep('${step.id}')" ${step.command ? '' : 'disabled'}
         title="Run this step only"
         class="w-6 h-6 flex items-center justify-center rounded text-emerald-400 hover:text-emerald-300 hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent text-xs">▶</button>
@@ -1336,7 +1371,6 @@ function renderStep(step, index) {
         class="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700 disabled:opacity-30 text-xs">↓</button>
       <button onclick="removeStep('${step.id}')"
         class="w-6 h-6 flex items-center justify-center rounded text-slate-500 hover:text-red-400 hover:bg-slate-700 text-xs">✕</button>
-    </div>
     </div>
   </div>
   <div class="px-3 py-2">
