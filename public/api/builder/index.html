@@ -149,7 +149,7 @@
 <div class="flex flex-col" style="height:100dvh;overflow:hidden">
 
   <!-- Header -->
-  <div class="shrink-0 border-b border-slate-700 bg-slate-900 z-10">
+  <div id="page-header" class="shrink-0 border-b border-slate-700 bg-slate-900 z-10">
     <div class="page-header-inner flex items-center px-4 py-3 gap-3">
       <button id="page-nav-toggle" onclick="togglePageMenu('page-actions-nav')" title="Menu"
         class="page-menu-toggle w-7 h-7 items-center justify-center rounded text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 text-base leading-none">≡</button>
@@ -179,7 +179,7 @@
         <div class="page-menu-group">
           <button onclick="addPicked()" title="Append an empty step"
             class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium">Add Step</button>
-          <button onclick="window.mediaTools.addPath()" title="Add a path variable"
+          <button data-action="add-path" title="Add a path variable"
             class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium">Add Path</button>
           <button id="run-btn" onclick="runSequence()" title="Run the entire sequence (client-side: each step posts to /commands and tails its job)"
             class="text-xs bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white px-3 py-1.5 rounded font-medium">
@@ -1747,30 +1747,6 @@ function copyYaml() { return window.mediaTools.copyYaml() }
 function openYamlModal() { return window.mediaTools.openYamlModal() }
 function closeYamlModal(event) { return window.mediaTools.closeYamlModal(event) }
 
-document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') {
-    closeYamlModal()
-    closeApiRunModal()
-    document.querySelectorAll('.page-menu.open').forEach(m => m.classList.remove('open'))
-  }
-})
-
-// Click-outside to close any open page-header popover. Skip clicks on
-// the toggles (their own onclick already toggles state) and clicks on
-// popover contents (so users can hit a button inside without the
-// popover dismissing first).
-document.addEventListener('click', (event) => {
-  const openMenus = document.querySelectorAll('.page-menu.open')
-  if (!openMenus.length) return
-  const navToggle = document.getElementById('page-nav-toggle')
-  const ctrlToggle = document.getElementById('page-controls-toggle')
-  if (navToggle?.contains(event.target) || ctrlToggle?.contains(event.target)) return
-  for (const menu of openMenus) {
-    if (menu.contains(event.target)) return
-  }
-  openMenus.forEach(m => m.classList.remove('open'))
-})
-
 // ─── Load YAML ────────────────────────────────────────────────────────────────
 // Implementations live in /builder/js/components/load-panel.js — these
 // forwarders preserve inline call sites (HTML onclick="..." bindings,
@@ -1781,18 +1757,10 @@ function toggleLoad() { return window.mediaTools.toggleLoad() }
 function loadYaml() { return window.mediaTools.loadYaml() }
 function loadYamlFromText(text) { return window.mediaTools.loadYamlFromText(text) }
 
-// Toggle one of the two page-header popovers (#page-actions-nav,
-// #page-actions-controls). Only one is open at a time — clicking the
-// other toggle closes the first. Only meaningful at viewport widths
-// < 900px; at wider widths the toggle buttons are hidden via CSS, so a
-// stale .open class is harmless.
-function togglePageMenu(menuId) {
-  const target = document.getElementById(menuId)
-  if (!target) return
-  const wasOpen = target.classList.contains('open')
-  document.querySelectorAll('.page-menu.open').forEach(m => m.classList.remove('open'))
-  if (!wasOpen) target.classList.add('open')
-}
+// togglePageMenu lives in /builder/js/components/page-header.js — this
+// forwarder preserves the inline HTML onclick="togglePageMenu(...)"
+// bindings on the two toggle buttons.
+function togglePageMenu(menuId) { return window.mediaTools.togglePageMenu(menuId) }
 
 // ─── Run sequence ─────────────────────────────────────────────────────────────
 
@@ -3419,6 +3387,7 @@ Object.assign(window.mediaTools, {
   buildParams,
   makeStep,
   updateUrl,
+  closeApiRunModal,
 })
 
 // Initial bootstrap (initPaths / restoreFromUrl / renderAll) is invoked
