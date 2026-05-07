@@ -25,6 +25,28 @@
     animation-duration: 220ms;
   }
 
+  /* Page-header hamburger menu. The action bar carries 11 items + the
+     title; below ~900px viewport width they overflow off the right. At
+     narrow widths the actions hide behind a ≡ toggle on the left of the
+     title and reappear as a wrapped row beneath when toggled open. */
+  .page-menu-toggle { display: none; }
+
+  @media (max-width: 900px) {
+    .page-header-inner { flex-wrap: wrap; }
+    .page-menu-toggle { display: inline-flex; }
+    .page-actions { display: none; }
+    .page-actions.open {
+      display: flex;
+      flex-wrap: wrap;
+      flex-basis: 100%;
+      margin-left: 0;
+      margin-top: 0.5rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid rgb(51 65 85);
+      justify-content: flex-end;
+    }
+  }
+
   /* Each step card establishes its own size container so headers adapt
      to the card's actual width, not the viewport — matters because the
      pane width changes with the YAML modal / load panel toggles. */
@@ -60,11 +82,14 @@
 <div class="flex flex-col" style="height:100dvh;overflow:hidden">
 
   <!-- Header -->
-  <div class="shrink-0 flex items-center justify-between px-4 py-3 border-b border-slate-700 bg-slate-900 z-10">
-    <h1 class="text-lg font-bold tracking-tight">
-      <a href="/" class="text-slate-100 hover:text-blue-300 transition-colors">Sequence Builder</a>
-    </h1>
-    <div class="flex items-center gap-2">
+  <div class="shrink-0 border-b border-slate-700 bg-slate-900 z-10">
+    <div class="page-header-inner flex items-center px-4 py-3 gap-3">
+      <button id="page-menu-toggle" onclick="togglePageHeaderMenu()" title="Toggle menu"
+        class="page-menu-toggle w-7 h-7 items-center justify-center rounded text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 text-base leading-none">≡</button>
+      <h1 class="text-lg font-bold tracking-tight">
+        <a href="/" class="text-slate-100 hover:text-blue-300 transition-colors">Sequence Builder</a>
+      </h1>
+      <div id="page-actions" class="page-actions ml-auto flex items-center gap-2">
       <button id="undo-btn" onclick="undo()" title="Undo (Ctrl+Z)" disabled
         class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 disabled:opacity-30 disabled:hover:bg-slate-700 px-2 py-1.5 rounded border border-slate-600 w-7">↶</button>
       <button id="redo-btn" onclick="redo()" title="Redo (Ctrl+Y / Ctrl+Shift+Z)" disabled
@@ -108,6 +133,7 @@
         </svg>
       </button>
       <a href="/" class="ml-2 text-xs text-slate-400 hover:text-slate-300">Jobs ↗</a>
+      </div>
     </div>
   </div>
 
@@ -1758,6 +1784,13 @@ function toggleLoad() {
   const panel = document.getElementById('load-panel')
   panel.classList.toggle('hidden')
   document.getElementById('load-error').classList.add('hidden')
+}
+
+// Toggle the page-header action menu open/closed. Only meaningful at
+// viewport widths < 900px — at wider widths the toggle button is hidden
+// via CSS, so the .open class is harmless if it lingers.
+function togglePageHeaderMenu() {
+  document.getElementById('page-actions').classList.toggle('open')
 }
 
 function loadYamlFromText(text) {
