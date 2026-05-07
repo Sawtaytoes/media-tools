@@ -11,10 +11,11 @@ export function pathVarOptionText(pv) {
   return `${display}${annotation}`
 }
 
-// Step cards bake their path-link <select> options into HTML at render
-// time. Editing a path's label or value rewrites those option labels in
+// Step cards bake their path-link picker triggers into HTML at render
+// time. Editing a path's label or value rewrites those trigger labels in
 // place — re-rendering the whole UI would steal focus from the input
-// the user is typing into.
+// the user is typing into. (The legacy <select data-path-link> branch is
+// retained for any caller still rendering the old form.)
 export function refreshPathVarOptions() {
   const pvById = Object.fromEntries(getPaths().map((pv) => [pv.id, pv]))
   for (const select of document.querySelectorAll('select[data-path-link]')) {
@@ -22,5 +23,11 @@ export function refreshPathVarOptions() {
       const pv = pvById[option.dataset.pvId]
       if (pv) option.textContent = pathVarOptionText(pv)
     }
+  }
+  for (const trigger of document.querySelectorAll('[data-link-picker-trigger][data-pv-id]')) {
+    const pv = pvById[trigger.dataset.pvId]
+    if (!pv) continue
+    const labelEl = trigger.querySelector('[data-link-trigger-label]')
+    if (labelEl) labelEl.textContent = pv.label || pv.value || 'path variable'
   }
 }

@@ -311,6 +311,14 @@
   <div id="cmd-picker-list" class="overflow-y-auto py-1"></div>
 </div>
 
+<!-- Location/link picker popover (path variables + previous-step folder outputs) -->
+<div id="link-picker-popover" class="hidden fixed z-40 bg-slate-900 border border-slate-600 rounded-lg shadow-xl flex flex-col" style="width:360px;max-height:400px">
+  <input id="link-picker-input" type="text" placeholder="Search locations…"
+    oninput="linkPickerFilter(this.value)" onkeydown="linkPickerKeydown(event)"
+    class="bg-slate-800 text-slate-200 text-sm rounded-t-lg px-3 py-2 border-b border-slate-700 focus:outline-none placeholder-slate-500">
+  <div id="link-picker-list" class="overflow-y-auto py-1"></div>
+</div>
+
 <!-- Path typeahead popover -->
 <div id="path-picker-popover" class="hidden fixed z-40 bg-slate-900 border border-slate-600 rounded-lg shadow-xl flex flex-col" style="width:380px;max-height:280px">
   <div id="path-picker-list" class="overflow-y-auto py-1"></div>
@@ -1597,46 +1605,26 @@ function renderPathField(step, field, stepIndex) {
   const link = step.links[field.name]
   const computed = link ? (getLinkedValue(step, field.name) ?? '') : null
 
-  // The select encodes both kinds of link in its option values so setLink
-  // can disambiguate without guessing: "path:<id>" for path-variable refs,
-  // "step:<id>:<output>" for step outputs (output = 'folder' for the
-  // legacy auto-folder link).
-  const isLinkedPath = (pvId) => typeof link === 'string' && link === pvId
-  const isLinkedStepFolder = (stepId) => (
-    link && typeof link === 'object' &&
-    link.linkedTo === stepId &&
-    (link.output === 'folder' || !link.output)
-  )
-
-  // Show the path *value* as the primary text in the dropdown so what's
-  // displayed matches what the Source Path input below resolves to. The
-  // label rides as a parenthetical annotation, not the headline. (User
-  // reported the previous "label → value" form looked mismatched against
-  // Source Path because the eye latches onto the label first.)
-  const pathVarOptions = paths.map((pv) => {
-    return `<option value="path:${pv.id}" data-pv-id="${pv.id}"${isLinkedPath(pv.id) ? ' selected' : ''}>${esc(window.mediaTools.pathVarOptionText(pv))}</option>`
-  }).join('')
-
-  // Build previous step options. Empty steps (command: null) have nothing
-  // to link to, so they're excluded.
-  const prevOptions = steps.slice(0, stepIndex)
-    .map((s, i) => ({ step: s, displayIndex: i + 1 }))
-    .filter(({ step: s }) => s.command !== null)
-    .map(({ step: s, displayIndex }) => {
-      const out = stepOutput(s)
-      const label = `Step ${displayIndex}: ${s.command}${out ? ' → ' + out : ''}`
-      return `<option value="step:${s.id}:folder"${isLinkedStepFolder(s.id) ? ' selected' : ''}>${esc(label)}</option>`
-    }).join('')
+  // describeLinkTarget gives us the trigger label + which path-var or
+  // step the trigger is currently bound to (so refreshPathVarOptions can
+  // re-sync the trigger label in place when a path-var label/value
+  // changes — same in-place update story the old <select> had).
+  const target = describeLinkTarget(step, field.name)
+  const triggerData = [
+    `data-step="${step.id}"`,
+    `data-field="${field.name}"`,
+    target.pvId ? `data-pv-id="${target.pvId}"` : '',
+    target.srcStepId ? `data-linked-step="${target.srcStepId}"` : '',
+  ].filter(Boolean).join(' ')
 
   return `<div>
     <div class="flex items-center gap-2 mb-1">
       <label class="text-xs text-slate-400">${esc(field.label)}${field.required ? ' <span class="text-red-400">*</span>' : ''}</label>
-      <select data-path-link onchange="setLink('${step.id}','${field.name}',this.value)"
-        class="ml-auto text-xs bg-slate-700 text-slate-300 rounded px-1.5 py-0.5 border border-slate-600 focus:outline-none focus:border-blue-500 min-w-0 max-w-full">
-        <option value="">— manual —</option>
-        ${pathVarOptions}
-        ${prevOptions}
-      </select>
+      <button type="button" onclick="openLinkPicker('${step.id}','${field.name}', this)" data-link-picker-trigger ${triggerData}
+        class="ml-auto text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 rounded px-1.5 py-0.5 border border-slate-600 focus:outline-none focus:border-blue-500 min-w-0 max-w-full flex items-center gap-1 cursor-pointer">
+        <span class="truncate" data-link-trigger-label>${esc(target.label)}</span>
+        <span class="text-slate-400 shrink-0">▾</span>
+      </button>
     </div>
     <input type="text" value="${esc(computed ?? val)}" ${computed !== null ? 'readonly' : ''}
       data-step="${step.id}" data-field="${field.name}"
@@ -2388,6 +2376,212 @@ document.addEventListener('mousedown', (event) => {
   if (popover.contains(event.target)) return
   if (event.target.closest('[data-cmd-picker-trigger]')) return
   closeCmdPicker()
+}, true)
+
+// ─── Location/link picker popover (autocomplete replacement for the per-field <select>) ───
+
+let linkPickerState = null
+// shape: { stepId, fieldName, query, items, filtered, activeIndex }
+
+// Returns { label, pvId?, srcStepId? } describing what the trigger button
+// should currently show for a field's link. Mirrors the option labels the
+// old <select> used to render. Kept in sync with refreshPathVarOptions so
+// path-var renames bubble through without a full re-render.
+function describeLinkTarget(step, fieldName) {
+  const link = step.links?.[fieldName]
+  if (!link) return { label: '— manual —' }
+  if (typeof link === 'string') {
+    const pv = paths.find(p => p.id === link)
+    if (!pv) return { label: '(missing path)' }
+    return { label: pv.label || pv.value || 'path variable', pvId: pv.id }
+  }
+  if (typeof link === 'object' && link.linkedTo) {
+    const src = steps.find(s => s.id === link.linkedTo)
+    if (!src) return { label: '(missing step)' }
+    const i = steps.indexOf(src)
+    return { label: `Step ${i + 1}: ${src.command || '?'}`, srcStepId: src.id }
+  }
+  return { label: '— manual —' }
+}
+
+// Build the option list for a given field. Mirrors the old <select>: a
+// "manual" sentinel, every path variable, then every prior step's folder
+// output.
+function buildLinkPickerItems(stepId, fieldName) {
+  const step = steps.find(s => s.id === stepId)
+  if (!step) return []
+  const stepIndex = steps.indexOf(step)
+  const items = [{ kind: 'manual', value: '', label: '— manual —', detail: '' }]
+  for (const pv of paths) {
+    items.push({
+      kind: 'path',
+      value: `path:${pv.id}`,
+      label: pv.label || '(unnamed)',
+      detail: pv.value || '',
+      pvId: pv.id,
+    })
+  }
+  for (let i = 0; i < stepIndex; i++) {
+    const s = steps[i]
+    if (s.command === null) continue
+    const out = stepOutput(s)
+    items.push({
+      kind: 'step',
+      value: `step:${s.id}:folder`,
+      label: `Step ${i + 1}: ${s.command}`,
+      detail: out || '',
+      srcStepId: s.id,
+    })
+  }
+  return items
+}
+
+function openLinkPicker(stepId, fieldName, anchorEl) {
+  const step = steps.find(s => s.id === stepId)
+  if (!step) return
+  const items = buildLinkPickerItems(stepId, fieldName)
+  // Pre-select the row matching the current link so arrow keys start from
+  // a sensible spot — matches what a native <select> would do.
+  const link = step.links?.[fieldName]
+  let activeIndex = 0
+  if (typeof link === 'string') {
+    const i = items.findIndex(it => it.kind === 'path' && it.pvId === link)
+    if (i >= 0) activeIndex = i
+  } else if (link && typeof link === 'object' && link.linkedTo) {
+    const i = items.findIndex(it => it.kind === 'step' && it.srcStepId === link.linkedTo)
+    if (i >= 0) activeIndex = i
+  }
+  linkPickerState = { stepId, fieldName, query: '', items, filtered: items, activeIndex }
+
+  const popover = document.getElementById('link-picker-popover')
+  const rect = anchorEl.getBoundingClientRect()
+  const popoverWidth = 360
+  const popoverMaxHeight = 400
+  const margin = 8
+
+  // Horizontal: align to trigger's left, but stay inside the viewport.
+  let left = rect.left
+  if (left + popoverWidth > window.innerWidth - margin) left = window.innerWidth - popoverWidth - margin
+  if (left < margin) left = margin
+
+  // Vertical: prefer below the trigger; flip above only if cramped.
+  const spaceBelow = window.innerHeight - rect.bottom - margin
+  const spaceAbove = rect.top - margin
+  const flipAbove = spaceBelow < 200 && spaceAbove > spaceBelow
+  let top, height
+  if (flipAbove) {
+    height = Math.min(popoverMaxHeight, spaceAbove)
+    top = rect.top - height - 4
+  } else {
+    height = Math.min(popoverMaxHeight, spaceBelow)
+    top = rect.bottom + 4
+  }
+  popover.style.left = `${left}px`
+  popover.style.top = `${top}px`
+  popover.style.maxHeight = `${height}px`
+  popover.classList.remove('hidden')
+
+  const input = document.getElementById('link-picker-input')
+  input.value = ''
+  linkPickerRender()
+  setTimeout(() => input?.focus(), 0)
+}
+
+function closeLinkPicker() {
+  document.getElementById('link-picker-popover')?.classList.add('hidden')
+  linkPickerState = null
+}
+
+function linkPickerFilter(query) {
+  if (!linkPickerState) return
+  linkPickerState.query = query
+  linkPickerState.activeIndex = 0
+  linkPickerRender()
+}
+
+function linkPickerRender() {
+  if (!linkPickerState) return
+  const list = document.getElementById('link-picker-list')
+  const query = linkPickerState.query.trim().toLowerCase()
+  const filtered = query
+    ? linkPickerState.items.filter(it =>
+        it.label.toLowerCase().includes(query) ||
+        (it.detail || '').toLowerCase().includes(query))
+    : linkPickerState.items
+  linkPickerState.filtered = filtered
+  if (linkPickerState.activeIndex >= filtered.length) linkPickerState.activeIndex = 0
+
+  list.innerHTML = filtered.length === 0
+    ? '<p class="text-xs text-slate-500 text-center py-4">No matches.</p>'
+    : filtered.map((item, index) => {
+        const active = index === linkPickerState.activeIndex
+        const labelClass = `text-xs ${active ? 'text-white' : 'text-slate-200'} ${item.kind === 'path' ? 'font-medium' : 'font-mono'}`
+        const detailClass = `font-mono text-[11px] pl-4 break-all whitespace-normal ${active ? 'text-blue-100' : 'text-slate-400'}`
+        const detail = item.detail ? `<div class="${detailClass}">${esc(item.detail)}</div>` : ''
+        return `<button type="button" onmousedown="event.preventDefault()" onclick="linkPickerSelect('${esc(item.value)}')" data-link-idx="${index}"
+          class="w-full text-left px-3 py-1.5 ${active ? 'bg-blue-700' : 'hover:bg-slate-800'}">
+          <div class="${labelClass}">${esc(item.label)}</div>
+          ${detail}
+        </button>`
+      }).join('')
+
+  const activeEl = list.querySelector(`[data-link-idx="${linkPickerState.activeIndex}"]`)
+  activeEl?.scrollIntoView({ block: 'nearest' })
+}
+
+function linkPickerSelect(value) {
+  if (!linkPickerState) return
+  const { stepId, fieldName } = linkPickerState
+  closeLinkPicker()
+  setLink(stepId, fieldName, value)
+  // setLink swaps linked/manual inputs but doesn't re-render the trigger
+  // button, so refresh its label + dataset in place.
+  refreshLinkPickerTrigger(stepId, fieldName)
+}
+
+function refreshLinkPickerTrigger(stepId, fieldName) {
+  const trigger = document.querySelector(`[data-link-picker-trigger][data-step="${stepId}"][data-field="${fieldName}"]`)
+  if (!trigger) return
+  const step = steps.find(s => s.id === stepId)
+  if (!step) return
+  const target = describeLinkTarget(step, fieldName)
+  const labelEl = trigger.querySelector('[data-link-trigger-label]')
+  if (labelEl) labelEl.textContent = target.label
+  if (target.pvId) trigger.dataset.pvId = target.pvId
+  else delete trigger.dataset.pvId
+  if (target.srcStepId) trigger.dataset.linkedStep = target.srcStepId
+  else delete trigger.dataset.linkedStep
+}
+
+function linkPickerKeydown(event) {
+  if (!linkPickerState) return
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    closeLinkPicker()
+    return
+  }
+  if (!linkPickerState.filtered?.length) return
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    linkPickerState.activeIndex = (linkPickerState.activeIndex + 1) % linkPickerState.filtered.length
+    linkPickerRender()
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    linkPickerState.activeIndex = (linkPickerState.activeIndex - 1 + linkPickerState.filtered.length) % linkPickerState.filtered.length
+    linkPickerRender()
+  } else if (event.key === 'Enter') {
+    event.preventDefault()
+    const item = linkPickerState.filtered[linkPickerState.activeIndex]
+    if (item) linkPickerSelect(item.value)
+  }
+}
+
+document.addEventListener('mousedown', (event) => {
+  if (!linkPickerState) return
+  const popover = document.getElementById('link-picker-popover')
+  if (popover.contains(event.target)) return
+  if (event.target.closest('[data-link-picker-trigger]')) return
+  closeLinkPicker()
 }, true)
 
 // ─── Path typeahead (filesystem autocomplete for path fields) ───────────────────
