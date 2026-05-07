@@ -7,6 +7,7 @@
 <script src="/vendor/tailwind-3.4.17.js"></script>
 <script src="/vendor/js-yaml-4.1.1.min.js"></script>
 <script src="/sse-utils.js"></script>
+<script type="module" src="/builder/js/main.js"></script>
 <style>
   @keyframes stepEnter {
     from { opacity: 0; transform: translateY(-6px) scale(0.985); }
@@ -178,7 +179,7 @@
         <div class="page-menu-group">
           <button onclick="addPicked()" title="Append an empty step"
             class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium">Add Step</button>
-          <button onclick="addPath()" title="Add a path variable"
+          <button onclick="window.mediaTools.addPath()" title="Add a path variable"
             class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium">Add Path</button>
           <button id="run-btn" onclick="runSequence()" title="Run the entire sequence (client-side: each step posts to /commands and tails its job)"
             class="text-xs bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white px-3 py-1.5 rounded font-medium">
@@ -316,6 +317,25 @@
 </div>
 
 <script>
+// ─── Module bridge ────────────────────────────────────────────────────────────
+//
+// Stage 1 of the builder refactor (see /api/builder/js/) extracted the
+// path-variable card into ES modules. The two scripts (this inline one
+// and js/main.js) share state and helpers through `window.mediaTools`.
+// This object accumulates entries from both sides:
+//   - inline → outbound: `paths` and `steps` getters, plus internal
+//     helpers the extracted modules need to call back into (renderAll,
+//     refreshLinkedInputs, updateYaml, etc.). Set up further below
+//     after the relevant function/variable declarations exist.
+//   - module → inbound: extracted functions like addPath / setPathLabel
+//     that the inline code (or HTML onclick handlers) call into. These
+//     get assigned by main.js when it executes (deferred, after this
+//     inline script finishes).
+//
+// The bridge shrinks to nothing as more components migrate.
+
+window.mediaTools = window.mediaTools || {}
+
 // ─── Command definitions ──────────────────────────────────────────────────────
 
 const COMMANDS = {
@@ -1274,27 +1294,8 @@ function refreshLinkedInputs() {
   }
 }
 
-// Same display formula renderPathField uses, factored out so the live
-// refresh below can reuse it without re-rendering the whole UI.
-function pathVarOptionText(pv) {
-  const display = pv.value || pv.label || '(unset)'
-  const annotation = pv.value && pv.label ? ` (${pv.label})` : ''
-  return `${display}${annotation}`
-}
-
-// Step cards bake their path-link <select> options into HTML at render
-// time. Editing a path's label or value in the path-variable card has to
-// rewrite those option labels live — re-rendering everything would steal
-// focus from the input the user is typing into.
-function refreshPathVarOptions() {
-  const pvById = Object.fromEntries(paths.map((pv) => [pv.id, pv]))
-  for (const select of document.querySelectorAll('select[data-path-link]')) {
-    for (const option of select.querySelectorAll('option[data-pv-id]')) {
-      const pv = pvById[option.dataset.pvId]
-      if (pv) option.textContent = pathVarOptionText(pv)
-    }
-  }
-}
+// pathVarOptionText / refreshPathVarOptions extracted to
+// /api/builder/js/util/path-var-options.js (stage 1 refactor).
 
 // ─── Render ───────────────────────────────────────────────────────────────────
 
@@ -1302,71 +1303,9 @@ function esc(v) {
   return String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
 }
 
-function renderPathVarCard(pv, isFirst) {
-  // Every path-variable's name is editable now (the first card used to
-  // render a static <span> "Base Path" label). The first card still keeps
-  // its is-not-removable status — only the delete button is gated on
-  // isFirst — so a user can rename the base path freely without
-  // accidentally deleting it. This matches YAML-upload semantics: the
-  // path key is whatever the user types.
-  const labelHtml = `<input type="text" value="${esc(pv.label)}" oninput="setPathLabel('${pv.id}',this.value)"
-        class="text-xs font-medium text-slate-300 bg-transparent border-b border-slate-600 focus:outline-none focus:border-blue-500 flex-1 min-w-0" />`
-  const deleteBtn = !isFirst
-    ? `<button onclick="removePath('${pv.id}')" title="Remove path variable"
-        class="ml-auto text-xs text-slate-500 hover:text-red-400 w-5 h-5 flex items-center justify-center rounded hover:bg-slate-700">✕</button>`
-    : ''
-  return `<div data-path-var="${pv.id}" class="col-span-full bg-slate-800/40 rounded-xl border border-dashed border-slate-600 px-4 py-3">
-    <div class="flex items-center gap-2 mb-2">
-      <span class="text-slate-500 text-xs shrink-0">📁</span>
-      ${labelHtml}
-      <span class="text-xs text-slate-600 font-mono shrink-0">path variable</span>
-      ${deleteBtn}
-    </div>
-    <input type="text" value="${esc(pv.value)}" placeholder="/mnt/media or D:\\Media"
-      oninput="onPathVarInput(this,'${pv.id}',this.value)"
-      onkeydown="pathPickerKeydown(event)"
-      class="w-full bg-slate-900 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono" />
-  </div>`
-}
-
-function setPathValue(pvId, value) {
-  const pv = paths.find(p => p.id === pvId)
-  if (!pv) return
-  pv.value = value
-  refreshLinkedInputs()
-  refreshPathVarOptions()
-  updateYaml()
-  scheduleUpdateUrl()
-}
-
-function setPathLabel(pvId, label) {
-  const pv = paths.find(p => p.id === pvId)
-  if (!pv) return
-  pv.label = label
-  refreshPathVarOptions()
-  updateYaml()
-  scheduleUpdateUrl()
-}
-
-function removePath(pvId) {
-  const i = paths.findIndex(p => p.id === pvId)
-  if (i <= 0) return  // can't remove Base Path (index 0)
-  paths.splice(i, 1)
-  for (const s of steps) {
-    for (const [k, v] of Object.entries(s.links)) {
-      if (v === pvId) delete s.links[k]
-    }
-  }
-  renderAll()
-}
-
-function addPath() {
-  const newPath = { id: 'path_' + randomHex(), label: 'Path ' + paths.length, value: '' }
-  paths.push(newPath)
-  renderAll()
-  // Defer one frame so layout is current before scroll.
-  requestAnimationFrame(() => scrollPathVarIntoView(newPath.id))
-}
+// renderPathVarCard, setPathValue, setPathLabel, removePath, addPath
+// extracted to /api/builder/js/components/path-var-card.js
+// (stage 1 refactor).
 
 function renderInsertDivider(index) {
   return `<div class="col-span-full flex items-center group -my-0.5">
@@ -1397,7 +1336,7 @@ function renderAll() {
   const el = document.getElementById('steps-el')
   const parts = []
 
-  paths.forEach((pv, i) => parts.push(renderPathVarCard(pv, i === 0)))
+  paths.forEach((pv, i) => parts.push(window.mediaTools.renderPathVarCard(pv, i === 0)))
 
   if (!steps.length) {
     parts.push(`<div class="flex flex-col items-center gap-2 mt-4">
@@ -1675,7 +1614,7 @@ function renderPathField(step, field, stepIndex) {
   // reported the previous "label → value" form looked mismatched against
   // Source Path because the eye latches onto the label first.)
   const pathVarOptions = paths.map((pv) => {
-    return `<option value="path:${pv.id}" data-pv-id="${pv.id}"${isLinkedPath(pv.id) ? ' selected' : ''}>${esc(pathVarOptionText(pv))}</option>`
+    return `<option value="path:${pv.id}" data-pv-id="${pv.id}"${isLinkedPath(pv.id) ? ' selected' : ''}>${esc(window.mediaTools.pathVarOptionText(pv))}</option>`
   }).join('')
 
   // Build previous step options. Empty steps (command: null) have nothing
@@ -2510,10 +2449,8 @@ function onPathFieldInput(inputElement, stepId, fieldName, value) {
   schedulePathLookup(inputElement, { mode: 'step', stepId, fieldName }, value)
 }
 
-function onPathVarInput(inputElement, pathVarId, value) {
-  setPathValue(pathVarId, value)
-  schedulePathLookup(inputElement, { mode: 'pathVar', pathVarId }, value)
-}
+// onPathVarInput extracted to
+// /api/builder/js/components/path-var-card.js (stage 1 refactor).
 
 function schedulePathLookup(inputElement, target, value) {
   // The query is the basename being typed; the directory we list is its parent.
@@ -2712,7 +2649,7 @@ function applyPathPickerSelection(entry) {
   if (target.mode === 'step') {
     setParam(target.stepId, target.fieldName, newValue)
   } else {
-    setPathValue(target.pathVarId, newValue)
+    window.mediaTools.setPathValue(target.pathVarId, newValue)
   }
   schedulePathLookup(inputElement, target, newValue)
   inputElement.focus()
@@ -2731,7 +2668,7 @@ function commitTrimmedPath() {
     if (target.mode === 'step') {
       setParam(target.stepId, target.fieldName, trimmed || undefined)
     } else {
-      setPathValue(target.pathVarId, trimmed)
+      window.mediaTools.setPathValue(target.pathVarId, trimmed)
     }
   }
   closePathPicker()
@@ -3578,11 +3515,35 @@ document.addEventListener('click', (event) => {
   copyDetailsContent(button)
 })
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
+// ─── Module bridge (inline → ES modules) ─────────────────────────────────────
+//
+// Expose the helpers and state that the extracted modules under
+// /api/builder/js/ need to call back into. main.js (deferred) runs
+// after this inline script finishes, so by the time it does, the
+// entries below are in place.
+//
+// We keep `paths` and `steps` as getters so the array references stay
+// live across reassignments (e.g., loadYamlFromText does `paths = ...`).
 
-initPaths()
-restoreFromUrl()
-renderAll()
+Object.defineProperty(window.mediaTools, 'paths', { get: () => paths, configurable: true })
+Object.defineProperty(window.mediaTools, 'steps', { get: () => steps, configurable: true })
+
+Object.assign(window.mediaTools, {
+  renderAll,
+  refreshLinkedInputs,
+  updateYaml,
+  scheduleUpdateUrl,
+  scrollPathVarIntoView,
+  schedulePathLookup,
+  pathPickerKeydown,
+  randomHex,
+  initPaths,
+  restoreFromUrl,
+})
+
+// Initial bootstrap (initPaths / restoreFromUrl / renderAll) is invoked
+// from main.js — deferred until after the extracted modules are loaded
+// so renderAll → window.mediaTools.renderPathVarCard finds it ready.
 </script>
 </body>
 </html>
