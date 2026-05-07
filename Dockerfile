@@ -11,9 +11,6 @@ ENV PORT=3000
 
 RUN log() { echo "[$(date +"%Y-%m-%d %H:%M:%S")] $1"; };
 
-# add-apt-repository ppa:savoury1/ffmpeg7 && \
-
-
 # Install the application dependencies. Note: the system 'chromium' apt
 # package is intentionally NOT installed — Playwright manages its own
 # Chromium binary (downloaded by `npx playwright install --with-deps`
@@ -55,7 +52,7 @@ RUN \
 # (libnss3, libxkbcommon0, fonts, etc.). Has to run AFTER yarn install
 # so the playwright CLI is on disk; --with-deps invokes apt under the
 # hood, which is fine since the Docker image runs as root.
-RUN npx playwright install --with-deps chromium
+RUN yarn install-playwright-browser --with-deps chromium
 
 EXPOSE $PORT
 
