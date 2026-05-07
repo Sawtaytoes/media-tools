@@ -24,10 +24,14 @@ export function refreshPathVarOptions() {
       if (pv) option.textContent = pathVarOptionText(pv)
     }
   }
-  for (const trigger of document.querySelectorAll('[data-link-picker-trigger][data-pv-id]')) {
-    const pv = pvById[trigger.dataset.pvId]
-    if (!pv) continue
-    const labelEl = trigger.querySelector('[data-link-trigger-label]')
-    if (labelEl) labelEl.textContent = pv.label || pv.value || 'path variable'
-  }
+  document.querySelectorAll('[data-link-picker-trigger][data-pv-id]').forEach((trigger) => {
+    const pathVar = pvById[trigger.dataset.pvId]
+    if (!pathVar) {
+      return
+    }
+    const labelElement = trigger.querySelector('[data-link-trigger-label]')
+    if (labelElement) {
+      labelElement.textContent = pathVar.label || pathVar.value || 'path variable'
+    }
+  })
 }

@@ -1613,8 +1613,8 @@ function renderPathField(step, field, stepIndex) {
   const triggerData = [
     `data-step="${step.id}"`,
     `data-field="${field.name}"`,
-    target.pvId ? `data-pv-id="${target.pvId}"` : '',
-    target.srcStepId ? `data-linked-step="${target.srcStepId}"` : '',
+    target.pathVarId ? `data-pv-id="${target.pathVarId}"` : '',
+    target.sourceStepId ? `data-linked-step="${target.sourceStepId}"` : '',
   ].filter(Boolean).join(' ')
 
   return `<div>
@@ -2383,23 +2383,30 @@ document.addEventListener('mousedown', (event) => {
 let linkPickerState = null
 // shape: { stepId, fieldName, query, items, filtered, activeIndex }
 
-// Returns { label, pvId?, srcStepId? } describing what the trigger button
-// should currently show for a field's link. Mirrors the option labels the
-// old <select> used to render. Kept in sync with refreshPathVarOptions so
-// path-var renames bubble through without a full re-render.
+// Returns { label, pathVarId?, sourceStepId? } describing what the trigger
+// button should currently show for a field's link. Mirrors the option
+// labels the old <select> used to render. Kept in sync with
+// refreshPathVarOptions so path-var renames bubble through without a
+// full re-render.
 function describeLinkTarget(step, fieldName) {
   const link = step.links?.[fieldName]
-  if (!link) return { label: '— manual —' }
+  if (!link) {
+    return { label: '— manual —' }
+  }
   if (typeof link === 'string') {
-    const pv = paths.find(p => p.id === link)
-    if (!pv) return { label: '(missing path)' }
-    return { label: pv.label || pv.value || 'path variable', pvId: pv.id }
+    const pathVar = paths.find((candidate) => candidate.id === link)
+    if (!pathVar) {
+      return { label: '(missing path)' }
+    }
+    return { label: pathVar.label || pathVar.value || 'path variable', pathVarId: pathVar.id }
   }
   if (typeof link === 'object' && link.linkedTo) {
-    const src = steps.find(s => s.id === link.linkedTo)
-    if (!src) return { label: '(missing step)' }
-    const i = steps.indexOf(src)
-    return { label: `Step ${i + 1}: ${src.command || '?'}`, srcStepId: src.id }
+    const sourceStep = steps.find((candidate) => candidate.id === link.linkedTo)
+    if (!sourceStep) {
+      return { label: '(missing step)' }
+    }
+    const sourceIndex = steps.indexOf(sourceStep)
+    return { label: `Step ${sourceIndex + 1}: ${sourceStep.command || '?'}`, sourceStepId: sourceStep.id }
   }
   return { label: '— manual —' }
 }
@@ -2408,73 +2415,87 @@ function describeLinkTarget(step, fieldName) {
 // "manual" sentinel, every path variable, then every prior step's folder
 // output.
 function buildLinkPickerItems(stepId, fieldName) {
-  const step = steps.find(s => s.id === stepId)
-  if (!step) return []
+  const step = steps.find((candidate) => candidate.id === stepId)
+  if (!step) {
+    return []
+  }
   const stepIndex = steps.indexOf(step)
   const items = [{ kind: 'manual', value: '', label: '— manual —', detail: '' }]
-  for (const pv of paths) {
+  paths.forEach((pathVar) => {
     items.push({
       kind: 'path',
-      value: `path:${pv.id}`,
-      label: pv.label || '(unnamed)',
-      detail: pv.value || '',
-      pvId: pv.id,
+      value: `path:${pathVar.id}`,
+      label: pathVar.label || '(unnamed)',
+      detail: pathVar.value || '',
+      pathVarId: pathVar.id,
     })
-  }
-  for (let i = 0; i < stepIndex; i++) {
-    const s = steps[i]
-    if (s.command === null) continue
-    const out = stepOutput(s)
+  })
+  steps.slice(0, stepIndex).forEach((previousStep, previousIndex) => {
+    if (previousStep.command === null) {
+      return
+    }
+    const folderOutput = stepOutput(previousStep)
     items.push({
       kind: 'step',
-      value: `step:${s.id}:folder`,
-      label: `Step ${i + 1}: ${s.command}`,
-      detail: out || '',
-      srcStepId: s.id,
+      value: `step:${previousStep.id}:folder`,
+      label: `Step ${previousIndex + 1}: ${previousStep.command}`,
+      detail: folderOutput || '',
+      sourceStepId: previousStep.id,
     })
-  }
+  })
   return items
 }
 
-function openLinkPicker(stepId, fieldName, anchorEl) {
-  const step = steps.find(s => s.id === stepId)
-  if (!step) return
+function openLinkPicker(stepId, fieldName, anchorElement) {
+  const step = steps.find((candidate) => candidate.id === stepId)
+  if (!step) {
+    return
+  }
   const items = buildLinkPickerItems(stepId, fieldName)
   // Pre-select the row matching the current link so arrow keys start from
   // a sensible spot — matches what a native <select> would do.
   const link = step.links?.[fieldName]
   let activeIndex = 0
   if (typeof link === 'string') {
-    const i = items.findIndex(it => it.kind === 'path' && it.pvId === link)
-    if (i >= 0) activeIndex = i
+    const matchIndex = items.findIndex((item) => item.kind === 'path' && item.pathVarId === link)
+    if (matchIndex >= 0) {
+      activeIndex = matchIndex
+    }
   } else if (link && typeof link === 'object' && link.linkedTo) {
-    const i = items.findIndex(it => it.kind === 'step' && it.srcStepId === link.linkedTo)
-    if (i >= 0) activeIndex = i
+    const matchIndex = items.findIndex((item) => item.kind === 'step' && item.sourceStepId === link.linkedTo)
+    if (matchIndex >= 0) {
+      activeIndex = matchIndex
+    }
   }
   linkPickerState = { stepId, fieldName, query: '', items, filtered: items, activeIndex }
 
   const popover = document.getElementById('link-picker-popover')
-  const rect = anchorEl.getBoundingClientRect()
+  const triggerRect = anchorElement.getBoundingClientRect()
   const popoverWidth = 360
   const popoverMaxHeight = 400
   const margin = 8
 
   // Horizontal: align to trigger's left, but stay inside the viewport.
-  let left = rect.left
-  if (left + popoverWidth > window.innerWidth - margin) left = window.innerWidth - popoverWidth - margin
-  if (left < margin) left = margin
+  let left = triggerRect.left
+  if (left + popoverWidth > window.innerWidth - margin) {
+    left = window.innerWidth - popoverWidth - margin
+  }
+  if (left < margin) {
+    left = margin
+  }
 
   // Vertical: prefer below the trigger; flip above only if cramped.
-  const spaceBelow = window.innerHeight - rect.bottom - margin
-  const spaceAbove = rect.top - margin
-  const flipAbove = spaceBelow < 200 && spaceAbove > spaceBelow
-  let top, height
-  if (flipAbove) {
+  const spaceBelow = window.innerHeight - triggerRect.bottom - margin
+  const spaceAbove = triggerRect.top - margin
+  const isFlippedAbove = spaceBelow < 200 && spaceAbove > spaceBelow
+  let top
+  let height
+  if (isFlippedAbove) {
     height = Math.min(popoverMaxHeight, spaceAbove)
-    top = rect.top - height - 4
+    top = triggerRect.top - height - 4
   } else {
     height = Math.min(popoverMaxHeight, spaceBelow)
-    top = rect.bottom + 4
+    top = triggerRect.bottom + 4
   }
   popover.style.left = `${left}px`
   popover.style.top = `${top}px`
@@ -2493,44 +2514,53 @@ function closeLinkPicker() {
 }
 
 function linkPickerFilter(query) {
-  if (!linkPickerState) return
+  if (!linkPickerState) {
+    return
+  }
   linkPickerState.query = query
   linkPickerState.activeIndex = 0
   linkPickerRender()
 }
 
 function linkPickerRender() {
-  if (!linkPickerState) return
+  if (!linkPickerState) {
+    return
+  }
   const list = document.getElementById('link-picker-list')
   const query = linkPickerState.query.trim().toLowerCase()
   const filtered = query
-    ? linkPickerState.items.filter(it =>
-        it.label.toLowerCase().includes(query) ||
-        (it.detail || '').toLowerCase().includes(query))
+    ? linkPickerState.items.filter((item) => (
+        item.label.toLowerCase().includes(query)
+        || (item.detail || '').toLowerCase().includes(query)
+      ))
     : linkPickerState.items
   linkPickerState.filtered = filtered
-  if (linkPickerState.activeIndex >= filtered.length) linkPickerState.activeIndex = 0
+  if (linkPickerState.activeIndex >= filtered.length) {
+    linkPickerState.activeIndex = 0
+  }
 
   list.innerHTML = filtered.length === 0
     ? '<p class="text-xs text-slate-500 text-center py-4">No matches.</p>'
     : filtered.map((item, index) => {
-        const active = index === linkPickerState.activeIndex
-        const labelClass = `text-xs ${active ? 'text-white' : 'text-slate-200'} ${item.kind === 'path' ? 'font-medium' : 'font-mono'}`
-        const detailClass = `font-mono text-[11px] pl-4 break-all whitespace-normal ${active ? 'text-blue-100' : 'text-slate-400'}`
+        const isActive = index === linkPickerState.activeIndex
+        const labelClass = `text-xs ${isActive ? 'text-white' : 'text-slate-200'} ${item.kind === 'path' ? 'font-medium' : 'font-mono'}`
+        const detailClass = `font-mono text-[11px] pl-4 break-all whitespace-normal ${isActive ? 'text-blue-100' : 'text-slate-400'}`
         const detail = item.detail ? `<div class="${detailClass}">${esc(item.detail)}</div>` : ''
         return `<button type="button" onmousedown="event.preventDefault()" onclick="linkPickerSelect('${esc(item.value)}')" data-link-idx="${index}"
-          class="w-full text-left px-3 py-1.5 ${active ? 'bg-blue-700' : 'hover:bg-slate-800'}">
+          class="w-full text-left px-3 py-1.5 ${isActive ? 'bg-blue-700' : 'hover:bg-slate-800'}">
           <div class="${labelClass}">${esc(item.label)}</div>
           ${detail}
         </button>`
       }).join('')
 
-  const activeEl = list.querySelector(`[data-link-idx="${linkPickerState.activeIndex}"]`)
-  activeEl?.scrollIntoView({ block: 'nearest' })
+  const activeElement = list.querySelector(`[data-link-idx="${linkPickerState.activeIndex}"]`)
+  activeElement?.scrollIntoView({ block: 'nearest' })
 }
 
 function linkPickerSelect(value) {
-  if (!linkPickerState) return
+  if (!linkPickerState) {
+    return
+  }
   const { stepId, fieldName } = linkPickerState
   closeLinkPicker()
   setLink(stepId, fieldName, value)
@@ -2541,26 +2571,42 @@ function linkPickerSelect(value) {
 
 function refreshLinkPickerTrigger(stepId, fieldName) {
   const trigger = document.querySelector(`[data-link-picker-trigger][data-step="${stepId}"][data-field="${fieldName}"]`)
-  if (!trigger) return
-  const step = steps.find(s => s.id === stepId)
-  if (!step) return
+  if (!trigger) {
+    return
+  }
+  const step = steps.find((candidate) => candidate.id === stepId)
+  if (!step) {
+    return
+  }
   const target = describeLinkTarget(step, fieldName)
-  const labelEl = trigger.querySelector('[data-link-trigger-label]')
-  if (labelEl) labelEl.textContent = target.label
-  if (target.pvId) trigger.dataset.pvId = target.pvId
-  else delete trigger.dataset.pvId
-  if (target.srcStepId) trigger.dataset.linkedStep = target.srcStepId
-  else delete trigger.dataset.linkedStep
+  const labelElement = trigger.querySelector('[data-link-trigger-label]')
+  if (labelElement) {
+    labelElement.textContent = target.label
+  }
+  if (target.pathVarId) {
+    trigger.dataset.pvId = target.pathVarId
+  } else {
+    delete trigger.dataset.pvId
+  }
+  if (target.sourceStepId) {
+    trigger.dataset.linkedStep = target.sourceStepId
+  } else {
+    delete trigger.dataset.linkedStep
+  }
 }
 
 function linkPickerKeydown(event) {
-  if (!linkPickerState) return
+  if (!linkPickerState) {
+    return
+  }
   if (event.key === 'Escape') {
     event.preventDefault()
     closeLinkPicker()
     return
   }
-  if (!linkPickerState.filtered?.length) return
+  if (!linkPickerState.filtered?.length) {
+    return
+  }
   if (event.key === 'ArrowDown') {
     event.preventDefault()
     linkPickerState.activeIndex = (linkPickerState.activeIndex + 1) % linkPickerState.filtered.length
@@ -2572,15 +2618,23 @@ function linkPickerKeydown(event) {
   } else if (event.key === 'Enter') {
     event.preventDefault()
     const item = linkPickerState.filtered[linkPickerState.activeIndex]
-    if (item) linkPickerSelect(item.value)
+    if (item) {
+      linkPickerSelect(item.value)
+    }
   }
 }
 
 document.addEventListener('mousedown', (event) => {
-  if (!linkPickerState) return
+  if (!linkPickerState) {
+    return
+  }
   const popover = document.getElementById('link-picker-popover')
-  if (popover.contains(event.target)) return
-  if (event.target.closest('[data-link-picker-trigger]')) return
+  if (popover.contains(event.target)) {
+    return
+  }
+  if (event.target.closest('[data-link-picker-trigger]')) {
+    return
+  }
   closeLinkPicker()
 }, true)
 
