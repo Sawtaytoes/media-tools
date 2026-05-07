@@ -31,6 +31,8 @@ const stepOutputReferenceSchema = z.object({
 const sequenceStepSchema = z.object({
   id: z.string().optional()
     .describe("Stable identifier for this step. Optional on input — auto-assigned (`step1`, `step2`, ...) when omitted. Used as the target of `{ linkedTo, output }` references from later steps."),
+  alias: z.string().optional()
+    .describe("Optional human-readable alias. Surfaced by the builder UI's step header; ignored at runtime."),
   command: z.enum(commandNames)
     .describe("Name of the registered command to run. Must be one of the names listed at `GET /commands` (or surfaced individually as `POST /commands/<name>` endpoints)."),
   params: z.record(z.string(), z.unknown()).optional()

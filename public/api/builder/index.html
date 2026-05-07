@@ -899,12 +899,52 @@ function getLinkedValue(step, fieldName) {
 
 function makeStep(command = null) {
   if (!command) {
-    return { id: generateStepId(), command: null, params: {}, links: {}, status: null, error: null }
+    return { id: generateStepId(), alias: '', command: null, params: {}, links: {}, status: null, error: null }
   }
   const cmd = COMMANDS[command]
   const params = {}
   for (const f of cmd.fields) if (f.default !== undefined) params[f.name] = f.default
-  return { id: generateStepId(), command, params, links: {}, status: null, error: null }
+  return { id: generateStepId(), alias: '', command, params, links: {}, status: null, error: null }
+}
+
+// Inline-edit handlers for the step's alias. The input is always in the
+// DOM (styled to look like a label until focused) — focus stashes the
+// entry value so Esc can revert, blur commits unless Esc set the revert
+// flag, Enter just blurs (commit path).
+function stepAliasFocus(input) {
+  input.dataset.original = input.value
+  delete input.dataset.revert
+  input.select()
+}
+
+function stepAliasKeydown(event, stepId) {
+  if (event.key === 'Enter') {
+    event.preventDefault()
+    event.target.blur()
+  } else if (event.key === 'Escape') {
+    event.preventDefault()
+    event.target.dataset.revert = '1'
+    event.target.value = event.target.dataset.original ?? ''
+    event.target.blur()
+  }
+}
+
+function stepAliasBlur(input, stepId) {
+  if (input.dataset.revert) {
+    delete input.dataset.revert
+    return
+  }
+  setStepAlias(stepId, input.value)
+}
+
+function setStepAlias(stepId, alias) {
+  const step = steps.find(s => s.id === stepId)
+  if (!step) return
+  const trimmed = alias.trim()
+  if (step.alias === trimmed) return
+  step.alias = trimmed
+  updateYaml()
+  scheduleUpdateUrl()
 }
 
 // Wraps renderAll in document.startViewTransition (Chromium 111+) so existing
@@ -1267,10 +1307,16 @@ function renderStep(step, index) {
 
   return `
 <div id="step-${step.id}" style="view-transition-name: step-${step.id}" class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-  <div class="flex items-center gap-2 px-3 py-2 border-b border-slate-700 bg-slate-800/80">
+  <div class="border-b border-slate-700 bg-slate-800/80">
+    <input type="text" value="${esc(step.alias)}"
+      placeholder="${esc(step.command || 'Click to name this step')}"
+      data-step-alias="${step.id}"
+      onfocus="stepAliasFocus(this)"
+      onkeydown="stepAliasKeydown(event,'${step.id}')"
+      onblur="stepAliasBlur(this,'${step.id}')"
+      class="w-full bg-transparent text-sm font-medium text-slate-200 px-3 pt-2 pb-1.5 border-0 focus:outline-none focus:bg-slate-900/40 placeholder:text-slate-200 placeholder:font-medium" />
+    <div class="flex items-center gap-2 px-3 pb-2">
     <span class="text-xs font-mono text-slate-500 shrink-0 w-5 text-center">${index + 1}</span>
-    <span class="text-[10px] font-mono text-slate-500 bg-slate-900/60 border border-slate-700 rounded px-1.5 py-0.5 shrink-0 truncate max-w-[8rem]"
-      title="Step id (used by linkedTo references and SEQUENCE log lines)">${esc(step.id)}</span>
     <button onclick="openCmdPicker('${step.id}', this)" data-cmd-picker-trigger
       class="flex-1 min-w-0 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded px-2 py-1 border border-slate-600 focus:outline-none focus:border-blue-500 text-left flex items-center gap-2 cursor-pointer">
       <span class="flex-1 min-w-0 truncate flex items-center">${triggerLabel}</span>
@@ -1290,6 +1336,7 @@ function renderStep(step, index) {
         class="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700 disabled:opacity-30 text-xs">↓</button>
       <button onclick="removeStep('${step.id}')"
         class="w-6 h-6 flex items-center justify-center rounded text-slate-500 hover:text-red-400 hover:bg-slate-700 text-xs">✕</button>
+    </div>
     </div>
   </div>
   <div class="px-3 py-2">
@@ -1610,8 +1657,15 @@ function toYamlStr() {
   const data = {
     paths: pathsObj,
     // Each step ships its stable string ID so { linkedTo: stepN, output: ... }
-    // links remain valid across save/load cycles.
-    steps: filledSteps.map(s => ({ id: s.id, command: s.command, params: buildParams(s) })),
+    // links remain valid across save/load cycles. `alias` is purely cosmetic
+    // (builder UI label) — only emitted when the user has set one, so default
+    // YAML stays uncluttered.
+    steps: filledSteps.map(s => ({
+      id: s.id,
+      ...(s.alias ? { alias: s.alias } : {}),
+      command: s.command,
+      params: buildParams(s),
+    })),
   }
   return jsyaml.dump(data, { lineWidth: -1, flowLevel: 3, indent: 2 })
 }
@@ -1711,6 +1765,7 @@ function loadYamlFromText(text) {
         if (restoredCount > stepCounter) stepCounter = restoredCount
       }
     }
+    if (typeof item.alias === 'string') step.alias = item.alias
     const cmd = COMMANDS[item.command]
     for (const field of cmd.fields) {
       const v = item.params?.[field.name]

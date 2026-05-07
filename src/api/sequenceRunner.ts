@@ -21,6 +21,7 @@ import {
 
 export type SequenceStep = {
   id?: string
+  alias?: string
   command: string
   params?: Record<string, unknown>
 }
