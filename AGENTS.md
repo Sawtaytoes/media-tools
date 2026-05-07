@@ -162,7 +162,7 @@ This repo can be cloned into sibling working trees named `media-tools-worker-<na
 
 If your repo folder name starts with `media-tools-worker-`:
 
-1. **Create a feature branch** at the start of any non-trivial work — don't commit directly to `master`. Naming: `<name>/<short-description>` (e.g. `claude-x/jobs-progress-followup`). If a feature branch is already checked out and matches the task, keep using it.
+1. **Create a feature branch** at the start of any non-trivial work — don't commit directly to `master`. Naming: `feature/<short-description>` (e.g. `feature/jobs-progress-followup`). If a feature branch is already checked out and matches the task, keep using it.
 2. **Commit AND push** to that branch as you go. This is the explicit reversal of the primary's "never push" rule — the push is what makes your work visible to the user and lets the primary (and other workers) see what you're up to. Push after every commit; don't batch.
 3. **Don't merge to `master` autonomously.** Wait for the user to explicitly say "merge it" or equivalent. Once told, merge your feature branch into local `master` and push.
 4. Everything in `Commit conventions` below (commit-as-you-go, partial-file splits, focused commits) still applies — you're just additionally pushing the branch on every commit.
