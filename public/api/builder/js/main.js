@@ -14,6 +14,13 @@ import {
   setPathValue,
   removePath,
 } from './components/path-var-card.js'
+import {
+  toYamlStr,
+  updateYaml,
+  openYamlModal,
+  closeYamlModal,
+  copyYaml,
+} from './components/yaml-modal.js'
 import { pathVarOptionText, refreshPathVarOptions } from './util/path-var-options.js'
 
 window.mediaTools = window.mediaTools || {}
@@ -29,6 +36,11 @@ Object.assign(window.mediaTools, {
   removePath,
   pathVarOptionText,
   refreshPathVarOptions,
+  toYamlStr,
+  updateYaml,
+  openYamlModal,
+  closeYamlModal,
+  copyYaml,
 })
 
 // Delegate path-var-card events on the steps list. Bound once; survives

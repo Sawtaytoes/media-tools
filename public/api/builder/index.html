@@ -1735,65 +1735,17 @@ function buildParams(step, { resolveLinks = false } = {}) {
   return out
 }
 
-function toYamlStr() {
-  const filledSteps = steps.filter(step => step.command !== null)
-  const hasContent = filledSteps.length || paths.some(p => p.value)
-  if (!hasContent) return '# No steps yet'
-  const pathsObj = {}
-  for (const pv of paths) pathsObj[pv.id] = { label: pv.label, value: pv.value }
-  const data = {
-    paths: pathsObj,
-    // Each step ships its stable string ID so { linkedTo: stepN, output: ... }
-    // links remain valid across save/load cycles. `alias` is purely cosmetic
-    // (builder UI label) — only emitted when the user has set one, so default
-    // YAML stays uncluttered.
-    steps: filledSteps.map(s => ({
-      id: s.id,
-      ...(s.alias ? { alias: s.alias } : {}),
-      command: s.command,
-      params: buildParams(s),
-    })),
-  }
-  return jsyaml.dump(data, { lineWidth: -1, flowLevel: 3, indent: 2 })
-}
-
-function updateYaml() {
-  const modal = document.getElementById('yaml-modal')
-  if (!modal.classList.contains('hidden')) {
-    document.getElementById('yaml-out').textContent = toYamlStr()
-  }
-}
-
-function copyYaml() {
-  navigator.clipboard.writeText(toYamlStr()).then(() => {
-    // Header icon button: flash a green ring without touching its SVG content.
-    const headerBtn = document.getElementById('copy-btn')
-    if (headerBtn) {
-      headerBtn.classList.add('!text-emerald-400', '!border-emerald-500')
-      setTimeout(() => {
-        headerBtn.classList.remove('!text-emerald-400', '!border-emerald-500')
-      }, 2000)
-    }
-    // Modal "Copy" button stays text-only; swap its label briefly.
-    const modalBtn = document.getElementById('modal-copy-btn')
-    if (modalBtn) {
-      const original = modalBtn.textContent
-      modalBtn.textContent = 'Copied!'
-      setTimeout(() => { modalBtn.textContent = original }, 2000)
-    }
-  })
-}
-
-function openYamlModal() {
-  document.getElementById('yaml-out').textContent = toYamlStr()
-  document.getElementById('yaml-modal').classList.remove('hidden')
-}
-
-function closeYamlModal(event) {
-  if (!event || event.target === document.getElementById('yaml-modal')) {
-    document.getElementById('yaml-modal').classList.add('hidden')
-  }
-}
+// toYamlStr / updateYaml / copyYaml / openYamlModal / closeYamlModal
+// extracted to /api/builder/js/components/yaml-modal.js (stage 2
+// refactor). These thin forwarders preserve the inline call sites
+// (and the HTML onclick="..." attributes on the YAML modal markup)
+// without touching every reference. They look up window.mediaTools.X
+// at call time, so module load order doesn't matter.
+function toYamlStr() { return window.mediaTools.toYamlStr() }
+function updateYaml() { return window.mediaTools.updateYaml() }
+function copyYaml() { return window.mediaTools.copyYaml() }
+function openYamlModal() { return window.mediaTools.openYamlModal() }
+function closeYamlModal(event) { return window.mediaTools.closeYamlModal(event) }
 
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
@@ -3531,7 +3483,6 @@ Object.defineProperty(window.mediaTools, 'steps', { get: () => steps, configurab
 Object.assign(window.mediaTools, {
   renderAll,
   refreshLinkedInputs,
-  updateYaml,
   scheduleUpdateUrl,
   scrollPathVarIntoView,
   schedulePathLookup,
@@ -3539,6 +3490,7 @@ Object.assign(window.mediaTools, {
   randomHex,
   initPaths,
   restoreFromUrl,
+  buildParams,
 })
 
 // Initial bootstrap (initPaths / restoreFromUrl / renderAll) is invoked
