@@ -25,42 +25,42 @@
     animation-duration: 220ms;
   }
 
-  /* Page-header hamburger menu. The action bar carries 11 items + the
-     title; below ~900px viewport width they overflow off the right. At
-     narrow widths the actions collapse behind a ≡ toggle on the left of
-     the title and reappear as a popover with grouped sections.
+  /* Page-header dual menus. Two separate containers — a left "nav" menu
+     (New Sequence, Jobs ↗) and a right "controls" menu (undo/redo,
+     Add/Run actions, YAML icons). At wide widths each container stays
+     a flex container and its grouped children dissolve via display:
+     contents into an inline action bar. At <900px viewport, both
+     containers collapse and the toggles (≡ on the left of the title for
+     nav, ⋮ on the right for controls) reveal them as popovers.
 
-     Default (wide) layout: groups and rows dissolve via display:contents,
-     so all action buttons appear inline in the header with the existing
-     <span> separators showing as pixel-wide vertical bars. We define
-     display:flex on .page-actions ourselves (instead of using Tailwind's
-     `flex` utility) so the @media rule below can hide the container
-     without losing to Tailwind's `.flex { display: flex }` in the
-     cascade. */
+     We define display:flex on .page-menu ourselves (rather than using
+     Tailwind's `flex` utility) so the @media rule below can flip to
+     display:none without losing to `.flex { display: flex }` later in
+     the cascade. */
   .page-menu-toggle { display: none; }
   .page-header-inner { position: relative; }
 
-  .page-actions {
+  .page-menu {
     display: flex;
     align-items: center;
     gap: 0.5rem;
   }
-  .page-actions-group,
-  .page-actions-row {
+  .page-menu-group,
+  .page-menu-row {
     display: contents;
   }
 
   @media (max-width: 900px) {
+    .page-header-inner { justify-content: space-between; }
     .page-menu-toggle { display: inline-flex; }
-    .page-actions { display: none; }
-    .page-actions.open {
+    .page-menu { display: none; }
+    .page-menu.open {
       display: flex;
       flex-direction: column;
       align-items: stretch;
       gap: 0.5rem;
       position: absolute;
       top: calc(100% - 0.25rem);
-      left: 0.75rem;
       min-width: 14rem;
       padding: 0.75rem;
       background: rgb(15 23 42);
@@ -69,31 +69,33 @@
       box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
       z-index: 50;
     }
-    .page-actions.open .page-actions-group {
+    /* Anchor each popover under its toggle. */
+    .page-menu-nav.open      { left:  0.75rem; }
+    .page-menu-controls.open { right: 0.75rem; }
+
+    .page-menu.open .page-menu-group {
       display: flex;
       flex-direction: column;
       gap: 0.4rem;
     }
-    .page-actions.open .page-actions-row {
+    .page-menu.open .page-menu-row {
       display: flex;
       flex-direction: row;
       gap: 0.4rem;
     }
-    /* Stretch stacked buttons full-width inside the popover. The :not
-       selector skips items that live inside a row (icons stay shoulder
-       to shoulder). */
-    .page-actions.open .page-actions-group > button,
-    .page-actions.open .page-actions-group > a {
+    /* Stretch stacked buttons full-width. The :not selector skips items
+       inside a row so the icon trios stay shoulder-to-shoulder. */
+    .page-menu.open .page-menu-group > button,
+    .page-menu.open .page-menu-group > a {
       width: 100%;
       text-align: center;
       margin-left: 0;
     }
-    .page-actions.open .page-actions-row > * {
+    .page-menu.open .page-menu-row > * {
       flex: 1;
     }
-    /* Convert the inline pixel separators into full-width horizontal
-       dividers between groups. */
-    .page-actions.open .page-actions-sep {
+    /* Inline pixel separators become full-width horizontal dividers. */
+    .page-menu.open .page-menu-sep {
       display: block;
       width: 100%;
       height: 1px;
@@ -148,24 +150,32 @@
   <!-- Header -->
   <div class="shrink-0 border-b border-slate-700 bg-slate-900 z-10">
     <div class="page-header-inner flex items-center px-4 py-3 gap-3">
-      <button id="page-menu-toggle" onclick="togglePageHeaderMenu()" title="Toggle menu"
+      <button id="page-nav-toggle" onclick="togglePageMenu('page-actions-nav')" title="Menu"
         class="page-menu-toggle w-7 h-7 items-center justify-center rounded text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 text-base leading-none">≡</button>
       <h1 class="text-lg font-bold tracking-tight">
         <a href="/" class="text-slate-100 hover:text-blue-300 transition-colors">Sequence Builder</a>
       </h1>
-      <div id="page-actions" class="page-actions ml-auto">
-        <div class="page-actions-group">
-          <div class="page-actions-row">
+      <div id="page-actions-nav" class="page-menu page-menu-nav">
+        <div class="page-menu-group">
+          <button onclick="startNewSequence()" title="Clear the current sequence and start fresh (Ctrl+Z to undo)"
+            class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded font-medium border border-slate-600">New Sequence</button>
+        </div>
+        <span class="page-menu-sep w-px h-6 bg-slate-700 mx-1"></span>
+        <div class="page-menu-group">
+          <a href="/" class="text-xs text-slate-400 hover:text-slate-300">Jobs ↗</a>
+        </div>
+      </div>
+      <div id="page-actions-controls" class="page-menu page-menu-controls ml-auto">
+        <div class="page-menu-group">
+          <div class="page-menu-row">
             <button id="undo-btn" onclick="undo()" title="Undo (Ctrl+Z)" disabled
               class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 disabled:opacity-30 disabled:hover:bg-slate-700 px-2 py-1.5 rounded border border-slate-600 w-7">↶</button>
             <button id="redo-btn" onclick="redo()" title="Redo (Ctrl+Y / Ctrl+Shift+Z)" disabled
               class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 disabled:opacity-30 disabled:hover:bg-slate-700 px-2 py-1.5 rounded border border-slate-600 w-7">↷</button>
           </div>
-          <button onclick="startNewSequence()" title="Clear the current sequence and start fresh (Ctrl+Z to undo)"
-            class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded font-medium border border-slate-600">New Sequence</button>
         </div>
-        <span class="page-actions-sep w-px h-6 bg-slate-700 mx-1"></span>
-        <div class="page-actions-group">
+        <span class="page-menu-sep w-px h-6 bg-slate-700 mx-1"></span>
+        <div class="page-menu-group">
           <button onclick="addPicked()" title="Append an empty step"
             class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium">Add Step</button>
           <button onclick="addPath()" title="Add a path variable"
@@ -179,9 +189,9 @@
             ▶ Run via API
           </button>
         </div>
-        <span class="page-actions-sep w-px h-6 bg-slate-700 mx-1"></span>
-        <div class="page-actions-group">
-          <div class="page-actions-row">
+        <span class="page-menu-sep w-px h-6 bg-slate-700 mx-1"></span>
+        <div class="page-menu-group">
+          <div class="page-menu-row">
             <button onclick="toggleLoad()" id="load-btn" title="Load YAML"
               class="w-7 h-7 flex items-center justify-center rounded text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
@@ -206,11 +216,9 @@
             </button>
           </div>
         </div>
-        <span class="page-actions-sep w-px h-6 bg-slate-700 mx-1"></span>
-        <div class="page-actions-group">
-          <a href="/" class="ml-2 text-xs text-slate-400 hover:text-slate-300">Jobs ↗</a>
-        </div>
       </div>
+      <button id="page-controls-toggle" onclick="togglePageMenu('page-actions-controls')" title="Sequence actions"
+        class="page-menu-toggle w-7 h-7 items-center justify-center rounded text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 text-base leading-none">⋮</button>
     </div>
   </div>
 
@@ -1852,20 +1860,24 @@ document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
     closeYamlModal()
     closeApiRunModal()
-    document.getElementById('page-actions')?.classList.remove('open')
+    document.querySelectorAll('.page-menu.open').forEach(m => m.classList.remove('open'))
   }
 })
 
-// Click-outside to close the page-header popover. Skip clicks on the
-// toggle itself (its own onclick already toggles state) and clicks on
-// the popover contents (so users can hit a button inside without the
+// Click-outside to close any open page-header popover. Skip clicks on
+// the toggles (their own onclick already toggles state) and clicks on
+// popover contents (so users can hit a button inside without the
 // popover dismissing first).
 document.addEventListener('click', (event) => {
-  const actions = document.getElementById('page-actions')
-  if (!actions || !actions.classList.contains('open')) return
-  const toggle = document.getElementById('page-menu-toggle')
-  if (actions.contains(event.target) || toggle?.contains(event.target)) return
-  actions.classList.remove('open')
+  const openMenus = document.querySelectorAll('.page-menu.open')
+  if (!openMenus.length) return
+  const navToggle = document.getElementById('page-nav-toggle')
+  const ctrlToggle = document.getElementById('page-controls-toggle')
+  if (navToggle?.contains(event.target) || ctrlToggle?.contains(event.target)) return
+  for (const menu of openMenus) {
+    if (menu.contains(event.target)) return
+  }
+  openMenus.forEach(m => m.classList.remove('open'))
 })
 
 // ─── Load YAML ────────────────────────────────────────────────────────────────
@@ -1876,11 +1888,17 @@ function toggleLoad() {
   document.getElementById('load-error').classList.add('hidden')
 }
 
-// Toggle the page-header action menu open/closed. Only meaningful at
-// viewport widths < 900px — at wider widths the toggle button is hidden
-// via CSS, so the .open class is harmless if it lingers.
-function togglePageHeaderMenu() {
-  document.getElementById('page-actions').classList.toggle('open')
+// Toggle one of the two page-header popovers (#page-actions-nav,
+// #page-actions-controls). Only one is open at a time — clicking the
+// other toggle closes the first. Only meaningful at viewport widths
+// < 900px; at wider widths the toggle buttons are hidden via CSS, so a
+// stale .open class is harmless.
+function togglePageMenu(menuId) {
+  const target = document.getElementById(menuId)
+  if (!target) return
+  const wasOpen = target.classList.contains('open')
+  document.querySelectorAll('.page-menu.open').forEach(m => m.classList.remove('open'))
+  if (!wasOpen) target.classList.add('open')
 }
 
 function loadYamlFromText(text) {
