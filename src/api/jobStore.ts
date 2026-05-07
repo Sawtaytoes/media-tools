@@ -1,14 +1,14 @@
 import { randomUUID } from "node:crypto"
 import { Subject, type Subscription } from "rxjs"
 
-import type { Job, PromptEvent } from "./types.js"
+import type { Job, ProgressEvent, PromptEvent } from "./types.js"
 
 // ---------------------------------------------------------------------------
 // Module-level state — only mutated through the exported functions below.
 // ---------------------------------------------------------------------------
 
 const jobs = new Map<string, Job>()
-const subjects = new Map<string, Subject<string | PromptEvent>>()
+const subjects = new Map<string, Subject<string | PromptEvent | ProgressEvent>>()
 // Live RxJS Subscriptions keyed by jobId. Populated by jobRunner /
 // sequenceRunner when a job starts running, removed on natural completion
 // or by cancelJob below. Not exposed — Subscription objects aren't
@@ -120,8 +120,8 @@ export const appendJobLog = (
 
 export const createSubject = (
   id: string,
-): Subject<string | PromptEvent> => {
-  const subject = new Subject<string | PromptEvent>()
+): Subject<string | PromptEvent | ProgressEvent> => {
+  const subject = new Subject<string | PromptEvent | ProgressEvent>()
 
   subjects.set(id, subject)
 
@@ -130,13 +130,13 @@ export const createSubject = (
 
 export const getSubject = (
   id: string,
-): Subject<string | PromptEvent> | undefined => (
+): Subject<string | PromptEvent | ProgressEvent> | undefined => (
   subjects.get(id)
 )
 
 export const emitJobEvent = (
   id: string,
-  event: PromptEvent,
+  event: PromptEvent | ProgressEvent,
 ): void => {
   subjects.get(id)?.next(event)
 }

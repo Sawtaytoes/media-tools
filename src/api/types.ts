@@ -41,3 +41,22 @@ export type PromptEvent = {
   promptId: string
   type: "prompt"
 }
+
+// Job-progress payload pushed onto the per-job SSE subject by
+// `createProgressEmitter`. Rides the same channel as PromptEvent and
+// reaches the Jobs UI as one of the JSON shapes the client branches on.
+//
+// `ratio` is a 0..1 overall job ratio (null if the emitter is running
+// in indeterminate mode — e.g. before an upfront stat() resolves).
+// `filesDone` / `filesTotal` carry the per-file rollup for any iterator
+// that walks N files. `currentFile` and `currentFileRatio` are populated
+// only by emitters that have byte-level inner progress (currently just
+// the copy commands via aclSafeCopyFile.onProgress).
+export type ProgressEvent = {
+  type: "progress"
+  ratio: number | null
+  filesDone?: number
+  filesTotal?: number
+  currentFile?: string
+  currentFileRatio?: number | null
+}
