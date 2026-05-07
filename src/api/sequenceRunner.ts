@@ -1,3 +1,5 @@
+import { defer, forkJoin, lastValueFrom } from "rxjs"
+
 import { logError, logInfo } from "../tools/logMessage.js"
 import { withJobContext } from "./logCapture.js"
 import {
@@ -289,14 +291,22 @@ export const runSequenceJob = (
 
         if (item.isParallel === true) {
           logInfo("SEQUENCE", `Group "${groupLabel}" (parallel, ${item.steps.length} step${item.steps.length === 1 ? "" : "s"}): starting.`)
-          // Kick off all inner steps concurrently. We deliberately wait
-          // for *all* of them to settle (Promise.allSettled) — racing on
-          // the first failure would leave the runJob promises orphaned
-          // and the corresponding child jobs in `running` forever. The
-          // first-failure semantics manifest at the group level: we
-          // surface the first fail's error and skip the outer remainder.
-          const innerOutcomes = await Promise.all(
-            item.steps.map((innerStep) => runOneStep(innerStep)),
+          // Kick off every inner step concurrently via forkJoin. Each
+          // inner observable is a `defer` wrapper around runOneStep so
+          // the underlying work only starts when forkJoin subscribes —
+          // the standard RxJS lazy-eval pattern, matching how the rest
+          // of the code composes observables.
+          //
+          // runOneStep never throws (failures come back as
+          // `{ kind: "failed" }`), so forkJoin's error-propagation /
+          // sibling-cancellation path never fires. We deliberately wait
+          // for every inner observable to complete — racing on the
+          // first failure here would leave the corresponding child jobs
+          // in `running` forever. First-failure semantics manifest at
+          // the GROUP level: scan the outcomes for the first failed
+          // entry, surface its error, skip the outer remainder.
+          const innerOutcomes = await lastValueFrom(
+            forkJoin(item.steps.map((innerStep) => defer(() => runOneStep(innerStep)))),
           )
 
           // Apply outputs from every successful inner step into stepsById
