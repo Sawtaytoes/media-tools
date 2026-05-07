@@ -1,16 +1,22 @@
+import { stat } from "node:fs/promises"
 import { extname, join } from "node:path"
 import {
   concatMap,
   defer,
+  finalize,
+  from,
   map,
   tap,
+  toArray,
 } from "rxjs"
 
+import { getActiveJobId } from "../api/logCapture.js"
 import { aclSafeCopyFile } from "../tools/aclSafeCopyFile.js"
 import { logAndRethrow } from "../tools/logAndRethrow.js"
 import { getFiles } from "../tools/getFiles.js"
 import { logInfo } from "../tools/logMessage.js"
 import { makeDirectory } from "../tools/makeDirectory.js"
+import { createProgressEmitter } from "../tools/progressEmitter.js"
 
 export const copyFiles = ({
   destinationPath,
@@ -19,62 +25,73 @@ export const copyFiles = ({
   destinationPath: string
   sourcePath: string
 }) => (
-  getFiles({
-    sourcePath,
-  })
+  getFiles({ sourcePath })
   .pipe(
-    concatMap((
-      fileInfo,
-    ) => {
-      const targetPath = (
-        join(
-          destinationPath,
-          (
-            fileInfo
-            .filename
-            .concat(
-              extname(
-                fileInfo
-                .fullPath
+    // Materialize the file list so we know totalFiles + can stat for
+    // totalBytes upfront. The cost is N stats and holding N small
+    // FileInfo structs in memory; both are cheap relative to the
+    // bytes we're about to move.
+    toArray(),
+    concatMap((files) => (
+      defer(async () => {
+        const jobId = getActiveJobId()
+        const sizes = (
+          jobId !== undefined
+          ? await Promise.all(files.map((file) => stat(file.fullPath).then((stats) => stats.size)))
+          : []
+        )
+        const totalBytes = sizes.reduce((sum, size) => sum + size, 0)
+        const emitter = (
+          jobId !== undefined
+          ? createProgressEmitter(jobId, { totalFiles: files.length, totalBytes })
+          : null
+        )
+        return { files, sizes, emitter }
+      })
+      .pipe(
+        concatMap(({ files, sizes, emitter }) => (
+          from(files.map((file, index) => ({ file, size: sizes[index] })))
+          .pipe(
+            concatMap(({ file, size }) => {
+              const targetPath = join(
+                destinationPath,
+                file.filename.concat(extname(file.fullPath)),
               )
-            )
-          ),
 
-        )
-      )
+              // aclSafeCopyFile.onProgress fires per chunk with
+              // ABSOLUTE bytesWritten across the lifetime of one file
+              // copy. The emitter's reportBytes wants per-chunk delta,
+              // so we track the previous high-water mark per file.
+              let lastBytesWritten = 0
+              if (emitter !== null) emitter.startFile(file.fullPath, size)
 
-      return (
-        makeDirectory(
-          destinationPath
-        )
-        .pipe(
-          concatMap(() => (
-            aclSafeCopyFile(
-              (
-                fileInfo
-                .fullPath
-              ),
-              targetPath,
-            )
-          )),
-          tap(() => {
-            logInfo(
-              "COPIED",
-              (
-                fileInfo
-                .fullPath
-              ),
-              targetPath,
-            )
-          }),
-          map(() => (
-            targetPath
-          )),
-        )
+              return makeDirectory(destinationPath)
+              .pipe(
+                concatMap(() => aclSafeCopyFile(
+                  file.fullPath,
+                  targetPath,
+                  emitter !== null
+                    ? {
+                        onProgress: (event) => {
+                          const delta = event.bytesWritten - lastBytesWritten
+                          lastBytesWritten = event.bytesWritten
+                          emitter.reportBytes(delta)
+                        },
+                      }
+                    : undefined,
+                )),
+                tap(() => {
+                  if (emitter !== null) emitter.finishFile(size)
+                  logInfo("COPIED", file.fullPath, targetPath)
+                }),
+                map(() => targetPath),
+              )
+            }),
+            finalize(() => emitter?.finalize()),
+          )
+        )),
       )
-    }),
-    logAndRethrow(
-      copyFiles
-    ),
+    )),
+    logAndRethrow(copyFiles),
   )
 )
