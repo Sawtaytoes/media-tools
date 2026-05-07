@@ -306,7 +306,7 @@
 <!-- Command picker popover -->
 <div id="cmd-picker-popover" class="hidden fixed z-40 bg-slate-900 border border-slate-600 rounded-lg shadow-xl flex flex-col" style="width:340px;max-height:400px">
   <input id="cmd-picker-input" type="text" placeholder="Search commands…"
-    oninput="cmdPickerFilter(this.value)" onkeydown="cmdPickerKeydown(event)"
+    oninput="commandPicker.filter(this.value)" onkeydown="commandPicker.keydown(event)"
     class="bg-slate-800 text-slate-200 text-sm rounded-t-lg px-3 py-2 border-b border-slate-700 focus:outline-none placeholder-slate-500">
   <div id="cmd-picker-list" class="overflow-y-auto py-1"></div>
 </div>
@@ -314,7 +314,7 @@
 <!-- Location/link picker popover (path variables + previous-step folder outputs) -->
 <div id="link-picker-popover" class="hidden fixed z-40 bg-slate-900 border border-slate-600 rounded-lg shadow-xl flex flex-col" style="width:360px;max-height:400px">
   <input id="link-picker-input" type="text" placeholder="Search locations…"
-    oninput="linkPickerFilter(this.value)" onkeydown="linkPickerKeydown(event)"
+    oninput="linkPicker.filter(this.value)" onkeydown="linkPicker.keydown(event)"
     class="bg-slate-800 text-slate-200 text-sm rounded-t-lg px-3 py-2 border-b border-slate-700 focus:outline-none placeholder-slate-500">
   <div id="link-picker-list" class="overflow-y-auto py-1"></div>
 </div>
@@ -1411,7 +1411,7 @@ function renderStep(step, index) {
       onkeydown="stepAliasKeydown(event,'${step.id}')"
       onblur="stepAliasBlur(this,'${step.id}')"
       class="step-alias bg-transparent text-sm font-medium text-slate-200 px-1.5 py-0.5 rounded border-0 focus:outline-none focus:bg-slate-900/40 placeholder:text-slate-200 placeholder:font-medium" />
-    <button onclick="openCmdPicker('${step.id}', this)" data-cmd-picker-trigger
+    <button onclick="commandPicker.open({stepId: '${step.id}'}, this)" data-cmd-picker-trigger
       class="flex-1 min-w-0 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded px-2 py-1 border border-slate-600 focus:outline-none focus:border-blue-500 text-left flex items-center gap-2 cursor-pointer">
       <span class="flex-1 min-w-0 truncate flex items-center">${triggerLabel}</span>
       <span class="text-slate-400 shrink-0">▾</span>
@@ -1620,7 +1620,7 @@ function renderPathField(step, field, stepIndex) {
   return `<div>
     <div class="flex items-center gap-2 mb-1">
       <label class="text-xs text-slate-400">${esc(field.label)}${field.required ? ' <span class="text-red-400">*</span>' : ''}</label>
-      <button type="button" onclick="openLinkPicker('${step.id}','${field.name}', this)" data-link-picker-trigger ${triggerData}
+      <button type="button" onclick="linkPicker.open({stepId: '${step.id}', fieldName: '${field.name}'}, this)" data-link-picker-trigger ${triggerData}
         class="ml-auto text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 rounded px-1.5 py-0.5 border border-slate-600 focus:outline-none focus:border-blue-500 min-w-0 max-w-full flex items-center gap-1 cursor-pointer">
         <span class="truncate" data-link-trigger-label>${esc(target.label)}</span>
         <span class="text-slate-400 shrink-0">▾</span>
@@ -2250,144 +2250,265 @@ const LOOKUP_TITLES = {
   dvdcompare: 'Look up DVDCompare Film ID',
 }
 
-// ─── Command-picker popover (autocomplete replacement for the per-step <select>) ───
+// ─── Shared popover-picker shell ──────────────────────────────────────────────
+//
+// Both the command picker (per-step "pick a command") and the location
+// picker (per-path-field "Source Path → which path-variable / step") are
+// the same UI: a popover anchored near a trigger button, a search
+// input, a filterable list, ArrowUp/ArrowDown/Enter/Escape keys, and
+// click-outside dismissal. The only differences are:
+//   - which trigger edge the popover anchors to ('left' | 'right')
+//   - what the items are and how each row renders
+//   - what happens on selection
+//
+// `createPopoverPicker(config)` owns everything common; each picker just
+// hands in its data + render + onSelect. Reusing the shell is what
+// keeps the two pickers feeling like one component instead of two
+// coincidentally-similar ones.
+function createPopoverPicker(config) {
+  let state = null
+  // shape: { anchor, items, filtered, query, activeIndex }
+  // `anchor` is whatever the caller passes to open() — for the command
+  // picker it's { stepId }, for the link picker it's { stepId, fieldName }.
 
-let cmdPickerState = null
-// shape: { stepId: number, query: string, filtered: [{name, tag}], activeIndex: number }
-
-function openCmdPicker(stepId, anchorEl) {
-  const step = steps.find(s => s.id === stepId)
-  if (!step) return
-  cmdPickerState = { stepId, query: '', activeIndex: 0, filtered: [] }
-
-  const popover = document.getElementById('cmd-picker-popover')
-  const rect = anchorEl.getBoundingClientRect()
-  const popoverWidth = 340
-  const popoverMaxHeight = 400  // matches CSS max-height
-  const margin = 8
-
-  // Horizontal: prefer aligning to the trigger's left, but stay within the viewport.
-  let left = rect.left
-  if (left + popoverWidth > window.innerWidth - margin) left = window.innerWidth - popoverWidth - margin
-  if (left < margin) left = margin
-
-  // Vertical: prefer placing the popover BELOW the trigger; if the available
-  // room there is too small AND there's more room above, flip above instead.
-  // Cap the popover height so it never extends past the viewport edge.
-  const spaceBelow = window.innerHeight - rect.bottom - margin
-  const spaceAbove = rect.top - margin
-  const flipAbove = spaceBelow < 200 && spaceAbove > spaceBelow
-  let top, height
-  if (flipAbove) {
-    height = Math.min(popoverMaxHeight, spaceAbove)
-    top = rect.top - height - 4
-  } else {
-    height = Math.min(popoverMaxHeight, spaceBelow)
-    top = rect.bottom + 4
+  function getPopover() {
+    return document.getElementById(config.popoverId)
   }
-  popover.style.left = `${left}px`
-  popover.style.top = `${top}px`
-  popover.style.maxHeight = `${height}px`
-  popover.classList.remove('hidden')
-
-  const input = document.getElementById('cmd-picker-input')
-  input.value = ''
-  cmdPickerFilter('')
-  setTimeout(() => input?.focus(), 0)
-}
-
-function closeCmdPicker() {
-  document.getElementById('cmd-picker-popover')?.classList.add('hidden')
-  cmdPickerState = null
-}
-
-function cmdPickerFilter(query) {
-  if (!cmdPickerState) return
-  cmdPickerState.query = query
-  cmdPickerState.activeIndex = 0
-  cmdPickerRender()
-}
-
-function cmdPickerRender() {
-  if (!cmdPickerState) return
-  const list = document.getElementById('cmd-picker-list')
-  const query = cmdPickerState.query.trim().toLowerCase()
-  const allCommands = TAG_ORDER.flatMap(tag =>
-    Object.entries(COMMANDS)
-      .filter(([, command]) => command.tag === tag)
-      .map(([name]) => ({ name, tag }))
-  )
-  const filtered = query
-    ? allCommands.filter(c => c.name.toLowerCase().includes(query) || c.tag.toLowerCase().includes(query))
-    : allCommands
-  cmdPickerState.filtered = filtered
-  if (cmdPickerState.activeIndex >= filtered.length) cmdPickerState.activeIndex = 0
-
-  list.innerHTML = filtered.length === 0
-    ? '<p class="text-xs text-slate-500 text-center py-4">No commands match.</p>'
-    : filtered.map((command, index) => {
-        const active = index === cmdPickerState.activeIndex
-        return `<button onmousedown="event.preventDefault()" onclick="cmdPickerSelect('${esc(command.name)}')" data-cmd-idx="${index}"
-          class="w-full text-left px-3 py-1.5 flex items-center gap-2 ${active ? 'bg-blue-700 text-white' : 'text-slate-200 hover:bg-slate-800'}">
-          <span class="font-mono text-xs flex-1 min-w-0 truncate">${esc(command.name)}</span>
-          <span class="text-[10px] ${active ? 'text-blue-200' : 'text-slate-500'} shrink-0">${esc(command.tag)}</span>
-        </button>`
-      }).join('')
-
-  const activeEl = list.querySelector(`[data-cmd-idx="${cmdPickerState.activeIndex}"]`)
-  activeEl?.scrollIntoView({ block: 'nearest' })
-}
-
-function cmdPickerSelect(commandName) {
-  if (!cmdPickerState) return
-  const stepId = cmdPickerState.stepId
-  closeCmdPicker()
-  changeCommand(stepId, commandName)
-}
-
-function cmdPickerKeydown(event) {
-  if (!cmdPickerState) return
-  if (event.key === 'Escape') {
-    event.preventDefault()
-    closeCmdPicker()
-    return
+  function getInput() {
+    return document.getElementById(config.inputId)
   }
-  if (!cmdPickerState.filtered?.length) return
-  if (event.key === 'ArrowDown') {
-    event.preventDefault()
-    cmdPickerState.activeIndex = (cmdPickerState.activeIndex + 1) % cmdPickerState.filtered.length
-    cmdPickerRender()
-  } else if (event.key === 'ArrowUp') {
-    event.preventDefault()
-    cmdPickerState.activeIndex = (cmdPickerState.activeIndex - 1 + cmdPickerState.filtered.length) % cmdPickerState.filtered.length
-    cmdPickerRender()
-  } else if (event.key === 'Enter') {
-    event.preventDefault()
-    const command = cmdPickerState.filtered[cmdPickerState.activeIndex]
-    if (command) cmdPickerSelect(command.name)
+  function getList() {
+    return document.getElementById(config.listId)
   }
+
+  function isSameAnchor(anchorA, anchorB) {
+    return config.isSameAnchor
+      ? config.isSameAnchor(anchorA, anchorB)
+      : JSON.stringify(anchorA) === JSON.stringify(anchorB)
+  }
+
+  function open(anchor, anchorElement) {
+    // Toggle: clicking the same trigger while its popover is open closes
+    // it — matches what a native <select> does.
+    if (state && isSameAnchor(state.anchor, anchor)) {
+      close()
+      return
+    }
+    const items = config.buildItems(anchor)
+    const initialActiveIndex = config.findInitialActive
+      ? config.findInitialActive(items, anchor)
+      : 0
+    state = { anchor, items, filtered: items, query: '', activeIndex: initialActiveIndex }
+
+    positionPopover(anchorElement)
+    getPopover().classList.remove('hidden')
+    const input = getInput()
+    input.value = ''
+    render()
+    setTimeout(() => input?.focus(), 0)
+  }
+
+  function close() {
+    getPopover()?.classList.add('hidden')
+    state = null
+  }
+
+  function positionPopover(anchorElement) {
+    const popover = getPopover()
+    const triggerRect = anchorElement.getBoundingClientRect()
+    const margin = 8
+
+    // Horizontal: anchor side is configurable. Left-anchored pickers
+    // (command chip in the middle of the row) line up the popover's
+    // left edge with the trigger's left; right-anchored pickers (link
+    // chip on the right side of the field row) line up the right edges
+    // so the popover expands leftward. Either way, clamp to the
+    // viewport so a small window can't push the popover off-screen.
+    let left = config.alignSide === 'right'
+      ? triggerRect.right - config.width
+      : triggerRect.left
+    if (left + config.width > window.innerWidth - margin) {
+      left = window.innerWidth - config.width - margin
+    }
+    if (left < margin) {
+      left = margin
+    }
+
+    // Vertical: prefer below the trigger; flip above only if cramped.
+    const spaceBelow = window.innerHeight - triggerRect.bottom - margin
+    const spaceAbove = triggerRect.top - margin
+    const isFlippedAbove = spaceBelow < 200 && spaceAbove > spaceBelow
+    let top
+    let height
+    if (isFlippedAbove) {
+      height = Math.min(config.maxHeight, spaceAbove)
+      top = triggerRect.top - height - 4
+    } else {
+      height = Math.min(config.maxHeight, spaceBelow)
+      top = triggerRect.bottom + 4
+    }
+    popover.style.left = `${left}px`
+    popover.style.top = `${top}px`
+    popover.style.maxHeight = `${height}px`
+  }
+
+  function filter(query) {
+    if (!state) {
+      return
+    }
+    state.query = query
+    state.activeIndex = 0
+    render()
+  }
+
+  function render() {
+    if (!state) {
+      return
+    }
+    const list = getList()
+    const query = state.query.trim().toLowerCase()
+    const filtered = query
+      ? state.items.filter((item) => config.matchesQuery(item, query))
+      : state.items
+    state.filtered = filtered
+    if (state.activeIndex >= filtered.length) {
+      state.activeIndex = 0
+    }
+
+    const emptyHtml = config.emptyHtml ?? '<p class="text-xs text-slate-500 text-center py-4">No matches.</p>'
+    list.innerHTML = filtered.length === 0
+      ? emptyHtml
+      : filtered.map((item, index) => (
+          `<button type="button" data-picker-idx="${index}" class="${config.itemClass(item, index === state.activeIndex)}">`
+          + config.renderItem(item, index === state.activeIndex)
+          + `</button>`
+        )).join('')
+
+    const activeElement = list.querySelector(`[data-picker-idx="${state.activeIndex}"]`)
+    activeElement?.scrollIntoView({ block: 'nearest' })
+  }
+
+  function selectAtIndex(index) {
+    if (!state) {
+      return
+    }
+    const item = state.filtered[index]
+    if (!item) {
+      return
+    }
+    const anchor = state.anchor
+    close()
+    config.onSelect(item, anchor)
+  }
+
+  function keydown(event) {
+    if (!state) {
+      return
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      close()
+      return
+    }
+    if (!state.filtered?.length) {
+      return
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      state.activeIndex = (state.activeIndex + 1) % state.filtered.length
+      render()
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      state.activeIndex = (state.activeIndex - 1 + state.filtered.length) % state.filtered.length
+      render()
+    } else if (event.key === 'Enter') {
+      event.preventDefault()
+      selectAtIndex(state.activeIndex)
+    }
+  }
+
+  // List-level delegated click + mousedown. mousedown preventDefault
+  // keeps focus on the search input so the click handler still fires
+  // (otherwise the list re-renders before click and the button is gone).
+  function attachListDelegation() {
+    const list = getList()
+    if (!list) {
+      return
+    }
+    list.addEventListener('mousedown', (event) => {
+      if (event.target.closest('[data-picker-idx]')) {
+        event.preventDefault()
+      }
+    })
+    list.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-picker-idx]')
+      if (!button) {
+        return
+      }
+      selectAtIndex(Number(button.dataset.pickerIdx))
+    })
+  }
+  attachListDelegation()
+
+  // Click-outside dismissal — capture phase so we run before the document-
+  // level keydown / Escape handler from the lookup modal grabs it.
+  document.addEventListener('mousedown', (event) => {
+    if (!state) {
+      return
+    }
+    if (getPopover().contains(event.target)) {
+      return
+    }
+    if (event.target.closest(config.triggerSelector)) {
+      return
+    }
+    close()
+  }, true)
+
+  return { open, close, filter, keydown, render }
 }
 
-// Click-outside dismissal — capture phase so we run before the document-level
-// keydown / Escape handler from the lookup modal grabs it.
-document.addEventListener('mousedown', (event) => {
-  if (!cmdPickerState) return
-  const popover = document.getElementById('cmd-picker-popover')
-  if (popover.contains(event.target)) return
-  if (event.target.closest('[data-cmd-picker-trigger]')) return
-  closeCmdPicker()
-}, true)
+// ─── Command picker (per-step "pick a command") ───────────────────────────────
 
-// ─── Location/link picker popover (autocomplete replacement for the per-field <select>) ───
+const commandPicker = createPopoverPicker({
+  popoverId: 'cmd-picker-popover',
+  inputId: 'cmd-picker-input',
+  listId: 'cmd-picker-list',
+  triggerSelector: '[data-cmd-picker-trigger]',
+  alignSide: 'left',
+  width: 340,
+  maxHeight: 400,
+  isSameAnchor: (anchorA, anchorB) => anchorA.stepId === anchorB.stepId,
+  buildItems: () => (
+    TAG_ORDER.flatMap((tag) => (
+      Object.entries(COMMANDS)
+        .filter(([, command]) => command.tag === tag)
+        .map(([name]) => ({ name, tag }))
+    ))
+  ),
+  matchesQuery: (item, query) => (
+    item.name.toLowerCase().includes(query)
+    || item.tag.toLowerCase().includes(query)
+  ),
+  itemClass: (item, isActive) => (
+    `w-full text-left px-3 py-1.5 flex items-center gap-2 ${isActive ? 'bg-blue-700 text-white' : 'text-slate-200 hover:bg-slate-800'}`
+  ),
+  renderItem: (item, isActive) => (
+    `<span class="font-mono text-xs flex-1 min-w-0 truncate">${esc(item.name)}</span>`
+    + `<span class="text-[10px] ${isActive ? 'text-blue-200' : 'text-slate-500'} shrink-0">${esc(item.tag)}</span>`
+  ),
+  emptyHtml: '<p class="text-xs text-slate-500 text-center py-4">No commands match.</p>',
+  onSelect: (item, anchor) => {
+    changeCommand(anchor.stepId, item.name)
+  },
+})
 
-let linkPickerState = null
-// shape: { stepId, fieldName, query, items, filtered, activeIndex }
+// ─── Location/link picker (per-path-field "where does this path come from?") ───
 
-// Returns { label, pathVarId?, sourceStepId? } describing what the trigger
-// button should currently show for a field's link. Mirrors the option
-// labels the old <select> used to render. Kept in sync with
-// refreshPathVarOptions so path-var renames bubble through without a
-// full re-render.
+// describeLinkTarget gives the trigger label + which path-var or step
+// the trigger is currently bound to. Used by both renderPathField (to
+// stamp the initial label) and refreshPathVarOptions (to keep the
+// label in sync as path-var labels/values change without a re-render).
 function describeLinkTarget(step, fieldName) {
   const link = step.links?.[fieldName]
   if (!link) {
@@ -2411,9 +2532,6 @@ function describeLinkTarget(step, fieldName) {
   return { label: '— manual —' }
 }
 
-// Build the option list for a given field. Mirrors the old <select>: a
-// "manual" sentinel, every path variable, then every prior step's folder
-// output.
 function buildLinkPickerItems(stepId, fieldName) {
   const step = steps.find((candidate) => candidate.id === stepId)
   if (!step) {
@@ -2446,144 +2564,6 @@ function buildLinkPickerItems(stepId, fieldName) {
   return items
 }
 
-function openLinkPicker(stepId, fieldName, anchorElement) {
-  // Toggle: clicking the same trigger while its popover is open closes
-  // it. Matches what a native <select> does (a second click dismisses
-  // the dropdown) and is what users tried first.
-  if (
-    linkPickerState
-    && linkPickerState.stepId === stepId
-    && linkPickerState.fieldName === fieldName
-  ) {
-    closeLinkPicker()
-    return
-  }
-  const step = steps.find((candidate) => candidate.id === stepId)
-  if (!step) {
-    return
-  }
-  const items = buildLinkPickerItems(stepId, fieldName)
-  // Pre-select the row matching the current link so arrow keys start from
-  // a sensible spot — matches what a native <select> would do.
-  const link = step.links?.[fieldName]
-  let activeIndex = 0
-  if (typeof link === 'string') {
-    const matchIndex = items.findIndex((item) => item.kind === 'path' && item.pathVarId === link)
-    if (matchIndex >= 0) {
-      activeIndex = matchIndex
-    }
-  } else if (link && typeof link === 'object' && link.linkedTo) {
-    const matchIndex = items.findIndex((item) => item.kind === 'step' && item.sourceStepId === link.linkedTo)
-    if (matchIndex >= 0) {
-      activeIndex = matchIndex
-    }
-  }
-  linkPickerState = { stepId, fieldName, query: '', items, filtered: items, activeIndex }
-
-  const popover = document.getElementById('link-picker-popover')
-  const triggerRect = anchorElement.getBoundingClientRect()
-  const popoverWidth = 360
-  const popoverMaxHeight = 400
-  const margin = 8
-
-  // Horizontal: align the popover's RIGHT edge to the trigger's right
-  // edge — the trigger lives on the right side of the field row, so
-  // expanding leftward keeps the popover on-screen and visually anchored
-  // to the chip the user just clicked. Clamp to the viewport on both
-  // sides so a small window can't push it off either edge.
-  let left = triggerRect.right - popoverWidth
-  if (left + popoverWidth > window.innerWidth - margin) {
-    left = window.innerWidth - popoverWidth - margin
-  }
-  if (left < margin) {
-    left = margin
-  }
-
-  // Vertical: prefer below the trigger; flip above only if cramped.
-  const spaceBelow = window.innerHeight - triggerRect.bottom - margin
-  const spaceAbove = triggerRect.top - margin
-  const isFlippedAbove = spaceBelow < 200 && spaceAbove > spaceBelow
-  let top
-  let height
-  if (isFlippedAbove) {
-    height = Math.min(popoverMaxHeight, spaceAbove)
-    top = triggerRect.top - height - 4
-  } else {
-    height = Math.min(popoverMaxHeight, spaceBelow)
-    top = triggerRect.bottom + 4
-  }
-  popover.style.left = `${left}px`
-  popover.style.top = `${top}px`
-  popover.style.maxHeight = `${height}px`
-  popover.classList.remove('hidden')
-
-  const input = document.getElementById('link-picker-input')
-  input.value = ''
-  linkPickerRender()
-  setTimeout(() => input?.focus(), 0)
-}
-
-function closeLinkPicker() {
-  document.getElementById('link-picker-popover')?.classList.add('hidden')
-  linkPickerState = null
-}
-
-function linkPickerFilter(query) {
-  if (!linkPickerState) {
-    return
-  }
-  linkPickerState.query = query
-  linkPickerState.activeIndex = 0
-  linkPickerRender()
-}
-
-function linkPickerRender() {
-  if (!linkPickerState) {
-    return
-  }
-  const list = document.getElementById('link-picker-list')
-  const query = linkPickerState.query.trim().toLowerCase()
-  const filtered = query
-    ? linkPickerState.items.filter((item) => (
-        item.label.toLowerCase().includes(query)
-        || (item.detail || '').toLowerCase().includes(query)
-      ))
-    : linkPickerState.items
-  linkPickerState.filtered = filtered
-  if (linkPickerState.activeIndex >= filtered.length) {
-    linkPickerState.activeIndex = 0
-  }
-
-  list.innerHTML = filtered.length === 0
-    ? '<p class="text-xs text-slate-500 text-center py-4">No matches.</p>'
-    : filtered.map((item, index) => {
-        const isActive = index === linkPickerState.activeIndex
-        const labelClass = `text-xs ${isActive ? 'text-white' : 'text-slate-200'} ${item.kind === 'path' ? 'font-medium' : 'font-mono'}`
-        const detailClass = `font-mono text-[11px] pl-4 break-all whitespace-normal ${isActive ? 'text-blue-100' : 'text-slate-400'}`
-        const detail = item.detail ? `<div class="${detailClass}">${esc(item.detail)}</div>` : ''
-        return `<button type="button" onmousedown="event.preventDefault()" onclick="linkPickerSelect('${esc(item.value)}')" data-link-idx="${index}"
-          class="w-full text-left px-3 py-1.5 ${isActive ? 'bg-blue-700' : 'hover:bg-slate-800'}">
-          <div class="${labelClass}">${esc(item.label)}</div>
-          ${detail}
-        </button>`
-      }).join('')
-
-  const activeElement = list.querySelector(`[data-link-idx="${linkPickerState.activeIndex}"]`)
-  activeElement?.scrollIntoView({ block: 'nearest' })
-}
-
-function linkPickerSelect(value) {
-  if (!linkPickerState) {
-    return
-  }
-  const { stepId, fieldName } = linkPickerState
-  closeLinkPicker()
-  setLink(stepId, fieldName, value)
-  // setLink swaps linked/manual inputs but doesn't re-render the trigger
-  // button, so refresh its label + dataset in place.
-  refreshLinkPickerTrigger(stepId, fieldName)
-}
-
 function refreshLinkPickerTrigger(stepId, fieldName) {
   const trigger = document.querySelector(`[data-link-picker-trigger][data-step="${stepId}"][data-field="${fieldName}"]`)
   if (!trigger) {
@@ -2610,48 +2590,56 @@ function refreshLinkPickerTrigger(stepId, fieldName) {
   }
 }
 
-function linkPickerKeydown(event) {
-  if (!linkPickerState) {
-    return
-  }
-  if (event.key === 'Escape') {
-    event.preventDefault()
-    closeLinkPicker()
-    return
-  }
-  if (!linkPickerState.filtered?.length) {
-    return
-  }
-  if (event.key === 'ArrowDown') {
-    event.preventDefault()
-    linkPickerState.activeIndex = (linkPickerState.activeIndex + 1) % linkPickerState.filtered.length
-    linkPickerRender()
-  } else if (event.key === 'ArrowUp') {
-    event.preventDefault()
-    linkPickerState.activeIndex = (linkPickerState.activeIndex - 1 + linkPickerState.filtered.length) % linkPickerState.filtered.length
-    linkPickerRender()
-  } else if (event.key === 'Enter') {
-    event.preventDefault()
-    const item = linkPickerState.filtered[linkPickerState.activeIndex]
-    if (item) {
-      linkPickerSelect(item.value)
+const linkPicker = createPopoverPicker({
+  popoverId: 'link-picker-popover',
+  inputId: 'link-picker-input',
+  listId: 'link-picker-list',
+  triggerSelector: '[data-link-picker-trigger]',
+  alignSide: 'right',
+  width: 360,
+  maxHeight: 400,
+  isSameAnchor: (anchorA, anchorB) => (
+    anchorA.stepId === anchorB.stepId && anchorA.fieldName === anchorB.fieldName
+  ),
+  buildItems: (anchor) => buildLinkPickerItems(anchor.stepId, anchor.fieldName),
+  // Pre-select the currently-linked row so arrow keys start from a
+  // sensible spot (matches what a native <select> would do).
+  findInitialActive: (items, anchor) => {
+    const step = steps.find((candidate) => candidate.id === anchor.stepId)
+    if (!step) {
+      return 0
     }
-  }
-}
-
-document.addEventListener('mousedown', (event) => {
-  if (!linkPickerState) {
-    return
-  }
-  const popover = document.getElementById('link-picker-popover')
-  if (popover.contains(event.target)) {
-    return
-  }
-  if (event.target.closest('[data-link-picker-trigger]')) {
-    return
-  }
-  closeLinkPicker()
-}, true)
+    const link = step.links?.[anchor.fieldName]
+    if (typeof link === 'string') {
+      const matchIndex = items.findIndex((item) => item.kind === 'path' && item.pathVarId === link)
+      return matchIndex >= 0 ? matchIndex : 0
+    }
+    if (link && typeof link === 'object' && link.linkedTo) {
+      const matchIndex = items.findIndex((item) => item.kind === 'step' && item.sourceStepId === link.linkedTo)
+      return matchIndex >= 0 ? matchIndex : 0
+    }
+    return 0
+  },
+  matchesQuery: (item, query) => (
+    item.label.toLowerCase().includes(query)
+    || (item.detail || '').toLowerCase().includes(query)
+  ),
+  itemClass: (item, isActive) => (
+    `w-full text-left px-3 py-1.5 ${isActive ? 'bg-blue-700' : 'hover:bg-slate-800'}`
+  ),
+  renderItem: (item, isActive) => {
+    const labelClass = `text-xs ${isActive ? 'text-white' : 'text-slate-200'} ${item.kind === 'path' ? 'font-medium' : 'font-mono'}`
+    const detailClass = `font-mono text-[11px] pl-4 break-all whitespace-normal ${isActive ? 'text-blue-100' : 'text-slate-400'}`
+    const detail = item.detail ? `<div class="${detailClass}">${esc(item.detail)}</div>` : ''
+    return `<div class="${labelClass}">${esc(item.label)}</div>${detail}`
+  },
+  onSelect: (item, anchor) => {
+    setLink(anchor.stepId, anchor.fieldName, item.value)
+    // setLink swaps linked/manual inputs but doesn't re-render the
+    // trigger button, so refresh its label + dataset in place.
+    refreshLinkPickerTrigger(anchor.stepId, anchor.fieldName)
+  },
+})
 
 // ─── Path typeahead (filesystem autocomplete for path fields) ───────────────────
 
