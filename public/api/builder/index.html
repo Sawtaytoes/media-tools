@@ -33,15 +33,18 @@
   .step-alias { flex: 1 1 8rem; min-width: 6rem; }
   .step-hamburger-btn { display: none; }
 
-  /* Below ~480px of card width: alias breaks to its own row above the
-     other header controls (cmd-picker keeps its flex-1 fill behavior). */
-  @container step-card (max-width: 480px) {
+  /* Below ~600px of card width: alias breaks to its own row above the
+     other header controls (cmd-picker keeps its flex-1 fill behavior).
+     Picked at 600px so the cmd-picker still has room to render moderate
+     command names ('flattenOutput' ~ 12rem) before alias gives up its
+     inline slot. */
+  @container step-card (max-width: 600px) {
     .step-alias { flex-basis: 100%; order: -1; }
   }
 
-  /* Below ~380px: collapse action icons into a hamburger toggle. The
+  /* Below ~460px: collapse action icons into a hamburger toggle. The
      icons reappear in a wrapped row when the toggle is open. */
-  @container step-card (max-width: 380px) {
+  @container step-card (max-width: 460px) {
     .step-hamburger-btn { display: inline-flex; }
     .step-actions { display: none; }
     .step-actions.open {
