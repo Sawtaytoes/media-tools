@@ -21,6 +21,11 @@ import {
   closeYamlModal,
   copyYaml,
 } from './components/yaml-modal.js'
+import {
+  toggleLoad,
+  loadYaml,
+  loadYamlFromText,
+} from './components/load-panel.js'
 import { pathVarOptionText, refreshPathVarOptions } from './util/path-var-options.js'
 
 window.mediaTools = window.mediaTools || {}
@@ -41,6 +46,9 @@ Object.assign(window.mediaTools, {
   openYamlModal,
   closeYamlModal,
   copyYaml,
+  toggleLoad,
+  loadYaml,
+  loadYamlFromText,
 })
 
 // Delegate path-var-card events on the steps list. Bound once; survives
