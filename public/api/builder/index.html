@@ -151,8 +151,14 @@
   <!-- Header -->
   <div id="page-header" class="shrink-0 border-b border-slate-700 bg-slate-900 z-10">
     <div class="page-header-inner flex items-center px-4 py-3 gap-3">
-      <button id="page-nav-toggle" onclick="togglePageMenu('page-actions-nav')" title="Menu"
-        class="page-menu-toggle w-7 h-7 items-center justify-center rounded text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 text-base leading-none">≡</button>
+      <button id="page-nav-toggle" onclick="togglePageMenu('page-actions-nav')" title="Menu" aria-label="Open menu"
+        class="page-menu-toggle w-7 h-7 items-center justify-center rounded text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+          <path d="M4 6h16" />
+          <path d="M4 12h16" />
+          <path d="M4 18h16" />
+        </svg>
+      </button>
       <h1 class="text-lg font-bold tracking-tight">
         <a href="/" class="text-slate-100 hover:text-blue-300 transition-colors">Sequence Builder</a>
       </h1>
