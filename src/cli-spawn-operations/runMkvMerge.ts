@@ -10,10 +10,12 @@ import {
   Observable,
 } from "rxjs"
 
+import { getActiveJobId } from "../api/logCapture.js"
 import { mkvMergePath } from "../tools/appPaths.js";
 import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { createTtyAffordances } from "../tools/createTtyAffordances.js";
 import { logWarning } from "../tools/logMessage.js";
+import { createProgressEmitter } from "../tools/progressEmitter.js"
 import { treeKillOnUnsubscribe } from "./treeKillChild.js"
 
 const cliProgressBar = (
@@ -57,6 +59,15 @@ export const runMkvMerge = ({
   >((
     observer,
   ) => {
+    // Bind a per-file progress emitter to the active job (if any).
+    // Each runMkvMerge invocation handles a single output file — the
+    // emitter publishes that file's progress under currentFile /
+    // currentFileRatio. The iterator that wraps these calls (Phase 4
+    // withFileProgress) emits the overall i/N rollup separately.
+    const jobId = getActiveJobId()
+    const emitter = jobId !== undefined ? createProgressEmitter(jobId) : null
+    if (emitter !== null) emitter.startFile(outputFilePath)
+
     const commandArgs = [
       "--output",
       outputFilePath,
@@ -106,6 +117,14 @@ export const runMkvMerge = ({
             "Progress:"
           )
         ) {
+          const percent = Number(
+            data
+            .toString()
+            .replace(
+              progressRegex,
+              "$1",
+            )
+          )
           if (
             !hasStarted
           ) {
@@ -114,30 +133,20 @@ export const runMkvMerge = ({
             cliProgressBar
             .start(
               100,
-              Number(
-                data
-                .toString()
-                .replace(
-                  progressRegex,
-                  "$1",
-                )
-              ),
+              percent,
               {},
             )
           }
           else {
             cliProgressBar
             .update(
-              Number(
-                data
-                .toString()
-                .replace(
-                  progressRegex,
-                  "$1",
-                )
-              )
+              percent
             )
           }
+          // Feed the same parsed percentage to the SSE-progress
+          // emitter so API consumers see the same data the TTY bar
+          // shows. Throttling lives inside the emitter.
+          if (emitter !== null) emitter.setCurrentFileRatio(percent / 100)
         }
         else {
           console
@@ -191,6 +200,7 @@ export const runMkvMerge = ({
       ) => {
         cliProgressBar.stop()
         tty.detach()
+        if (emitter !== null) emitter.finalize()
 
         if (code === 0) {
           observer.next(outputFilePath)
@@ -209,7 +219,14 @@ export const runMkvMerge = ({
       },
     )
 
-    return treeKillOnUnsubscribe(childProcess)
+    // Wrap the tree-kill teardown so an unsubscribe (e.g. cancelJob)
+    // also clears the emitter's pending throttled timer. Idempotent
+    // with the 'exit'-handler finalize() above.
+    const treeKillTeardown = treeKillOnUnsubscribe(childProcess)
+    return () => {
+      if (emitter !== null) emitter.finalize()
+      treeKillTeardown()
+    }
   })
   .pipe(
     logAndSwallow(

@@ -22,6 +22,7 @@ import { getFileDuration } from "../tools/getFileDuration.js";
 import { getMediaInfo } from "../tools/getMediaInfo.js";
 import { convertTimecodeToMilliseconds } from "../tools/parseTimestamps.js";
 import { logWarning } from "../tools/logMessage.js";
+import { createProgressEmitter } from "../tools/progressEmitter.js"
 import { treeKillOnUnsubscribe } from "./treeKillChild.js"
 
 const cliProgressBar = (
@@ -148,11 +149,20 @@ export const runFfmpeg = ({
       ) => {
         // In API/job context the server runs as a long-lived daemon; the CLI
         // affordances below (stdin raw mode, cli-progress bar drawing, and
-        // process.exit on cancel) all break that environment â€” they leak
+        // process.exit on cancel) all break that environment — they leak
         // stdin listeners, spam the dev-watcher's stdout, and could crash
         // the server. Guard them here.
-        const inApiContext = Boolean(getActiveJobId())
+        const jobId = getActiveJobId()
+        const inApiContext = jobId !== undefined
         const useTtyAffordances = !inApiContext && Boolean(process.stdin.isTTY)
+
+        // Per-file progress emitter for the active job. The ratio is
+        // computed against the input's longest duration (already
+        // resolved upstream by getFileDuration), giving the UI a real
+        // 0..1 number rather than just elapsed milliseconds.
+        const totalDurationMs = duration * 1000
+        const emitter = inApiContext ? createProgressEmitter(jobId!) : null
+        if (emitter !== null) emitter.startFile(outputFilePath)
 
         const commandArgs = (
           [
@@ -284,49 +294,40 @@ export const runFfmpeg = ({
                 "time="
               )
             ) {
+              const elapsedMs = convertTimecodeToMilliseconds(
+                convertNaNToTimecode(
+                  data
+                  .toString()
+                  .replace(
+                    progressRegex,
+                    "$1",
+                  )
+                )
+              )
+
+              // SSE progress: emit even in API context (where the
+              // TTY bar is suppressed). Throttling lives in the emitter.
+              if (emitter !== null && totalDurationMs > 0) {
+                emitter.setCurrentFileRatio(
+                  Math.min(1, elapsedMs / totalDurationMs),
+                )
+              }
+
               if (!useTtyAffordances) {
-                // No progress bar in API context â€” skip silently so the dev
-                // watcher's stdout isn't flooded with carriage-returned redraws.
+                // No TTY bar in API context — skip the cli-progress
+                // draws so the dev watcher's stdout isn't flooded
+                // with carriage-returned redraws.
                 return
               }
               if (hasStarted) {
-                cliProgressBar
-                .update(
-                  convertTimecodeToMilliseconds(
-                    convertNaNToTimecode(
-                      data
-                      .toString()
-                      .replace(
-                        progressRegex,
-                        "$1",
-                      )
-                    )
-                  )
-                )
+                cliProgressBar.update(elapsedMs)
               }
               else {
                 hasStarted = true
 
-                cliProgressBar
-                .start(
-                  (
-                    duration
-                    * 1000
-                    // fileSizeInKilobytes
-                    // * fileSizeMultiplier
-                  ),
-                  (
-                    convertTimecodeToMilliseconds(
-                      convertNaNToTimecode(
-                        data
-                        .toString()
-                        .replace(
-                          progressRegex,
-                          "$1",
-                        )
-                      )
-                    )
-                  ),
+                cliProgressBar.start(
+                  totalDurationMs,
+                  elapsedMs,
                   {},
                 )
               }
@@ -399,6 +400,7 @@ export const runFfmpeg = ({
           (
             code,
           ) => {
+            if (emitter !== null) emitter.finalize()
             if (
               code
               === 0
@@ -454,7 +456,14 @@ export const runFfmpeg = ({
           process.stdin.on('data', stdinDataHandler!)
         }
 
-        return treeKillOnUnsubscribe(childProcess)
+        // Wrap the tree-kill teardown so an unsubscribe (e.g. cancelJob)
+        // also clears the emitter's pending throttled timer. Idempotent
+        // with the 'exit'-handler finalize() above.
+        const treeKillTeardown = treeKillOnUnsubscribe(childProcess)
+        return () => {
+          if (emitter !== null) emitter.finalize()
+          treeKillTeardown()
+        }
       })
   )),
     logAndSwallow(

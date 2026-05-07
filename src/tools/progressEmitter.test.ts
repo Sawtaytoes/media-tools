@@ -116,6 +116,28 @@ describe(createProgressEmitter.name, () => {
     expect(captured[0].currentFileRatio).toBe(1)
   })
 
+  test("setCurrentFileRatio publishes a per-file percentage from spawn ops without using bytes", () => {
+    // mkvmerge/mkvextract parse `Progress: X%` from stdout — the
+    // percentage is the natural unit and there's no byte-level
+    // signal. setCurrentFileRatio bypasses the byte-based
+    // computation in snapshot() so the parsed percentage flows
+    // straight through.
+    const captured = captureProgress("job-spawn-file")
+    const emitter = createProgressEmitter("job-spawn-file")
+
+    emitter.startFile("/output.mkv")
+    emitter.setCurrentFileRatio(0.42)
+
+    vi.advanceTimersByTime(1000)
+
+    expect(captured).toHaveLength(1)
+    expect(captured[0].currentFile).toBe("/output.mkv")
+    expect(captured[0].currentFileRatio).toBe(0.42)
+    // No totalFiles/totalBytes was set on this emitter, and setRatio
+    // wasn't called either, so the overall ratio stays null.
+    expect(captured[0].ratio).toBeNull()
+  })
+
   test("setRatio overrides byte/file derived ratio — used by spawn ops with a tool-supplied percentage", () => {
     const captured = captureProgress("job-spawn")
     const emitter = createProgressEmitter("job-spawn", { totalFiles: 10 })

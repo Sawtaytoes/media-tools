@@ -7,11 +7,13 @@ import {
   Observable,
 } from "rxjs"
 
+import { getActiveJobId } from "../api/logCapture.js"
 import { mkvExtractPath } from "../tools/appPaths.js";
 import { logAndSwallow } from "../tools/logAndSwallow.js"
 import { createTtyAffordances } from "../tools/createTtyAffordances.js";
 import { unlink } from "node:fs/promises";
 import { logWarning } from "../tools/logMessage.js";
+import { createProgressEmitter } from "../tools/progressEmitter.js"
 import { treeKillOnUnsubscribe } from "./treeKillChild.js"
 
 const cliProgressBar = (
@@ -55,6 +57,12 @@ export const runMkvExtract = ({
   >((
     observer,
   ) => {
+    // Bind a per-file progress emitter to the active job (if any).
+    // See runMkvMerge.ts for the design rationale — same shape here.
+    const jobId = getActiveJobId()
+    const emitter = jobId !== undefined ? createProgressEmitter(jobId) : null
+    if (emitter !== null) emitter.startFile(outputFilePath)
+
     const commandArgs = (
       args
     )
@@ -101,6 +109,14 @@ export const runMkvExtract = ({
             "Progress:"
           )
         ) {
+          const percent = Number(
+            data
+            .toString()
+            .replace(
+              progressRegex,
+              "$1",
+            )
+          )
           if (
             !hasStarted
           ) {
@@ -109,30 +125,17 @@ export const runMkvExtract = ({
             cliProgressBar
             .start(
               100,
-              Number(
-                data
-                .toString()
-                .replace(
-                  progressRegex,
-                  "$1",
-                )
-              ),
+              percent,
               {},
             )
           }
           else {
             cliProgressBar
             .update(
-              Number(
-                data
-                .toString()
-                .replace(
-                  progressRegex,
-                  "$1",
-                )
-              )
+              percent
             )
           }
+          if (emitter !== null) emitter.setCurrentFileRatio(percent / 100)
         }
         else {
           console
@@ -189,6 +192,7 @@ export const runMkvExtract = ({
         code,
       ) => {
         tty.detach()
+        if (emitter !== null) emitter.finalize()
 
         if (code === 0) {
           observer.next(outputFilePath)
@@ -207,7 +211,14 @@ export const runMkvExtract = ({
       },
     )
 
-    return treeKillOnUnsubscribe(childProcess)
+    // Wrap the tree-kill teardown so an unsubscribe (e.g. cancelJob)
+    // also clears the emitter's pending throttled timer. Idempotent
+    // with the 'exit'-handler finalize() above.
+    const treeKillTeardown = treeKillOnUnsubscribe(childProcess)
+    return () => {
+      if (emitter !== null) emitter.finalize()
+      treeKillTeardown()
+    }
   })
   .pipe(
     logAndSwallow(

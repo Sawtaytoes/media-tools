@@ -35,12 +35,17 @@ export type ProgressEmitter = {
   // until the next startFile or finishFile.
   startFile: (path: string, fileSizeBytes?: number) => void
   // Folds an incremental byte count from the inner copy/spawn pipeline.
-  // Number is added to the in-file counter; ratio is recomputed
-  // (cumulativeBytes + currentFileBytes) / totalBytes.
+  // Number is added to the in-file counter; currentFileRatio is
+  // recomputed (currentFileBytesWritten / currentFileTotalBytes).
   reportBytes: (bytesThisChunk: number) => void
-  // Direct ratio update — useful for spawn ops (mkvmerge / ffmpeg)
-  // where the underlying tool already reports a percentage and we
-  // don't have file-level granularity inside that single call.
+  // Direct override of currentFileRatio — used by spawn ops (mkvmerge,
+  // mkvextract, ffmpeg) that report a percentage parsed from stdout
+  // rather than byte counts. Resets back to byte-derived computation
+  // on the next startFile / finishFile.
+  setCurrentFileRatio: (ratio: number | null) => void
+  // Direct ratio update — overrides the byte/file-derived overall
+  // ratio. Useful when the caller has computed the canonical job
+  // ratio itself.
   setRatio: (ratio: number | null) => void
   // Cancels any pending throttled emission. Does NOT emit a final
   // 100% — the job's natural status flip to `completed` is enough
@@ -73,6 +78,7 @@ export const createProgressEmitter = (
   let currentFileTotalBytes: number | undefined = undefined
   let currentFileBytesWritten = 0
   let explicitRatio: number | null | undefined = undefined
+  let explicitCurrentFileRatio: number | null | undefined = undefined
 
   let lastEmitAt: number | null = null
   let pendingTimer: ReturnType<typeof setTimeout> | null = null
@@ -100,9 +106,11 @@ export const createProgressEmitter = (
     if (currentFile !== undefined) {
       payload.currentFile = currentFile
       payload.currentFileRatio = (
-        currentFileTotalBytes !== undefined && currentFileTotalBytes > 0
-          ? currentFileBytesWritten / currentFileTotalBytes
-          : null
+        explicitCurrentFileRatio !== undefined
+          ? explicitCurrentFileRatio
+          : currentFileTotalBytes !== undefined && currentFileTotalBytes > 0
+            ? currentFileBytesWritten / currentFileTotalBytes
+            : null
       )
     }
     return payload
@@ -154,6 +162,7 @@ export const createProgressEmitter = (
       currentFile = path
       currentFileTotalBytes = fileSizeBytes
       currentFileBytesWritten = 0
+      explicitCurrentFileRatio = undefined
       tick()
     },
     reportBytes: (bytesThisChunk) => {
@@ -169,6 +178,11 @@ export const createProgressEmitter = (
       currentFile = undefined
       currentFileTotalBytes = undefined
       currentFileBytesWritten = 0
+      explicitCurrentFileRatio = undefined
+      tick()
+    },
+    setCurrentFileRatio: (ratio) => {
+      explicitCurrentFileRatio = ratio
       tick()
     },
     setRatio: (ratio) => {
