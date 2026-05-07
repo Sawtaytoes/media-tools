@@ -6,6 +6,7 @@
 <title>Sequence Builder</title>
 <script src="/vendor/tailwind-3.4.17.js"></script>
 <script src="/vendor/js-yaml-4.1.1.min.js"></script>
+<script src="/sse-utils.js"></script>
 <style>
   @keyframes stepEnter {
     from { opacity: 0; transform: translateY(-6px) scale(0.985); }
@@ -1926,28 +1927,33 @@ function tailApiRunLogs(jobId, onDone) {
   if (apiRunEventSource) apiRunEventSource.close()
   const logsEl = document.getElementById('api-run-logs')
 
-  apiRunEventSource = new EventSource(`/jobs/${jobId}/logs`)
-  apiRunEventSource.onmessage = (event) => {
-    let data
-    try { data = JSON.parse(event.data) } catch { return }
-    if (data.line) {
-      logsEl.textContent += (logsEl.textContent ? '\n' : '') + data.line
-      logsEl.scrollTop = logsEl.scrollHeight
-      return
-    }
-    if (data.done) {
-      setApiRunStatus(data.status || 'completed')
-      apiRunEventSource.close()
+  // Uses the tolerant SSE wrapper so a transient blip (e.g. dev server
+  // restart) doesn't immediately flip the modal to 'failed' — the
+  // helper waits graceMs (default 5s) of CONNECTING before signalling
+  // a real disconnect, by which time the browser's auto-reconnect has
+  // usually already landed. Server keepalive comments make even those
+  // rare. closeApiRunModal still calls .close() on the handle.
+  apiRunEventSource = createTolerantEventSource(`/jobs/${jobId}/logs`, {
+    onMessage: (data) => {
+      if (data.line) {
+        logsEl.textContent += (logsEl.textContent ? '\n' : '') + data.line
+        logsEl.scrollTop = logsEl.scrollHeight
+        return
+      }
+      if (data.done) {
+        setApiRunStatus(data.status || 'completed')
+        apiRunEventSource.close()
+        apiRunEventSource = null
+        onDone?.()
+      }
+    },
+    onPossiblyDisconnected: () => {
+      setApiRunStatus('failed')
+      apiRunEventSource?.close()
       apiRunEventSource = null
       onDone?.()
-    }
-  }
-  apiRunEventSource.onerror = () => {
-    setApiRunStatus('failed')
-    apiRunEventSource?.close()
-    apiRunEventSource = null
-    onDone?.()
-  }
+    },
+  })
 }
 
 function copyApiRunLogs() {
@@ -1987,13 +1993,16 @@ async function runStep(stepId) {
 function waitForJob(jobId, stepId) {
   stepLogs.set(stepId, [])
   return new Promise((resolve, reject) => {
-    const es = new EventSource(`/jobs/${jobId}/logs`)
-    es.onmessage = e => {
-      try {
-        const data = JSON.parse(e.data)
+    // Tolerant wrapper: a 5s grace period absorbs the dev-server-restart
+    // / proxy idle-timeout class of brief drops. The browser's
+    // auto-reconnect lands within that window most of the time, so we
+    // don't reject on every transient blip. Combined with server-side
+    // keepalive comments those are rare anyway.
+    const handle = createTolerantEventSource(`/jobs/${jobId}/logs`, {
+      onMessage: (data) => {
         if (data.done) {
           closePromptModal()
-          es.close()
+          handle.close()
           const step = steps.find(s => s.id === stepId)
           if (step && Array.isArray(data.results) && data.results.length > 0) {
             step.results = data.results
@@ -2017,9 +2026,13 @@ function waitForJob(jobId, stepId) {
           stepLogs.set(stepId, logs)
           updateStepLogs(stepId, logs)
         }
-      } catch {}
-    }
-    es.onerror = () => { closePromptModal(); es.close(); reject('SSE connection error') }
+      },
+      onPossiblyDisconnected: () => {
+        closePromptModal()
+        handle.close()
+        reject('SSE connection error')
+      },
+    })
   })
 }
 
