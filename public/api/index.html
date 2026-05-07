@@ -246,6 +246,7 @@
 <div id="status-bar">Connecting…</div>
 <div class="jobs" id="jobs"></div>
 
+<script src="/sse-utils.js"></script>
 <script>
 const statusBar = document.getElementById("status-bar");
 const jobsEl = document.getElementById("jobs");
@@ -304,23 +305,26 @@ function appendLogLine(jobId, line) {
 
 function ensureLogStream(jobId) {
   if (logEventSourcesByJobId.has(jobId)) return;
-  const es = new EventSource(`/jobs/${jobId}/logs`);
-  logEventSourcesByJobId.set(jobId, es);
-  es.onmessage = (event) => {
-    let data;
-    try { data = JSON.parse(event.data); }
-    catch { return; }
-    if (typeof data.line === "string") {
-      appendLogLine(jobId, data.line);
-    } else if (data.done) {
-      es.close();
-      logEventSourcesByJobId.delete(jobId);
-    }
-  };
-  es.onerror = () => {
-    es.close();
-    logEventSourcesByJobId.delete(jobId);
-  };
+  const handle = createTolerantEventSource(`/jobs/${jobId}/logs`, {
+    onMessage: (data) => {
+      if (typeof data.line === "string") {
+        appendLogLine(jobId, data.line);
+      } else if (data.done) {
+        handle.close();
+        logEventSourcesByJobId.delete(jobId);
+      }
+    },
+    // Final-only disconnect → close and forget. Transient blips are
+    // absorbed by the helper's grace timer (silent auto-reconnect),
+    // and the server's keepalive should make those rare anyway.
+    onPossiblyDisconnected: ({ final }) => {
+      if (final) {
+        handle.close();
+        logEventSourcesByJobId.delete(jobId);
+      }
+    },
+  });
+  logEventSourcesByJobId.set(jobId, handle);
 }
 
 // Encodes a sequence-shaped object as the base64 payload the builder's
@@ -574,21 +578,20 @@ function renderTopLevel(job) {
 }
 
 function connect() {
-  const es = new EventSource("/jobs/stream");
-
-  es.onopen = () => {
-    statusBar.textContent = "Connected";
-    statusBar.className = "";
-  };
-
-  es.onmessage = (event) => {
-    upsertJob(JSON.parse(event.data));
-  };
-
-  es.onerror = () => {
-    statusBar.textContent = "Connection lost — retrying…";
-    statusBar.className = "error";
-  };
+  createTolerantEventSource("/jobs/stream", {
+    onConnected: () => {
+      statusBar.textContent = "Connected";
+      statusBar.className = "";
+    },
+    // Only fires after the connection has been actively reconnecting
+    // for graceMs (default 5s). Most short blips never surface — the
+    // browser auto-reconnects and onConnected fires before this would.
+    onPossiblyDisconnected: () => {
+      statusBar.textContent = "Connection unstable — retrying…";
+      statusBar.className = "error";
+    },
+    onMessage: (job) => upsertJob(job),
+  });
 }
 
 connect();

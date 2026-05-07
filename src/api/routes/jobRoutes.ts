@@ -4,6 +4,7 @@ import { z } from "zod"
 
 import { cancelJob, getAllJobs, getJob, jobEvents$ } from "../jobStore.js"
 import * as schemas from "../schemas.js"
+import { startSseKeepalive } from "../sseKeepalive.js"
 
 const jobDetailSchema = z.object({
   id: z.string().describe("Job ID"),
@@ -46,6 +47,8 @@ jobRoutes.openapi(
   }),
   (context) =>
     streamSSE(context, async (stream) => {
+      const stopKeepalive = startSseKeepalive(stream)
+
       const send = (job: object) =>
         stream.writeSSE({ data: JSON.stringify(job) })
 
@@ -60,10 +63,13 @@ jobRoutes.openapi(
         })
 
         stream.onAbort(() => {
+          stopKeepalive()
           sub.unsubscribe()
           resolve()
         })
       })
+
+      stopKeepalive()
     }),
 )
 

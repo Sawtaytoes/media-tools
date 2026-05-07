@@ -3,6 +3,7 @@ import { streamSSE } from "hono/streaming"
 
 import { getJob, getSubject } from "../jobStore.js"
 import * as schemas from "../schemas.js"
+import { startSseKeepalive } from "../sseKeepalive.js"
 
 export const logsRoutes = new OpenAPIHono()
 
@@ -52,6 +53,8 @@ logsRoutes.openapi(
     if (!job) return context.json({ error: "Job not found" }, 404)
 
     return streamSSE(context, async (stream) => {
+      const stopKeepalive = startSseKeepalive(stream)
+
       const send = (
         payload: object,
       ) => (
@@ -71,7 +74,7 @@ logsRoutes.openapi(
         || job.status === "skipped"
       ) {
         await send({ done: true, status: job.status, results: job.results, outputs: job.outputs })
-
+        stopKeepalive()
         return
       }
 
@@ -80,7 +83,7 @@ logsRoutes.openapi(
       if (!subject) {
         const finishedJob = getJob(job.id)
         await send({ done: true, status: finishedJob?.status ?? job.status, results: finishedJob?.results ?? job.results, outputs: finishedJob?.outputs ?? null })
-
+        stopKeepalive()
         return
       }
 
@@ -106,10 +109,13 @@ logsRoutes.openapi(
         })
 
         stream.onAbort(() => {
+          stopKeepalive()
           sub.unsubscribe()
           resolve()
         })
       })
+
+      stopKeepalive()
     })
   },
 )
