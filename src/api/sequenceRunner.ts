@@ -339,8 +339,13 @@ export const runSequenceJob = (
           if (innerOutcome.kind === "cancelled") return
           if (innerOutcome.kind === "failed") {
             updateJob(jobId, { error: innerOutcome.error })
-            // Skip remaining inner siblings of this group + everything after it.
-            markRemainingSkippedFromFlatIndex(flatIndexAfter(item.steps[item.steps.length - 1]))
+            // Skip from the next inner step onward — that captures both
+            // remaining siblings inside this group AND every outer item
+            // after it. Passing the failed step itself (innerStep) means
+            // flatIndexAfter returns the flat-index of the next pending
+            // child, since the failed child is already in `failed`
+            // status (markChildSkippedIfPending only touches `pending`).
+            markRemainingSkippedFromFlatIndex(flatIndexAfter(innerStep))
             groupFailed = true
             break
           }

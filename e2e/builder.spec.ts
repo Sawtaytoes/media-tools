@@ -308,3 +308,102 @@ test.describe("Sequence Builder", () => {
     expect(reloadedYaml).toMatch(/output:\s*folder/)
   })
 })
+
+test.describe("Sequence Builder — groups", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/builder/")
+  })
+
+  test("Add Parallel Group inserts a group card with one inner step + parallel badge", async ({ page }) => {
+    await page.getByRole("button", { name: "Add Parallel Group" }).click()
+
+    // Group container is present and labeled "parallel".
+    const group = page.locator(".group-card-parallel")
+    await expect(group).toBeVisible()
+    await expect(group.getByText("parallel")).toBeVisible()
+
+    // It contains exactly one empty step card whose trigger shows the
+    // placeholder (the makeStep null-command form).
+    await expect(group.getByText("— pick a command —")).toBeVisible()
+    await expect(group.locator(".step-card")).toHaveCount(1)
+  })
+
+  test("parallel group lays inner steps side-by-side at desktop width and stacks at narrow width", async ({ page }) => {
+    // Seed the builder via the URL ?seq= mechanism with a parallel
+    // group containing two steps. Faster + more deterministic than
+    // building it through clicks.
+    const yaml = [
+      "steps:",
+      "  - kind: group",
+      "    id: para",
+      "    label: Parallel pair",
+      "    isParallel: true",
+      "    steps:",
+      "      - id: a",
+      "        command: makeDirectory",
+      "        params:",
+      "          filePath: /a",
+      "      - id: b",
+      "        command: makeDirectory",
+      "        params:",
+      "          filePath: /b",
+    ].join("\n")
+    const seq = Buffer.from(yaml, "utf8").toString("base64")
+    await page.goto(`/builder/?seq=${encodeURIComponent(seq)}`)
+
+    const group = page.locator(".group-card-parallel")
+    await expect(group).toBeVisible()
+    const innerSteps = group.locator(".step-card")
+    await expect(innerSteps).toHaveCount(2)
+
+    // Desktop width: container is wide enough for the two cards to sit
+    // side-by-side, so their bounding boxes overlap horizontally and
+    // share approximately the same Y.
+    await page.setViewportSize({ width: 1400, height: 900 })
+    await page.waitForTimeout(50)
+    const desktopFirst = await innerSteps.nth(0).boundingBox()
+    const desktopSecond = await innerSteps.nth(1).boundingBox()
+    expect(desktopFirst).toBeTruthy()
+    expect(desktopSecond).toBeTruthy()
+    if (desktopFirst && desktopSecond) {
+      // Side-by-side: roughly same Y, second is to the right of first.
+      expect(Math.abs(desktopFirst.y - desktopSecond.y)).toBeLessThan(20)
+      expect(desktopSecond.x).toBeGreaterThan(desktopFirst.x + desktopFirst.width / 2)
+    }
+
+    // Narrow width: container query collapses to single column, so the
+    // second card is below the first.
+    await page.setViewportSize({ width: 480, height: 900 })
+    await page.waitForTimeout(50)
+    const narrowFirst = await innerSteps.nth(0).boundingBox()
+    const narrowSecond = await innerSteps.nth(1).boundingBox()
+    expect(narrowFirst).toBeTruthy()
+    expect(narrowSecond).toBeTruthy()
+    if (narrowFirst && narrowSecond) {
+      expect(narrowSecond.y).toBeGreaterThan(narrowFirst.y + narrowFirst.height / 2)
+    }
+  })
+
+  test("step collapse chevron round-trips through the URL", async ({ page }) => {
+    await page.getByRole("button", { name: "Add Step" }).click()
+    await page.getByText("— pick a command —").click()
+    await page.getByPlaceholder("Search commands…").fill("makeDirectory")
+    await page.getByRole("button", { name: /^makeDirectory\s/ }).click()
+
+    // Body is open by default — the field label is visible.
+    await expect(page.getByText("File Path")).toBeVisible()
+
+    // Click the step's collapse chevron (the first chevron-shaped button
+    // in the step header).
+    const stepCard = page.locator(".step-card").first()
+    await stepCard.locator('button[title*="Collapse step"]').click()
+
+    // Body hidden.
+    await expect(page.getByText("File Path")).toBeHidden()
+
+    // Reload — the URL persisted isCollapsed: true.
+    await page.reload()
+    await expect(page.locator(".step-card").first()).toBeVisible()
+    await expect(page.getByText("File Path")).toBeHidden()
+  })
+})

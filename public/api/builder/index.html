@@ -142,6 +142,28 @@
       justify-content: flex-end;
     }
   }
+
+  /* Group container — both kinds (serial / parallel) carry their own
+     size container so the parallel side-by-side layout adapts to its
+     own width rather than the viewport. */
+  .group-card { container-type: inline-size; container-name: group-card; }
+
+  /* Parallel groups: lay inner step cards out as a row that wraps to a
+     column when the container narrows. Each child card flexes to fill
+     available width while honoring a 280px minimum so two cards side-
+     by-side stay legible (and three+ cards wrap before getting cramped). */
+  .group-card-parallel .parallel-group > .step-card {
+    flex: 1 1 280px;
+    min-width: 0;
+  }
+  /* Below ~640px the parallel-group container is too narrow for two
+     cards side-by-side — collapse to a single column to avoid awkward
+     half-width cards. */
+  @container group-card (max-width: 640px) {
+    .group-card-parallel .parallel-group {
+      flex-direction: column;
+    }
+  }
 </style>
 </head>
 <body class="bg-slate-900 text-slate-200 font-sans text-sm">
@@ -185,8 +207,18 @@
         <div class="page-menu-group">
           <button onclick="addPicked()" title="Append an empty step"
             class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium">Add Step</button>
+          <button onclick="addGroupBlock(false)" title="Append a serial group (visual grouping; inner steps run in order)"
+            class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium">Add Group</button>
+          <button onclick="addGroupBlock(true)" title="Append a parallel group (inner steps run concurrently and lay out side-by-side)"
+            class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium">Add Parallel Group</button>
           <button data-action="add-path" title="Add a path variable"
             class="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded font-medium">Add Path</button>
+          <div class="page-menu-row">
+            <button onclick="setAllCollapsed(true)" title="Collapse every step + group"
+              class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-2 py-1.5 rounded border border-slate-600">− All</button>
+            <button onclick="setAllCollapsed(false)" title="Expand every step + group"
+              class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-2 py-1.5 rounded border border-slate-600">+ All</button>
+          </div>
           <button id="run-btn" onclick="runSequence()" title="Run the entire sequence (client-side: each step posts to /commands and tails its job)"
             class="text-xs bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white px-3 py-1.5 rounded font-medium">
             ▶ Run Sequence
@@ -939,7 +971,7 @@ document.addEventListener('keydown', (event) => {
 function startNewSequence() {
   flushScheduledUpdateUrl()
   const hasContent = (
-    steps.some((s) => s.command !== null)
+    flattenSteps().some((entry) => entry.step.command !== null)
     || paths.some((p) => p.value)
   )
   if (hasContent && !window.confirm('Clear the current sequence and start fresh? Ctrl+Z will bring it back.')) {
@@ -1050,7 +1082,7 @@ function getLinkedValue(step, fieldName) {
 
   // Step-output link.
   if (link && typeof link === 'object' && typeof link.linkedTo === 'string') {
-    const src = steps.find(s => s.id === link.linkedTo)
+    const src = findStepById(link.linkedTo)
     if (!src) return null
     if (link.output === 'folder' || !link.output) {
       return stepOutput(src)
@@ -1065,12 +1097,133 @@ function getLinkedValue(step, fieldName) {
 
 function makeStep(command = null) {
   if (!command) {
-    return { id: generateStepId(), alias: '', command: null, params: {}, links: {}, status: null, error: null }
+    return { id: generateStepId(), alias: '', command: null, params: {}, links: {}, status: null, error: null, isCollapsed: false }
   }
   const cmd = COMMANDS[command]
   const params = {}
   for (const f of cmd.fields) if (f.default !== undefined) params[f.name] = f.default
-  return { id: generateStepId(), alias: '', command, params, links: {}, status: null, error: null }
+  return { id: generateStepId(), alias: '', command, params, links: {}, status: null, error: null, isCollapsed: false }
+}
+
+// ─── Groups ──────────────────────────────────────────────────────────────────
+//
+// `steps` (top level) is a heterogeneous array: each entry is either a
+// step (the existing form) or a group `{ kind: 'group', ... }` whose
+// inner `steps` array holds the underlying step objects. Groups don't
+// nest — the inner `steps` array always holds bare steps.
+//
+// Helpers below let the rest of the script keep its old "find a step
+// by id / number it / iterate" mental model without caring about which
+// container it lives in. `flattenSteps()` is the one place that walks
+// the document tree; everything else delegates.
+
+function isGroup(item) {
+  return !!(item && typeof item === 'object' && item.kind === 'group')
+}
+
+// Returns every underlying step in document order with its provenance.
+// Entries: { step, parentGroup, indexInParent, flatIndex, itemIndex }.
+//   - `parentGroup` is the group object the step lives in, or null if
+//     it's a top-level step.
+//   - `indexInParent` is the index within its container (for groups, the
+//     offset inside `group.steps`; for top-level steps, equal to
+//     `itemIndex`).
+//   - `flatIndex` is the position among ALL steps (used for the visual
+//     "Step N" numbering).
+//   - `itemIndex` is the position in the top-level `steps` array (the
+//     mixed list of items + groups).
+function flattenSteps() {
+  const result = []
+  let flatIndex = 0
+  steps.forEach((item, itemIndex) => {
+    if (isGroup(item)) {
+      item.steps.forEach((step, indexInParent) => {
+        result.push({ step, parentGroup: item, indexInParent, flatIndex, itemIndex })
+        flatIndex += 1
+      })
+    } else {
+      result.push({ step: item, parentGroup: null, indexInParent: itemIndex, flatIndex, itemIndex })
+      flatIndex += 1
+    }
+  })
+  return result
+}
+
+function findStepById(id) {
+  const entry = flattenSteps().find((e) => e.step.id === id)
+  return entry ? entry.step : null
+}
+
+function findStepLocation(id) {
+  return flattenSteps().find((e) => e.step.id === id) ?? null
+}
+
+function generateGroupId() {
+  return 'group_' + randomHex()
+}
+
+function makeGroup({ isParallel = false } = {}) {
+  return {
+    kind: 'group',
+    id: generateGroupId(),
+    label: '',
+    isParallel,
+    isCollapsed: false,
+    steps: [makeStep(null)],
+  }
+}
+
+function addGroupBlock(isParallel) {
+  const group = makeGroup({ isParallel })
+  steps.push(group)
+  renderAllAnimated((behavior) => scrollStepIntoView(group.steps[0].id, behavior))
+}
+
+// Toggle the accordion `isCollapsed` flag on either a step or a group.
+// All callers pass an id; we look up step-by-id first, then group.
+function toggleStepCollapsed(id) {
+  const step = findStepById(id)
+  if (!step) return
+  step.isCollapsed = !step.isCollapsed
+  renderAll()
+}
+
+function toggleGroupCollapsed(id) {
+  const group = steps.find((item) => isGroup(item) && item.id === id)
+  if (!group) return
+  group.isCollapsed = !group.isCollapsed
+  renderAll()
+}
+
+// Group-level "collapse all children" / "expand all children" — flips
+// every inner step's isCollapsed to the same value, leaving the group's
+// own collapsed state alone.
+function setGroupChildrenCollapsed(id, isCollapsed) {
+  const group = steps.find((item) => isGroup(item) && item.id === id)
+  if (!group) return
+  group.steps.forEach((step) => { step.isCollapsed = isCollapsed })
+  renderAll()
+}
+
+function setAllCollapsed(isCollapsed) {
+  for (const item of steps) {
+    if (isGroup(item)) {
+      item.isCollapsed = isCollapsed
+      item.steps.forEach((step) => { step.isCollapsed = isCollapsed })
+    } else {
+      item.isCollapsed = isCollapsed
+    }
+  }
+  renderAll()
+}
+
+// "Add step" inside an existing group.
+function addStepToGroup(groupId) {
+  const group = steps.find((item) => isGroup(item) && item.id === groupId)
+  if (!group) return
+  const step = makeStep(null)
+  group.steps.push(step)
+  renderAllAnimated((behavior) => scrollStepIntoView(step.id, behavior))
 }
 
 // Inline-edit handlers for the step's alias. The input is always in the
@@ -1104,7 +1257,7 @@ function stepAliasBlur(input, stepId) {
 }
 
 function setStepAlias(stepId, alias) {
-  const step = steps.find(s => s.id === stepId)
+  const step = findStepById(stepId)
   if (!step) return
   const trimmed = alias.trim()
   if (step.alias === trimmed) return
@@ -1169,18 +1322,30 @@ function scrollPathVarIntoView(pathVarId) {
   }
 }
 
+// Removes a step from wherever it lives — either at the top level or
+// inside a group. Removing the last step of a group also drops the
+// (now-empty) group, since the schema rejects empty groups.
 function removeStep(id) {
   const finishRemoval = () => {
-    const removeIndex = steps.findIndex(s => s.id === id)
-    if (removeIndex < 0) return
-    steps.splice(removeIndex, 1)
-    // Remove any links pointing to the removed step. Path-variable links
-    // are bare strings (the path id), so they never match a step id; only
-    // object-form step links can dangle here.
-    for (const step of steps) {
-      for (const [field, source] of Object.entries(step.links)) {
+    const location = findStepLocation(id)
+    if (!location) return
+    if (location.parentGroup) {
+      const group = location.parentGroup
+      group.steps.splice(location.indexInParent, 1)
+      if (group.steps.length === 0) {
+        const groupItemIndex = steps.indexOf(group)
+        if (groupItemIndex >= 0) steps.splice(groupItemIndex, 1)
+      }
+    } else {
+      steps.splice(location.itemIndex, 1)
+    }
+    // Drop any object-form step-output links that pointed to the
+    // removed step. Walk every step (top-level + inside-group) because
+    // dangling links can live anywhere.
+    for (const entry of flattenSteps()) {
+      for (const [field, source] of Object.entries(entry.step.links)) {
         if (source && typeof source === 'object' && source.linkedTo === id) {
-          delete step.links[field]
+          delete entry.step.links[field]
         }
       }
     }
@@ -1195,20 +1360,26 @@ function removeStep(id) {
   }
 }
 
+// Moves a step within its container. Top-level steps stay at the top
+// level; inside-group steps stay in their group. (Cross-container moves
+// are not supported yet — the user can drag-and-drop in a future pass.)
 function moveStep(id, dir) {
-  const fromIndex = steps.findIndex(s => s.id === id)
-  const toIndex = fromIndex + dir
-  if (toIndex < 0 || toIndex >= steps.length) return
-  ;[steps[fromIndex], steps[toIndex]] = [steps[toIndex], steps[fromIndex]]
-  // Clear any step-output links that now point to a step at or after the
-  // linking step's position (a step can only consume outputs of steps that
-  // ran before it). Path-variable links are bare strings — they never go
-  // stale since paths sit outside the step ordering.
-  steps.forEach((step, stepIndex) => {
-    for (const [field, source] of Object.entries(step.links)) {
+  const location = findStepLocation(id)
+  if (!location) return
+  const siblings = location.parentGroup ? location.parentGroup.steps : steps
+  const localIndex = location.indexInParent
+  const targetLocalIndex = localIndex + dir
+  if (targetLocalIndex < 0 || targetLocalIndex >= siblings.length) return
+  if (isGroup(siblings[targetLocalIndex])) return  // can't swap a step past a sibling group at top level
+  ;[siblings[localIndex], siblings[targetLocalIndex]] = [siblings[targetLocalIndex], siblings[localIndex]]
+  // Clear any step-output link that now points to a step at or after the
+  // linking step's position in document order.
+  const flatOrder = flattenSteps()
+  flatOrder.forEach((entry, flatIndex) => {
+    for (const [field, source] of Object.entries(entry.step.links)) {
       if (!source || typeof source !== 'object' || !source.linkedTo) continue
-      const sourceIndex = steps.findIndex(s => s.id === source.linkedTo)
-      if (sourceIndex < 0 || sourceIndex >= stepIndex) delete step.links[field]
+      const sourceFlatIndex = flatOrder.findIndex((e) => e.step.id === source.linkedTo)
+      if (sourceFlatIndex < 0 || sourceFlatIndex >= flatIndex) delete entry.step.links[field]
     }
   })
   renderAllAnimated()
@@ -1217,7 +1388,7 @@ function moveStep(id, dir) {
 // ─── Param handlers ───────────────────────────────────────────────────────────
 
 function setParam(id, fieldName, value) {
-  const step = steps.find(s => s.id === id)
+  const step = findStepById(id)
   if (!step) return
   step.params[fieldName] = value
   refreshLinkedInputs()
@@ -1234,7 +1405,7 @@ function setParam(id, fieldName, value) {
 // strings; if a path var with the same value already exists, just links
 // to that one instead of duplicating.
 function promotePathToPathVar(stepId, fieldName, rawValue) {
-  const step = steps.find(s => s.id === stepId)
+  const step = findStepById(stepId)
   if (!step) return
   if (step.links?.[fieldName]) return
   const value = (rawValue ?? '').trim()
@@ -1256,7 +1427,7 @@ function promotePathToPathVar(stepId, fieldName, rawValue) {
 }
 
 function setLink(id, field, choice) {
-  const step = steps.find(s => s.id === id)
+  const step = findStepById(id)
   if (!step) return
   if (!choice) {
     delete step.links[field]
@@ -1292,7 +1463,8 @@ function setLink(id, field, choice) {
 }
 
 function refreshLinkedInputs() {
-  for (const step of steps) {
+  for (const entry of flattenSteps()) {
+    const step = entry.step
     for (const [field, srcId] of Object.entries(step.links)) {
       const inp = document.querySelector(`[data-step="${step.id}"][data-field="${field}"].linked-input`)
       if (inp) inp.value = getLinkedValue(step, field) ?? ''
@@ -1355,11 +1527,20 @@ function renderAll() {
     // Leading divider so there's an inline `+ Add` between the paths
     // section and the first step, mirroring the dividers between steps.
     parts.push(renderInsertDivider(0))
-    steps.forEach((s, i) => {
-      parts.push(renderStep(s, i))
-      // Insert dividers between steps and after the last one (so the user has
-      // an inline affordance to append at the end without scrolling to the footer).
-      parts.push(renderInsertDivider(i + 1))
+    // Walk top-level items. Plain steps render via renderStep; group
+    // entries delegate to renderGroup which itself walks the inner
+    // steps. The flat-step counter feeds the visual "Step N" numbering
+    // so it reflects document order regardless of grouping.
+    let flatStepIndex = 0
+    steps.forEach((item, itemIndex) => {
+      if (isGroup(item)) {
+        parts.push(renderGroup(item, itemIndex, flatStepIndex))
+        flatStepIndex += item.steps.length
+      } else {
+        parts.push(renderStep(item, flatStepIndex))
+        flatStepIndex += 1
+      }
+      parts.push(renderInsertDivider(itemIndex + 1))
     })
     // Visual terminator so the bottom of the list is unambiguous.
     parts.push(renderSequenceEndCard())
@@ -1368,23 +1549,137 @@ function renderAll() {
   const previousIds = lastRenderedStepIds
   el.innerHTML = parts.join('')
 
-  // Fade-in animation for newly inserted step cards
-  for (const step of steps) {
-    if (!previousIds.has(step.id)) {
-      const card = document.getElementById(`step-${step.id}`)
+  // Fade-in animation for newly inserted step cards (walks groups too).
+  const allFlatSteps = flattenSteps()
+  for (const entry of allFlatSteps) {
+    if (!previousIds.has(entry.step.id)) {
+      const card = document.getElementById(`step-${entry.step.id}`)
       if (card) card.classList.add('step-enter')
     }
   }
-  lastRenderedStepIds = new Set(steps.map(s => s.id))
+  lastRenderedStepIds = new Set(allFlatSteps.map((e) => e.step.id))
 
   updateYaml()
   updateUrl()
 }
 
-function renderStep(step, index) {
+// Collapse-chevron icon. Inline so renderStep / renderGroup don't need
+// a shared template helper. Rotation indicates open vs closed:
+//   open (default): chevron points down (▾ feel)
+//   collapsed:      chevron points right (▸ feel)
+function renderCollapseChevron(isCollapsed) {
+  const rotateClass = isCollapsed ? '-rotate-90' : ''
+  return `<svg viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 transition-transform ${rotateClass}">
+    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.06l3.71-3.83a.75.75 0 1 1 1.08 1.04l-4.25 4.39a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06z" clip-rule="evenodd" />
+  </svg>`
+}
+
+// A group renders as a card-like container with its own header (label,
+// parallel badge, step count, group-level collapse + actions) and an
+// inner body that renders the contained steps. Inner-step indices are
+// offset by `startingFlatIndex` so the visual "Step N" numbering keeps
+// going through the group rather than restarting.
+//
+// Layout: serial groups stack inner steps vertically (inherits the
+// outer column layout). Parallel groups switch to a flex-row layout
+// that wraps to a column on narrow viewports — see the .parallel-group
+// CSS rules.
+function renderGroup(group, itemIndex, startingFlatIndex) {
+  const isParallel = group.isParallel === true
+  const stepCount = group.steps.length
+  const labelText = group.label || (isParallel ? 'Parallel group' : 'Group')
+  const parallelBadge = isParallel
+    ? '<span class="text-[10px] uppercase tracking-wide font-semibold text-blue-300 bg-blue-950/60 border border-blue-700/50 rounded px-1.5 py-0.5">parallel</span>'
+    : '<span class="text-[10px] uppercase tracking-wide font-semibold text-slate-400 bg-slate-800 border border-slate-600 rounded px-1.5 py-0.5">serial</span>'
+  const innerStepsHtml = (
+    group.isCollapsed
+    ? ''
+    : group.steps
+        .map((step, idx) => renderStep(step, startingFlatIndex + idx, { parentGroupId: group.id }))
+        .join('')
+  )
+
+  const containerClasses = isParallel
+    ? 'parallel-group flex flex-row flex-wrap gap-3'
+    : 'serial-group flex flex-col gap-3'
+
+  return `
+<div data-group="${group.id}" class="group-card ${isParallel ? 'group-card-parallel' : 'group-card-serial'} bg-slate-900/50 rounded-xl border border-slate-700/70 overflow-hidden">
+  <div class="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-slate-700/70 bg-slate-900/70">
+    <button onclick="toggleGroupCollapsed('${group.id}')" title="${group.isCollapsed ? 'Expand group' : 'Collapse group'}"
+      class="w-5 h-5 flex items-center justify-center rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700">
+      ${renderCollapseChevron(group.isCollapsed)}
+    </button>
+    <input type="text" value="${esc(group.label)}"
+      placeholder="${isParallel ? 'Parallel group' : 'Group'} (${stepCount} step${stepCount === 1 ? '' : 's'})"
+      data-group-label="${group.id}"
+      oninput="setGroupLabel('${group.id}', this.value)"
+      class="flex-1 min-w-0 bg-transparent text-sm font-medium text-slate-200 px-1.5 py-0.5 rounded border-0 focus:outline-none focus:bg-slate-900/40 placeholder:text-slate-300 placeholder:font-medium" />
+    ${parallelBadge}
+    <button onclick="setGroupChildrenCollapsed('${group.id}', true)" title="Collapse all inner steps"
+      class="text-[10px] text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded border border-slate-700 hover:border-slate-500">−</button>
+    <button onclick="setGroupChildrenCollapsed('${group.id}', false)" title="Expand all inner steps"
+      class="text-[10px] text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded border border-slate-700 hover:border-slate-500">+</button>
+    <button onclick="addStepToGroup('${group.id}')" title="Add a step inside this group"
+      class="text-[10px] text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded border border-slate-700 hover:border-slate-500">+ Step</button>
+    <button onclick="removeGroup('${group.id}')" title="Remove this group (its inner steps go too)"
+      class="text-[10px] text-slate-500 hover:text-red-400 px-2 py-0.5 rounded border border-slate-700 hover:border-red-500/40">✕</button>
+  </div>
+  ${group.isCollapsed ? '' : `<div class="${containerClasses} p-3" data-group-body="${group.id}">
+    ${innerStepsHtml}
+  </div>`}
+</div>`
+}
+
+// Mutators for group-level fields. Surface for the input/button bound
+// to the group header. setGroupLabel mirrors setStepAlias's debounced
+// persistence pattern — every keystroke writes the label and schedules
+// a URL update.
+function setGroupLabel(groupId, label) {
+  const group = steps.find((item) => isGroup(item) && item.id === groupId)
+  if (!group) return
+  group.label = label
+  updateYaml()
+  scheduleUpdateUrl()
+}
+
+function removeGroup(groupId) {
+  const groupItemIndex = steps.findIndex((item) => isGroup(item) && item.id === groupId)
+  if (groupItemIndex < 0) return
+  const group = steps[groupItemIndex]
+  // Drop any links from outer/later steps that pointed into this group.
+  const innerIds = new Set(group.steps.map((s) => s.id))
+  steps.splice(groupItemIndex, 1)
+  for (const entry of flattenSteps()) {
+    for (const [field, source] of Object.entries(entry.step.links)) {
+      if (source && typeof source === 'object' && innerIds.has(source.linkedTo)) {
+        delete entry.step.links[field]
+      }
+    }
+  }
+  renderAllAnimated()
+}
+
+// `index` is the step's flat document position (1-based for display);
+// the optional `context.parentGroupId` is set when a group is rendering
+// its inner step so the move/remove buttons know which container the
+// step lives in. Move-direction disabled flags now consult the step's
+// container, not the top-level array.
+function renderStep(step, index, context = {}) {
   const cmd = step.command ? COMMANDS[step.command] : null
   const statusBadge = step.status ? renderStatusBadge(step.status) : ''
-  const isFirst = index === 0, isLast = index === steps.length - 1
+  // Move-direction disabled flags consult the step's actual container.
+  let siblings, localIndex
+  if (context.parentGroupId) {
+    const group = steps.find((item) => isGroup(item) && item.id === context.parentGroupId)
+    siblings = group?.steps ?? []
+    localIndex = siblings.indexOf(step)
+  } else {
+    siblings = steps
+    localIndex = siblings.indexOf(step)
+  }
+  const isFirst = localIndex <= 0
+  const isLast = localIndex < 0 || localIndex >= siblings.length - 1
 
   const triggerLabel = step.command
     ? `<span class="font-mono">${esc(step.command)}</span><span class="text-[10px] text-slate-500 ml-2 truncate">${esc(cmd.tag)}</span>`
@@ -1398,9 +1693,16 @@ function renderStep(step, index) {
        <div class="space-y-2">${renderFields(step, index)}</div>`
     : `<p class="text-xs text-slate-500 italic">No command selected — choose one from the dropdown above.</p>`
 
+  // When a step is inside a parallel group its card gets `flex: 1 1 320px`
+  // via the .parallel-group child rule so siblings sit shoulder-to-shoulder
+  // when the container is wide and wrap when it isn't.
   return `
 <div id="step-${step.id}" style="view-transition-name: step-${step.id}" class="step-card bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
   <div class="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-slate-700 bg-slate-800/80">
+    <button onclick="toggleStepCollapsed('${step.id}')" title="${step.isCollapsed ? 'Expand step' : 'Collapse step'}"
+      class="w-5 h-5 flex items-center justify-center rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700 shrink-0">
+      ${renderCollapseChevron(step.isCollapsed)}
+    </button>
     <span class="text-xs font-mono text-slate-500 shrink-0 w-5 text-center">${index + 1}</span>
     <input type="text" value="${esc(step.alias)}"
       placeholder="${esc(step.command || 'Click to name this step')}"
@@ -1432,9 +1734,9 @@ function renderStep(step, index) {
         class="w-6 h-6 flex items-center justify-center rounded text-slate-500 hover:text-red-400 hover:bg-slate-700 text-xs">✕</button>
     </div>
   </div>
-  <div class="px-3 py-2">
+  ${step.isCollapsed ? '' : `<div class="px-3 py-2">
     ${body}
-  </div>
+  </div>`}
 </div>`
 }
 
@@ -1574,8 +1876,9 @@ function renderFields(step, stepIndex) {
 function renderStepOutputPicker(step, field, stepIndex, link) {
   const isLinked = link && typeof link === 'object' && link.linkedTo
   const options = (
-    steps
+    flattenSteps()
     .slice(0, stepIndex)
+    .map((entry) => entry.step)
     .filter((s) => s.command && Array.isArray(COMMANDS[s.command]?.outputs) && COMMANDS[s.command].outputs.length > 0)
     .flatMap((s, i) => (
       COMMANDS[s.command].outputs.map((out) => {
@@ -1624,9 +1927,10 @@ function renderPathField(step, field, stepIndex) {
   }).join('')
 
   // Build previous step options. Empty steps (command: null) have nothing
-  // to link to, so they're excluded.
-  const prevOptions = steps.slice(0, stepIndex)
-    .map((s, i) => ({ step: s, displayIndex: i + 1 }))
+  // to link to, so they're excluded. Walk flat document order so steps
+  // inside earlier groups (and steps before this group) both show up.
+  const prevOptions = flattenSteps().slice(0, stepIndex)
+    .map((entry, i) => ({ step: entry.step, displayIndex: i + 1 }))
     .filter(({ step: s }) => s.command !== null)
     .map(({ step: s, displayIndex }) => {
       const out = stepOutput(s)
@@ -1654,7 +1958,7 @@ function renderPathField(step, field, stepIndex) {
 
 function changeCommand(id, command) {
   if (!command) return
-  const step = steps.find(s => s.id === id)
+  const step = findStepById(id)
   if (!step) return
   const wasEmpty = step.command === null
   step.command = command
@@ -1665,18 +1969,28 @@ function changeCommand(id, command) {
   const cmd = COMMANDS[command]
   for (const f of cmd.fields) if (f.default !== undefined) step.params[f.name] = f.default
   // Auto-link the main source field on the empty -> set transition,
-  // matching the auto-link addPicked used to do at creation time.
+  // matching the auto-link addPicked used to do at creation time. We
+  // walk flat document order so the previous step might live inside a
+  // group (or before one) — both are legal link targets. Skip the
+  // auto-link for steps inside a parallel group: parallel siblings
+  // can't link to each other, and falling through to the path-var
+  // default is more useful than a doomed sibling link.
   if (wasEmpty) {
     const msf = mainSrcField(command)
     if (msf) {
-      const stepIndex = steps.findIndex(s => s.id === id)
-      const prevStep = stepIndex > 0 ? steps[stepIndex - 1] : null
-      if (prevStep && prevStep.command) {
-        // Step-output link uses the object form; the legacy auto-link
-        // points at the synthesized folder output (output: 'folder').
-        step.links[msf] = { linkedTo: prevStep.id, output: 'folder' }
-      } else if (paths.length) {
-        step.links[msf] = paths[0].id
+      const location = findStepLocation(id)
+      const isInsideParallelGroup = !!(location?.parentGroup?.isParallel)
+      if (isInsideParallelGroup) {
+        if (paths.length) step.links[msf] = paths[0].id
+      } else {
+        const flat = flattenSteps()
+        const currentFlatIndex = flat.findIndex((entry) => entry.step.id === id)
+        const prevStep = currentFlatIndex > 0 ? flat[currentFlatIndex - 1].step : null
+        if (prevStep && prevStep.command) {
+          step.links[msf] = { linkedTo: prevStep.id, output: 'folder' }
+        } else if (paths.length) {
+          step.links[msf] = paths[0].id
+        }
       }
     }
   }
@@ -1684,7 +1998,7 @@ function changeCommand(id, command) {
 }
 
 function setParamJson(id, field, raw) {
-  const step = steps.find(s => s.id === id)
+  const step = findStepById(id)
   if (!step) return
   try {
     step.params[field] = JSON.parse(raw)
@@ -1776,7 +2090,7 @@ function togglePageMenu(menuId) { return window.mediaTools.togglePageMenu(menuId
 // step.status accordingly. 204 responses (race with natural completion)
 // are silent — the SSE stream still tells us the truth.
 async function cancelStep(stepId) {
-  const step = steps.find((s) => s.id === stepId)
+  const step = findStepById(stepId)
   if (!step?.jobId) return
   try {
     await fetch(`/jobs/${step.jobId}`, { method: 'DELETE' })
@@ -1836,7 +2150,14 @@ async function runOneStep(step) {
 }
 
 async function runSequence() {
-  const runnableSteps = steps.filter(step => step.command !== null)
+  // Walk every underlying step (top-level + inside groups) in document
+  // order and run them serially. Parallel groups DON'T fan out via this
+  // client-side path — the per-step `POST /commands/<name>` calls are
+  // already serial, and the user can hit "Run via API" to get the
+  // server-side runner's true parallel-group semantics.
+  const runnableSteps = flattenSteps()
+    .map((entry) => entry.step)
+    .filter((step) => step.command !== null)
   if (running || !runnableSteps.length) return
   running = true
   stepLogs.clear()
@@ -1997,7 +2318,7 @@ function copyApiRunLogs() {
 
 async function runStep(stepId) {
   if (running) return
-  const step = steps.find(s => s.id === stepId)
+  const step = findStepById(stepId)
   if (!step || !step.command) return
   running = true
   stepLogs.clear()
@@ -2029,7 +2350,7 @@ function waitForJob(jobId, stepId) {
         if (data.done) {
           closePromptModal()
           handle.close()
-          const step = steps.find(s => s.id === stepId)
+          const step = findStepById(stepId)
           if (step && Array.isArray(data.results) && data.results.length > 0) {
             step.results = data.results
           }
@@ -2148,7 +2469,7 @@ let cmdPickerState = null
 // shape: { stepId: number, query: string, filtered: [{name, tag}], activeIndex: number }
 
 function openCmdPicker(stepId, anchorEl) {
-  const step = steps.find(s => s.id === stepId)
+  const step = findStepById(stepId)
   if (!step) return
   cmdPickerState = { stepId, query: '', activeIndex: 0, filtered: [] }
 
@@ -2711,7 +3032,7 @@ function scheduleReverseLookup(stepId, fieldName, rawValue) {
   reverseLookupTokens.set(key, rawValue)
 
   // Clear stale companion immediately so the user doesn't see stale info while typing.
-  const step = steps.find(s => s.id === stepId)
+  const step = findStepById(stepId)
   if (!step) return
   const cmd = COMMANDS[step.command]
   const field = cmd?.fields.find(f => f.name === fieldName)
@@ -2746,7 +3067,7 @@ function scheduleReverseLookup(stepId, fieldName, rawValue) {
 
 async function runReverseLookup(stepId, fieldName, id, requestToken) {
   const key = `${stepId}-${fieldName}`
-  const step = steps.find(s => s.id === stepId)
+  const step = findStepById(stepId)
   if (!step) return
   const cmd = COMMANDS[step.command]
   const field = cmd?.fields.find(f => f.name === fieldName)
@@ -2984,7 +3305,7 @@ function lookupSelectSimpleByIndex(index) {
     id = r.tvdbId
     displayName = r.name
   }
-  const step = steps.find(s => s.id === lookupState.stepId)
+  const step = findStepById(lookupState.stepId)
   if (step) {
     const cmd = COMMANDS[step.command]
     const field = cmd?.fields.find(f => f.name === lookupState.fieldName)
@@ -3064,7 +3385,7 @@ function lookupSelectReleaseByIndex(index) {
 
 function lookupSelectRelease(hash, label) {
   if (!lookupState) return
-  const step = steps.find(s => s.id === lookupState.stepId)
+  const step = findStepById(lookupState.stepId)
   if (step) {
     step.params.dvdCompareId = lookupState.selectedFid
     step.params.dvdCompareReleaseHash = Number(hash) || hash
@@ -3121,7 +3442,7 @@ function updateStepLogs(stepId, logs) {
   // Persist the full log on the step so it survives once the step is no
   // longer running and the live-tail <pre> swaps for a collapsed <details>.
   // The user can then expand and copy logs after a failure.
-  const step = steps.find(s => s.id === stepId)
+  const step = findStepById(stepId)
   if (step) step.logs = logs.slice()
 
   let logEl = card.querySelector('.step-logs')

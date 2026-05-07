@@ -29,8 +29,13 @@ const stepOutputReferenceSchema = z.object({
 // ─── Sequence document shape ────────────────────────────────────────────────
 
 const sequenceStepSchema = z.object({
-  kind: z.literal("step").optional()
-    .describe("Discriminator. Defaults to `\"step\"` when omitted, so existing flat-step YAMLs validate unchanged. The other allowed value is `\"group\"` (see `SequenceGroup`)."),
+  // Required literal at the schema level so the OpenAPI generator's
+  // discriminated-union transformer can read the discriminator value.
+  // The `sequenceItemSchema` preprocess below injects `kind: "step"`
+  // when callers omit it, so existing flat-step YAMLs still validate
+  // even though the documented schema marks `kind` as required.
+  kind: z.literal("step")
+    .describe("Discriminator marking this entry as a single step. May be omitted on input — the server treats a missing `kind` as `\"step\"` for backward compatibility with the original flat-step YAML form. The other allowed value is `\"group\"` (see `SequenceGroup`)."),
   id: z.string().optional()
     .describe("Stable identifier for this step. Optional on input — auto-assigned (`step1`, `step2`, ...) when omitted. Used as the target of `{ linkedTo, output }` references from later steps."),
   alias: z.string().optional()
@@ -54,6 +59,25 @@ const sequenceStepSchema = z.object({
   },
 })
 
+// Inner steps inside a group go through the same kind-injection
+// preprocess that top-level steps do, so callers can omit `kind: "step"`
+// inside groups too. Wrapping `sequenceStepSchema` (which requires the
+// literal) keeps the OpenAPI doc honest while accepting the bare form.
+const preprocessedStepSchema = z.preprocess(
+  (value) => {
+    if (
+      value
+      && typeof value === "object"
+      && !Array.isArray(value)
+      && (value as { kind?: unknown }).kind === undefined
+    ) {
+      return { ...(value as Record<string, unknown>), kind: "step" }
+    }
+    return value
+  },
+  sequenceStepSchema,
+)
+
 const sequenceGroupSchema = z.object({
   kind: z.literal("group")
     .describe("Discriminator marking this entry as a group of steps rather than a single step."),
@@ -62,10 +86,10 @@ const sequenceGroupSchema = z.object({
   label: z.string().optional()
     .describe("Optional human-readable label rendered in the group's header by the builder UI. Ignored at runtime."),
   isParallel: z.boolean().optional()
-    .describe("When `true`, the group's inner steps run concurrently (forkJoin). When omitted or `false`, they run sequentially in array order. The builder UI also lays parallel groups out side-by-side on wide viewports."),
+    .describe("When `true`, the group's inner steps run concurrently (Promise.all). When omitted or `false`, they run sequentially in array order. The builder UI also lays parallel groups out side-by-side on wide viewports."),
   isCollapsed: z.boolean().optional()
     .describe("Builder-UI accordion state for the group as a whole. When `true`, the group's inner step cards are hidden. Pure view state; ignored at runtime."),
-  steps: z.array(sequenceStepSchema).min(1)
+  steps: z.array(preprocessedStepSchema).min(1)
     .describe("Inner steps. Groups don't nest — each entry must be a step, not another group."),
 }).openapi("SequenceGroup", {
   description: "A container for a set of steps. Marked `isParallel: true` to run concurrently; otherwise the inner steps run sequentially. Groups are flat — they can contain steps but not other groups.",
