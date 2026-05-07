@@ -169,6 +169,8 @@ If your repo folder name starts with `media-tools-worker-`:
 
 The push-as-you-go rule is what keeps multiple workers from drifting into each other's blast radius — when the user can see all branches at once, conflicts get spotted early instead of at merge time.
 
+**After any `git pull`** (in either repo, primary or worker): if the pull touched `package.json` or `yarn.lock`, run `yarn install` before doing anything else. Skipping this gives confusing "module not found" or "wrong version" failures that look like real bugs but are just stale `node_modules`. Quick check: `git diff HEAD@{1} HEAD -- package.json yarn.lock` shows whether the pull moved either.
+
 ## Commit conventions
 
 Commit *as you go*, not at the end of the session. After each logical group of changes lands and tests pass, commit it — one phase at a time. Don't batch a multi-step task into a single end-of-session commit just because the work all happened in one conversation; the user reviews incrementally, and a single 10-file commit is much harder to read than three focused 3-file commits.
