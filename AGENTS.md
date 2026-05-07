@@ -153,7 +153,13 @@ In `cli.ts`, register it with `.command(someCommandCommand)`.
 
 ## Commit conventions
 
-Commit after each logical group of changes (one phase at a time). Do not push unless explicitly asked.
+Commit *as you go*, not at the end of the session. After each logical group of changes lands and tests pass, commit it — one phase at a time. Don't batch a multi-step task into a single end-of-session commit just because the work all happened in one conversation; the user reviews incrementally, and a single 10-file commit is much harder to read than three focused 3-file commits.
+
+If a single file legitimately touches two unrelated concerns (e.g. a feature change and an infrastructure fix in the same route file), keep them in separate commits — use `git add -p` to selectively stage hunks, or temporarily revert one set with the Edit tool, commit the other, then re-apply. Mixing is the wrong shortcut.
+
+Natural commit points: a todo item flips to completed, a phase of a Plan-mode plan finishes, tests pass for a self-contained change, a refactor wraps up before the next one starts.
+
+Do not push unless explicitly asked.
 
 ## makeDirectory
 
