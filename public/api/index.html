@@ -230,6 +230,43 @@
   }
   .step .log-pane { max-height: 220px; }
 
+  .progress-row {
+    margin-top: 10px;
+  }
+  .progress-bar {
+    background: #0f172a;
+    border-radius: 4px;
+    height: 6px;
+    overflow: hidden;
+    position: relative;
+  }
+  .progress-fill {
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+    height: 100%;
+    width: 0%;
+    transition: width 250ms linear;
+  }
+  .progress-bar.indeterminate .progress-fill {
+    /* While the fill is indeterminate (no ratio), animate a thin chunk
+       sliding right-to-left so the user knows work is happening but
+       the magnitude is unknown — same UX shape Material/Bootstrap use. */
+    width: 30%;
+    animation: indeterminate-slide 1.6s ease-in-out infinite;
+  }
+  @keyframes indeterminate-slide {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(330%); }
+  }
+  .progress-label {
+    margin-top: 4px;
+    font-size: 0.78rem;
+    color: #94a3b8;
+    font-variant-numeric: tabular-nums;
+  }
+  .step .progress-row { margin-top: 8px; }
+  .step .progress-bar { height: 4px; }
+  .step .progress-label { font-size: 0.72rem; }
+
   #status-bar {
     max-width: 900px;
     margin: 0 auto 12px;
@@ -286,6 +323,84 @@ function getChildren(parentId) {
 const logsByJobId = new Map();
 const logEventSourcesByJobId = new Map();
 
+// Per-job progress snapshot, fed by the same /jobs/:id/logs SSE that
+// streams log lines — ProgressEvents ride alongside string log events
+// on the same channel (logRoutes pass-through). Spawn ops and the
+// per-file iterator each emit different shapes (one populates
+// currentFile/currentFileRatio, the other populates ratio + filesDone),
+// so we MERGE incoming events field-by-field rather than replacing —
+// the bar shows whichever fields have arrived most recently.
+const progressByJobId = new Map();
+
+function mergeProgress(jobId, event) {
+  const current = progressByJobId.get(jobId) ?? {};
+  const merged = { ...current };
+  if (event.ratio !== undefined) merged.ratio = event.ratio;
+  if (event.filesDone !== undefined) merged.filesDone = event.filesDone;
+  if (event.filesTotal !== undefined) merged.filesTotal = event.filesTotal;
+  if (event.currentFile !== undefined) merged.currentFile = event.currentFile;
+  if (event.currentFileRatio !== undefined) merged.currentFileRatio = event.currentFileRatio;
+  progressByJobId.set(jobId, merged);
+}
+
+// Updates a mounted progress bar in place (no whole-card re-render
+// needed for the per-second progress flow). Called from the SSE
+// handler for every progress event AND from mountProgressBar after
+// an upsertJob whole-card swap, so the bar reflects the latest
+// merged snapshot regardless of how it got rendered.
+function paintProgressBar(jobId) {
+  const container = document.querySelector(`[data-progress-id="${jobId}"]`);
+  if (!container) return;
+  const snapshot = progressByJobId.get(jobId) ?? {};
+  const bar = container.querySelector(".progress-bar");
+  const fill = container.querySelector(".progress-fill");
+  const label = container.querySelector(".progress-label");
+  const ratio = (typeof snapshot.ratio === "number") ? snapshot.ratio : null;
+  if (ratio === null) {
+    bar.classList.add("indeterminate");
+    fill.style.width = "";
+  } else {
+    bar.classList.remove("indeterminate");
+    const pct = Math.max(0, Math.min(1, ratio)) * 100;
+    fill.style.width = pct.toFixed(1) + "%";
+  }
+  // Build label text from whatever snapshot fields are populated. With
+  // both phases of the migration in play we may see overall + per-file
+  // info simultaneously: "12/50 files · episode-13.mkv (42%) · 24%".
+  const parts = [];
+  if (typeof snapshot.filesDone === "number" && typeof snapshot.filesTotal === "number") {
+    parts.push(`${snapshot.filesDone}/${snapshot.filesTotal} files`);
+  }
+  if (snapshot.currentFile) {
+    const filePart = String(snapshot.currentFile).split(/[\\/]/).pop();
+    if (typeof snapshot.currentFileRatio === "number") {
+      parts.push(`${filePart} (${(snapshot.currentFileRatio * 100).toFixed(0)}%)`);
+    } else {
+      parts.push(filePart);
+    }
+  }
+  if (ratio !== null) {
+    parts.push(`${(ratio * 100).toFixed(0)}%`);
+  }
+  label.textContent = parts.join(" · ");
+}
+
+function mountProgressBar(parent, jobId) {
+  // Only mount when there's something to show. Trivially-fast jobs
+  // never emit progress (silent-fast rule on the server) so they get
+  // no bar at all — keeps the UI quiet for 200ms ops.
+  if (!progressByJobId.has(jobId)) return;
+  const row = makeEl("div", "progress-row");
+  row.dataset.progressId = jobId;
+  const bar = makeEl("div", "progress-bar");
+  const fill = makeEl("div", "progress-fill");
+  bar.append(fill);
+  const label = makeEl("div", "progress-label");
+  row.append(bar, label);
+  parent.append(row);
+  paintProgressBar(jobId);
+}
+
 function appendLogLine(jobId, line) {
   const lines = logsByJobId.get(jobId) ?? [];
   lines.push(line);
@@ -309,6 +424,29 @@ function ensureLogStream(jobId) {
     onMessage: (data) => {
       if (typeof data.line === "string") {
         appendLogLine(jobId, data.line);
+      } else if (data.type === "progress") {
+        // Field-by-field merge so a spawn op's currentFile/ratio
+        // event doesn't blow away an earlier withFileProgress
+        // filesDone/total event (or vice versa).
+        const hadEntry = progressByJobId.has(jobId);
+        mergeProgress(jobId, data);
+        if (!hadEntry) {
+          // First progress event for this id — the running card
+          // didn't render a bar (no data yet at render time). Trigger
+          // one re-render so mountProgressBar wires up the slot;
+          // subsequent events paint in place via paintProgressBar.
+          const job = jobsById.get(jobId);
+          if (job) {
+            if (job.parentJobId) {
+              const parent = jobsById.get(job.parentJobId);
+              if (parent) renderTopLevel(parent);
+            } else {
+              renderTopLevel(job);
+            }
+          }
+        } else {
+          paintProgressBar(jobId);
+        }
       } else if (data.done) {
         handle.close();
         logEventSourcesByJobId.delete(jobId);
@@ -443,6 +581,13 @@ function renderStepRow(child, index) {
     row.append(err);
   }
 
+  // Progress bar only while the step is actively running. Mounts
+  // nothing if no progress event has arrived for this child id yet
+  // (silent-fast jobs stay quiet).
+  if (child.status === "running") {
+    mountProgressBar(row, child.id);
+  }
+
   // Skipped steps never ran — they have no logs to stream and no params
   // to flesh out beyond what the parent already shows. Keep them as
   // single-row placeholders so the list stays scannable.
@@ -473,6 +618,14 @@ function renderJob(job) {
   }
 
   card.append(header, meta);
+
+  // Progress bar only on running cards. For sequence umbrellas the
+  // bar typically stays hidden (the runner itself doesn't emit
+  // progress — its child steps do, on their own ids). For top-level
+  // single-command jobs the bar tracks that one command's progress.
+  if (job.status === "running") {
+    mountProgressBar(card, job.id);
+  }
 
   const sourcePath = job.params?.sourcePath;
   if (sourcePath) {
@@ -552,6 +705,14 @@ function renderJob(job) {
 
 function upsertJob(job) {
   jobsById.set(job.id, job);
+
+  // Drop any cached progress snapshot once the job reaches a terminal
+  // state — the bar is gated on running status so it'd disappear from
+  // the DOM either way, but clearing the map keeps it from growing
+  // indefinitely on long-running pages.
+  if (job.status !== "running" && job.status !== "pending") {
+    progressByJobId.delete(job.id);
+  }
 
   // Children are rendered inside their parent's card. If the event is
   // for a child, find its parent and re-render the parent's whole card
