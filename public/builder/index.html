@@ -1734,6 +1734,11 @@ function setParam(id, fieldName, value) {
 // round-trips cleanly and the user can rename / reuse it. Skips empty
 // strings; if a path var with the same value already exists, just links
 // to that one instead of duplicating.
+//
+// Base-path reuse: if the first path variable (basePath) has no value
+// yet, the new entry populates it rather than creating a sibling. This
+// keeps the common case — a single working directory — from generating
+// an ever-growing list of anonymous path slots.
 function promotePathToPathVar(stepId, fieldName, rawValue) {
   const step = findStepById(stepId)
   if (!step) return
@@ -1744,6 +1749,19 @@ function promotePathToPathVar(stepId, fieldName, rawValue) {
   const existing = paths.find(p => p.value === value)
   if (existing) {
     step.links[fieldName] = existing.id
+    delete step.params[fieldName]
+    renderAll()
+    return
+  }
+
+  // If the base path slot is still empty, populate it instead of
+  // pushing a brand-new entry. The base path is always index 0 (created
+  // by initPaths) and the only path var the user hasn't explicitly
+  // added to yet when its value is blank.
+  const basePath = paths[0]
+  if (basePath && !basePath.value) {
+    basePath.value = value
+    step.links[fieldName] = basePath.id
     delete step.params[fieldName]
     renderAll()
     return
