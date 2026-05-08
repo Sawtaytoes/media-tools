@@ -335,7 +335,7 @@ await enableMocksIfRequested()
               <span>All</span>
             </button>
           </div>
-          <button id="run-btn" onclick="runSequence()" title="Run the entire sequence (client-side: each step posts to /commands and tails its job)"
+          <button id="run-btn" onclick="runSequence()" title="Run the entire sequence via the server-side sequence API (/sequences/run)"
             class="text-xs bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white px-3 py-1.5 rounded font-medium">
             ▶ Run Sequence
           </button>
@@ -2115,6 +2115,9 @@ function renderGroup(group, itemIndex, startingFlatIndex) {
       class="text-[10px] text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded border border-slate-700 hover:border-slate-500">+ Step</button>
     <button onclick="pasteCardAt({parentGroupId: '${group.id}'}, this)" title="Paste a copied step into this group"
       class="text-[10px] text-slate-400 hover:text-emerald-400 px-2 py-0.5 rounded border border-slate-700 hover:border-emerald-500/40">📋 Paste</button>
+    <button onclick="runGroupViaApi('${group.id}')" data-run-group="${group.id}"
+      title="Run this group as a sub-sequence via /sequences/run"
+      class="text-[10px] text-emerald-400 hover:text-emerald-300 disabled:opacity-40 px-2 py-0.5 rounded border border-emerald-700/50 hover:border-emerald-500">▶ Run</button>
     <!-- Group move arrows: same affordance as a step's, but they swap
          the entire group with its top-level neighbor (which can itself
          be a step or another group). -->
@@ -2756,50 +2759,18 @@ async function runOneStep(step) {
   return step.status === 'completed'
 }
 
-async function runSequence() {
-  // Walk every underlying step (top-level + inside groups) in document
-  // order and run them serially. Parallel groups DON'T fan out via this
-  // client-side path — the per-step `POST /commands/<name>` calls are
-  // already serial, and the user can hit "Run via API" to get the
-  // server-side runner's true parallel-group semantics.
-  const runnableSteps = flattenSteps()
-    .map((entry) => entry.step)
-    .filter((step) => step.command !== null)
-  if (running || !runnableSteps.length) return
-  running = true
-  stepLogs.clear()
-  document.getElementById('run-btn').disabled = true
-
-  for (const step of runnableSteps) {
-    step.status = 'pending'
-    step.error = null
-    step.results = null
-    step.logs = null
-    step.outputs = null
-    updateStepUI(step)
-  }
-
-  for (const step of runnableSteps) {
-    const success = await runOneStep(step)
-    if (!success) break
-  }
-
-  running = false
-  document.getElementById('run-btn').disabled = false
+// Top-level run: delegates to the sequence API so group parallelism,
+// step-output chaining, and server-side orchestration all work correctly.
+// The old client-side per-step loop is retired; runStep() keeps the
+// per-card ▶ button for individual jobs only.
+function runSequence() {
+  runViaApi()
 }
 
-// Server-side orchestration: POSTs the same YAML the View YAML modal
-// shows to /sequences/run, then tails the umbrella job's SSE stream
-// inside a modal. Coexists with runSequence — that path keeps the
-// per-step UI on each card; this one trades that for a single
-// unified log stream.
-async function runViaApi() {
-  const yaml = toYamlStr()
-  if (yaml === '# No steps yet') return
-
-  const runApiBtn = document.getElementById('run-api-btn')
-  runApiBtn.disabled = true
-
+// Core helper: POST the given YAML to /sequences/run, then open and
+// tail the run modal. `onDone` is called (with no args) when the job
+// finishes or errors. Shared by runViaApi and runGroupViaApi.
+async function postSequenceYaml(yaml, onDone) {
   let response
   try {
     response = await fetch('/sequences/run', {
@@ -2808,23 +2779,73 @@ async function runViaApi() {
       body: JSON.stringify({ yaml }),
     })
   } catch (error) {
-    runApiBtn.disabled = false
     openApiRunModal({ jobId: null, status: 'failed' })
     document.getElementById('api-run-logs').textContent = `Network error: ${error?.message ?? error}`
+    onDone?.()
     return
   }
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => '(no body)')
-    runApiBtn.disabled = false
     openApiRunModal({ jobId: null, status: 'failed' })
     document.getElementById('api-run-logs').textContent = `HTTP ${response.status}: ${errorText}`
+    onDone?.()
     return
   }
 
   const { jobId } = await response.json()
   openApiRunModal({ jobId, status: 'running' })
-  tailApiRunLogs(jobId, () => { runApiBtn.disabled = false })
+  tailApiRunLogs(jobId, onDone)
+}
+
+// Server-side orchestration: POSTs the full sequence YAML to
+// /sequences/run and tails the umbrella job's SSE stream in a modal.
+async function runViaApi() {
+  const yaml = toYamlStr()
+  if (yaml === '# No steps yet') return
+
+  const runApiBtn = document.getElementById('run-api-btn')
+  runApiBtn.disabled = true
+  postSequenceYaml(yaml, () => { runApiBtn.disabled = false })
+}
+
+// Run a single group as a sub-sequence via the sequence API. Builds a
+// partial YAML containing all path variables plus only the clicked group
+// (preserving isParallel so the server-side runner honours parallel/serial
+// semantics). Reuses the same run modal as the full-sequence run.
+async function runGroupViaApi(groupId) {
+  const group = steps.find((item) => isGroup(item) && item.id === groupId)
+  if (!group) return
+  const filledSteps = group.steps.filter((s) => s.command !== null)
+  if (!filledSteps.length) return
+
+  // Build paths object (same shape toYamlStr emits).
+  const pathsObj = {}
+  for (const pv of paths) pathsObj[pv.id] = { label: pv.label, value: pv.value }
+
+  // Build a group entry matching groupToYaml in yaml-modal.js.
+  const groupEntry = {
+    kind: 'group',
+    ...(group.id   ? { id:         group.id   } : {}),
+    ...(group.label ? { label:      group.label } : {}),
+    ...(group.isParallel ? { isParallel: true  } : {}),
+    steps: filledSteps.map((s) => ({
+      id: s.id,
+      ...(s.alias ? { alias: s.alias } : {}),
+      command: s.command,
+      params: buildParams(s),
+    })),
+  }
+
+  const yaml = window.jsyaml.dump(
+    { paths: pathsObj, steps: [groupEntry] },
+    { lineWidth: -1, flowLevel: 3, indent: 2 },
+  )
+
+  // Disable the clicked button while the job runs.
+  const btn = document.querySelector(`[data-run-group="${groupId}"]`)
+  if (btn) btn.disabled = true
+  postSequenceYaml(yaml, () => { if (btn) btn.disabled = false })
 }
 
 let apiRunEventSource = null
