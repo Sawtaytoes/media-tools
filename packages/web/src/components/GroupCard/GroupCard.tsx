@@ -60,17 +60,20 @@ export const GroupCard = ({
   const dragStyle = isDragOverlay
     ? {}
     : {
-        transform: CSS.Transform.toString(sortable.transform),
+        transform: CSS.Transform.toString(
+          sortable.transform,
+        ),
         transition: sortable.transition ?? undefined,
       }
 
-  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
-    id: `${group.id}-droppable`,
-  })
+  const { setNodeRef: setDroppableRef, isOver } =
+    useDroppable({
+      id: `${group.id}-droppable`,
+    })
 
   const stepCount = group.steps.length
-  const hasRunnableSteps = group.steps.some(
-    (step) => Boolean(step.command),
+  const hasRunnableSteps = group.steps.some((step) =>
+    Boolean(step.command),
   )
   const parallelBadge = group.isParallel ? (
     <span className="text-[10px] uppercase tracking-wide font-semibold text-blue-300 bg-blue-950/60 border border-blue-700/50 rounded px-1.5 py-0.5">
@@ -111,7 +114,11 @@ export const GroupCard = ({
           aria-label="Drag to reorder"
           title="Drag to reorder"
           className="w-5 h-5 flex items-center justify-center rounded text-slate-500 hover:text-slate-200 hover:bg-slate-700 select-none cursor-grab active:cursor-grabbing"
-          ref={isDragOverlay ? undefined : sortable.setActivatorNodeRef}
+          ref={
+            isDragOverlay
+              ? undefined
+              : sortable.setActivatorNodeRef
+          }
           {...(isDragOverlay ? {} : sortable.attributes)}
           {...(isDragOverlay ? {} : sortable.listeners)}
         >
