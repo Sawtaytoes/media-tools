@@ -4,7 +4,17 @@
 // `tag` groups commands in the picker; `fields` lists the parameters the
 // command accepts; `outputFolderName` is the subfolder suffix this command
 // writes its output into (null = writes in-place or caller supplies path).
+//
+// Migration in progress: command entries are gradually being rewritten to
+// pull `name`, `description`, `default`, and `required` from their Zod
+// request schemas via `fieldBuilder`. This makes field-name typos a
+// compile error and stops server-side `.default(...)` values from
+// drifting away from the UI's hard-coded defaults. UI-only attributes
+// (type, label, lookupType, visibleWhen, …) stay on the override object.
+// Commands not yet migrated keep their plain literal `fields` arrays.
 
+import { storeAspectRatioDataRequestSchema } from "@media-tools/server/api-schemas"
+import { fieldBuilder } from "./buildFields"
 import type { Commands } from "../commands/types"
 
 export const COMMANDS: Commands = {
@@ -1345,78 +1355,57 @@ export const COMMANDS: Commands = {
     ],
   },
   // Metadata Operations
-  storeAspectRatioData: {
-    summary: "Analyze and store aspect ratio metadata",
-    tag: "Metadata Operations",
-    outputFolderName: null,
-    fields: [
-      {
-        name: "sourcePath",
-        type: "path",
-        label: "Source Path",
-        description:
-          "Directory containing media files or containing other directories of media files.",
-        required: true,
-      },
-      {
-        name: "isRecursive",
-        type: "boolean",
-        label: "Recursive",
-        description:
-          "Recursively look in folders for media files. Defaults to true since Plex-style libraries are nested (Movies/<title>/<file>); uncheck to scan only the source path.",
-        default: false,
-      },
-      {
-        name: "recursiveDepth",
-        type: "number",
-        label: "Depth",
-        description:
-          "How many directory levels deep to scan, counting sourcePath as level 1. Default 3 covers Plex's edition layout. Only used with Recursive.",
-        default: 1,
-        min: 1,
-        visibleWhen: {
-          fieldName: "isRecursive",
-          value: true,
+  storeAspectRatioData: (() => {
+    const f = fieldBuilder(storeAspectRatioDataRequestSchema)
+    return {
+      summary: "Analyze and store aspect ratio metadata",
+      tag: "Metadata Operations",
+      outputFolderName: null,
+      fields: [
+        f("sourcePath", { type: "path", label: "Source Path" }),
+        f("isRecursive", {
+          type: "boolean",
+          label: "Recursive",
+        }),
+        f("recursiveDepth", {
+          type: "number",
+          label: "Depth",
+          min: 1,
+          visibleWhen: {
+            fieldName: "isRecursive",
+            value: true,
+          },
+        }),
+        f("outputPath", {
+          type: "path",
+          label: "Output Path",
+        }),
+        f("rootPath", {
+          type: "string",
+          label: "Root Path",
+          description:
+            "Path your media player (Plex, Jellyfin, Emby) sees for your library — written into the output JSON's file paths so the player can match its catalog. The path does not have to exist on this machine.",
+        }),
+        f("folders", {
+          type: "folderMultiSelect",
+          label: "Folders",
+          description:
+            "List of folder names relative to the sourcePath to include. If you're searching a root path with lots of media, this can reduce the list to only those in Plex. Ensure these folder names match the ones in Plex.",
+          sourceField: "sourcePath",
+        }),
+        f("force", {
+          type: "boolean",
+          label: "Force Overwrite",
+        }),
+      ],
+      groups: [
+        {
+          fields: ["isRecursive", "recursiveDepth"],
+          layout: "field-group-check-fill",
         },
-      },
-      {
-        name: "outputPath",
-        type: "path",
-        label: "Output Path",
-        description:
-          "Location of the resulting JSON file. If using append mode, it will search here for the JSON file. By default, this uses the sourcePath.",
-      },
-      {
-        name: "rootPath",
-        type: "string",
-        label: "Root Path",
-        description:
-          "Path your media player (Plex, Jellyfin, Emby) sees for your library — written into the output JSON's file paths so the player can match its catalog. The path does not have to exist on this machine.",
-      },
-      {
-        name: "folders",
-        type: "folderMultiSelect",
-        label: "Folders",
-        description:
-          "List of folder names relative to the sourcePath to include. If you're searching a root path with lots of media, this can reduce the list to only those in Plex. Ensure these folder names match the ones in Plex.",
-        sourceField: "sourcePath",
-      },
-      {
-        name: "force",
-        type: "boolean",
-        label: "Force Overwrite",
-        description:
-          "Instead of appending the current JSON file, it will rescan every file.",
-        default: false,
-      },
-    ],
-    groups: [
-      {
-        fields: ["isRecursive", "recursiveDepth"],
-        layout: "field-group-check-fill",
-      },
-    ],
-  },
+      ],
+    }
+  })(),
 }
 
 export const TAG_ORDER = [
