@@ -42,7 +42,7 @@ Frameworks: vitest (unit + app-command), Hono in-process testing, Playwright (e2
 
 ### Pre-merge gate (run in order)
 
-1. `yarn format` — auto-fix formatting; re-stage changed files
+1. `yarn lint` — auto-fix formatting (biome + eslint); re-stage changed files
 2. `yarn test` — unit + integration
 3. `yarn typecheck` — full monorepo type check
 4. `yarn lint` — biome + eslint from repo root
