@@ -194,3 +194,9 @@ export type SearchDvdCompareResponse = z.infer<
 export type ListDvdCompareReleasesResponse = z.infer<
   typeof schemas.listDvdCompareReleasesResponseSchema
 >
+export type DeleteModeResponse = z.infer<
+  typeof schemas.deleteModeResponseSchema
+>
+export type DeleteFilesResponse = z.infer<
+  typeof schemas.deleteFilesResponseSchema
+>
