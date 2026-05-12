@@ -10,7 +10,12 @@ import {
   dryRunAtom,
   failureModeAtom,
 } from "../state/dryRunQuery"
-import { insertGroupAtom } from "../state/groupAtoms"
+import { dragReorderAtom } from "../state/dragAtoms"
+import {
+  insertGroupAtom,
+  moveGroupAtom,
+  removeGroupAtom,
+} from "../state/groupAtoms"
 import {
   canRedoAtom,
   canUndoAtom,
@@ -29,6 +34,8 @@ import { setAllCollapsedAtom } from "../state/sequenceAtoms"
 import {
   changeCommandAtom,
   insertStepAtom,
+  moveStepAtom,
+  removeStepAtom,
   setLinkAtom,
   setParamAtom,
 } from "../state/stepAtoms"
@@ -149,6 +156,65 @@ export const useBuilderActions = () => {
     (index: number, isParallel: boolean) => {
       pushHistory()
       store.set(insertGroupAtom, { index, isParallel })
+    },
+    [store, pushHistory],
+  )
+
+  const moveStep = useCallback(
+    (args: {
+      stepId: string
+      direction: -1 | 1
+      parentGroupId?: string | null
+    }) => {
+      pushHistory()
+      runWithViewTransition(() =>
+        store.set(moveStepAtom, args),
+      )
+    },
+    [store, pushHistory],
+  )
+
+  const removeStep = useCallback(
+    (stepId: string) => {
+      pushHistory()
+      runWithViewTransition(() =>
+        store.set(removeStepAtom, stepId),
+      )
+    },
+    [store, pushHistory],
+  )
+
+  const moveGroup = useCallback(
+    (args: { groupId: string; direction: -1 | 1 }) => {
+      pushHistory()
+      runWithViewTransition(() =>
+        store.set(moveGroupAtom, args),
+      )
+    },
+    [store, pushHistory],
+  )
+
+  const removeGroup = useCallback(
+    (groupId: string) => {
+      pushHistory()
+      runWithViewTransition(() =>
+        store.set(removeGroupAtom, groupId),
+      )
+    },
+    [store, pushHistory],
+  )
+
+  const reorderDrag = useCallback(
+    (args: {
+      activeId: string
+      overId: string
+      sourceContainerId: string
+      targetContainerId: string
+    }) => {
+      pushHistory()
+      runWithViewTransition(() =>
+        store.set(dragReorderAtom, args),
+      )
     },
     [store, pushHistory],
   )
@@ -510,8 +576,13 @@ export const useBuilderActions = () => {
     copyYaml,
     insertGroup,
     insertStep,
+    moveGroup,
+    moveStep,
     pasteCardAt,
     redo,
+    removeGroup,
+    removeStep,
+    reorderDrag,
     runGroup,
     runViaApi,
     setAllCollapsed,
