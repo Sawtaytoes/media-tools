@@ -25,6 +25,11 @@ export type FieldOverrides = Omit<
   // Web can override the schema's .describe() with a UI-friendlier
   // version. When absent, the Zod description is used.
   description?: string
+  // Override the derived `required` flag. The helper defaults to
+  // `!optional()` from the schema; the UI can declare otherwise when
+  // e.g. a lookup-populated id is schema-optional but UI-required
+  // (the form refuses to submit until the lookup runs).
+  required?: boolean
 }
 
 // Walks the Zod node chain (default-wraps, optional-wraps) down to the
@@ -106,7 +111,8 @@ export const fieldBuilder = <
       name,
       description:
         overrides.description ?? introspected.description,
-      required: !introspected.isOptional,
+      required:
+        overrides.required ?? !introspected.isOptional,
       // Default precedence: explicit override wins; otherwise pull from
       // the Zod schema. Web tests for `default === undefined` to mean
       // "no default" so we only set it when there is one.
@@ -126,17 +132,19 @@ export const fieldBuilder = <
 }
 
 // Helper to spread overrides without re-applying description / default
-// / options (those are merged above with introspection precedence).
+// / options / required (those are merged above with introspection
+// precedence).
 const stripOverrideMetadata = (
   overrides: FieldOverrides,
 ): Omit<
   FieldOverrides,
-  "description" | "default" | "options"
+  "description" | "default" | "options" | "required"
 > => {
   const {
     description: _description,
     default: _default,
     options: _options,
+    required: _required,
     ...rest
   } = overrides
   return rest
