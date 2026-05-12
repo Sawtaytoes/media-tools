@@ -191,11 +191,13 @@ describe("undo", () => {
     await userEvent.click(
       screen.getByRole("button", { name: "Undo" }),
     )
-    expect(
-      store
-        .get(pathsAtom)
-        .some((path) => path.value === "/initial"),
-    ).toBe(true)
+    await waitFor(() => {
+      expect(
+        store
+          .get(pathsAtom)
+          .some((path) => path.value === "/initial"),
+      ).toBe(true)
+    })
   })
 
   test("preserves blank cards that were in state when the action was pushed", async () => {
@@ -282,19 +284,23 @@ describe("redo", () => {
     await userEvent.click(
       screen.getByRole("button", { name: "Undo" }),
     )
-    expect(
-      store
-        .get(pathsAtom)
-        .some((path) => path.value === "/initial"),
-    ).toBe(true)
+    await waitFor(() =>
+      expect(
+        store
+          .get(pathsAtom)
+          .some((path) => path.value === "/initial"),
+      ).toBe(true),
+    )
     await userEvent.click(
       screen.getByRole("button", { name: "Redo" }),
     )
-    expect(
-      store
-        .get(pathsAtom)
-        .some((path) => path.value === "/v1"),
-    ).toBe(true)
+    await waitFor(() =>
+      expect(
+        store
+          .get(pathsAtom)
+          .some((path) => path.value === "/v1"),
+      ).toBe(true),
+    )
   })
 })
 

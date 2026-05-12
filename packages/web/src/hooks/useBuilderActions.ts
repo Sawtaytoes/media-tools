@@ -84,7 +84,7 @@ export const useBuilderActions = () => {
       ...prev,
       captureSnapshot(store),
     ])
-    applySnapshot(store, snapshot)
+    runWithViewTransition(() => applySnapshot(store, snapshot))
     store.set(
       canUndoAtom,
       store.get(undoStackAtom).length > 0,
@@ -101,7 +101,7 @@ export const useBuilderActions = () => {
       ...prev,
       captureSnapshot(store),
     ])
-    applySnapshot(store, snapshot)
+    runWithViewTransition(() => applySnapshot(store, snapshot))
     store.set(
       canRedoAtom,
       store.get(redoStackAtom).length > 0,
