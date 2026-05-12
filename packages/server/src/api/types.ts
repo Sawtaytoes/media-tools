@@ -99,19 +99,84 @@ export type StepEvent = {
   status: JobStatus
 }
 
+// Terminal payload for the /jobs/:id/logs SSE stream. Sent once on
+// completion / failure / cancellation. Has no `type` discriminator — the
+// presence of `done: true` is the discriminator (matches the wire format
+// emitted by logRoutes.ts).
+export type JobLogDoneEvent = {
+  done: true
+  status: JobStatus
+  results?: unknown[]
+  outputs?: Record<string, unknown> | null
+  error?: string | null
+}
+
+// Live log line on the /jobs/:id/logs SSE stream. No `type` field — the
+// presence of `line` is the discriminator. Each line carries an SSE `id`
+// equal to its index in `job.logs` so reconnects can dedup via
+// lastEventId; the JSON payload itself is just { line }.
+export type JobLogLineEvent = {
+  line: string
+}
+
+// Full discriminated union of payloads that can arrive on /jobs/:id/logs.
+// Note that the discriminator is split across three keys: `type` (for
+// step/progress/prompt events), `line` (for log lines), and `done` (for
+// the terminal frame). Consumers narrow by checking which key is present.
+export type JobLogsEvent =
+  | StepEvent
+  | ProgressEvent
+  | PromptEvent
+  | JobLogLineEvent
+  | JobLogDoneEvent
+
 export type {
   DvdCompareResult,
   DvdCompareVariant,
 } from "../tools/searchDvdCompare.js"
 
+import { z } from "@hono/zod-openapi"
+
 import type {
   directoryEntrySchema,
   fileExplorerEntrySchema,
 } from "./schemas.js"
+import * as schemas from "./schemas.js"
 
 export type DirEntry = ReturnType<
   (typeof directoryEntrySchema)["parse"]
 >
 export type FileEntry = ReturnType<
   (typeof fileExplorerEntrySchema)["parse"]
+>
+
+// Response shapes for the API endpoints web calls. Derived from the same
+// Zod schemas the server uses for validation so any server-side change is
+// observed by web typecheck instead of slipping through inline `as` casts.
+export type CreateJobResponse = z.infer<
+  ReturnType<typeof schemas.createJobResponseSchema>
+>
+export type ListDirectoryEntriesResponse = z.infer<
+  typeof schemas.listDirectoryEntriesResponseSchema
+>
+export type ListFilesResponse = z.infer<
+  typeof schemas.listFilesResponseSchema
+>
+export type SearchMalResponse = z.infer<
+  typeof schemas.searchMalResponseSchema
+>
+export type SearchAnidbResponse = z.infer<
+  typeof schemas.searchAnidbResponseSchema
+>
+export type SearchTvdbResponse = z.infer<
+  typeof schemas.searchTvdbResponseSchema
+>
+export type SearchMovieDbResponse = z.infer<
+  typeof schemas.searchMovieDbResponseSchema
+>
+export type SearchDvdCompareResponse = z.infer<
+  typeof schemas.searchDvdCompareResponseSchema
+>
+export type ListDvdCompareReleasesResponse = z.infer<
+  typeof schemas.listDvdCompareReleasesResponseSchema
 >
