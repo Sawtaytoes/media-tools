@@ -36,6 +36,20 @@ export type Job = {
   stepId: string | null
 }
 
+// JSON-serialized projection of `Job` that the web client actually
+// receives on /jobs/stream and /jobs/:id. JSON.stringify turns Date
+// instances into ISO strings, so consumers reading these fields from
+// the wire see `string | null`, not `Date | null`. Use this type on the
+// client where you handle response payloads; use `Job` on the server
+// where you handle in-memory state.
+export type JobWire = Omit<
+  Job,
+  "startedAt" | "completedAt"
+> & {
+  startedAt: string | null
+  completedAt: string | null
+}
+
 export type PromptOption = {
   index: number
   label: string
