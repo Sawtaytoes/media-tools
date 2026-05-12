@@ -212,7 +212,8 @@ export const FileExplorerModal = () => {
         )
         if (path) url.searchParams.set("path", path)
         const resp = await fetch(url)
-        const data = (await resp.json()) as DeleteModeResponse
+        const data =
+          (await resp.json()) as DeleteModeResponse
         setDeleteMode(data.mode)
         setDeleteModeReason(data.reason ?? null)
       } catch {
@@ -356,7 +357,8 @@ export const FileExplorerModal = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ paths }),
       })
-      const data = (await resp.json()) as DeleteFilesResponse
+      const data =
+        (await resp.json()) as DeleteFilesResponse
       const failed = data.results.filter(
         (result) => !result.ok,
       )

@@ -7,7 +7,8 @@ import type { Job } from "../types"
 // compile (the default is filled in here) and only places that care
 // about the new field need touching.
 export const makeFakeJob = (
-  overrides: Partial<Job> & Pick<Job, "id" | "commandName" | "status">,
+  overrides: Partial<Job> &
+    Pick<Job, "id" | "commandName" | "status">,
 ): Job => ({
   completedAt: null,
   error: null,

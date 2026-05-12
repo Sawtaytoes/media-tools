@@ -44,7 +44,7 @@ const introspectField = (
 } => {
   let cursor: z.ZodTypeAny = field
   let description: string | undefined = cursor.description
-  let defaultValue: unknown = undefined
+  let defaultValue: unknown
   let isOptional = false
 
   // Unwrap z.ZodDefault / z.ZodOptional layers until we hit the
@@ -80,14 +80,22 @@ const introspectField = (
   const innerDef = readDef(cursor)
   let enumOptions: EnumOption[] | undefined
   if (innerDef.type === "enum" && innerDef.entries) {
-    const entries = innerDef.entries as Record<string, string>
+    const entries = innerDef.entries as Record<
+      string,
+      string
+    >
     enumOptions = Object.values(entries).map((value) => ({
       value,
       label: value,
     }))
   }
 
-  return { description, defaultValue, isOptional, enumOptions }
+  return {
+    description,
+    defaultValue,
+    isOptional,
+    enumOptions,
+  }
 }
 
 // Curried builder: pass the Zod schema once, then describe each field
@@ -105,7 +113,9 @@ export const fieldBuilder = <
     name: Key,
     overrides: FieldOverrides,
   ): CommandField => {
-    const fieldSchema = schema.def.shape[name] as z.ZodTypeAny
+    const fieldSchema = schema.def.shape[
+      name
+    ] as z.ZodTypeAny
     const introspected = introspectField(fieldSchema)
     return {
       name,
@@ -125,7 +135,8 @@ export const fieldBuilder = <
                 : introspected.defaultValue,
           }
         : {}),
-      options: overrides.options ?? introspected.enumOptions,
+      options:
+        overrides.options ?? introspected.enumOptions,
       ...stripOverrideMetadata(overrides),
     }
   }

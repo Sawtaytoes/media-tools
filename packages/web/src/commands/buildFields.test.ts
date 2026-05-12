@@ -7,21 +7,21 @@ describe("fieldBuilder", () => {
     const schema = z.object({
       sourcePath: z.string().describe("Source directory"),
     })
-    const f = fieldBuilder(schema)
-    const field = f("sourcePath", { type: "path" })
-    expect(field.description).toBe("Source directory")
+    const field = fieldBuilder(schema)
+    const result = field("sourcePath", { type: "path" })
+    expect(result.description).toBe("Source directory")
   })
 
   test("override wins over schema description", () => {
     const schema = z.object({
       sourcePath: z.string().describe("Source directory"),
     })
-    const f = fieldBuilder(schema)
-    const field = f("sourcePath", {
+    const field = fieldBuilder(schema)
+    const result = field("sourcePath", {
       type: "path",
       description: "Pick where your files live",
     })
-    expect(field.description).toBe(
+    expect(result.description).toBe(
       "Pick where your files live",
     )
   })
@@ -31,20 +31,23 @@ describe("fieldBuilder", () => {
       isRecursive: z.boolean().default(true),
       depth: z.number().default(3),
     })
-    const f = fieldBuilder(schema)
-    expect(f("isRecursive", { type: "boolean" }).default).toBe(
-      true,
+    const field = fieldBuilder(schema)
+    expect(
+      field("isRecursive", { type: "boolean" }).default,
+    ).toBe(true)
+    expect(field("depth", { type: "number" }).default).toBe(
+      3,
     )
-    expect(f("depth", { type: "number" }).default).toBe(3)
   })
 
   test("override default wins when explicitly given", () => {
     const schema = z.object({
       depth: z.number().default(3),
     })
-    const f = fieldBuilder(schema)
+    const field = fieldBuilder(schema)
     expect(
-      f("depth", { type: "number", default: 5 }).default,
+      field("depth", { type: "number", default: 5 })
+        .default,
     ).toBe(5)
   })
 
@@ -53,20 +56,33 @@ describe("fieldBuilder", () => {
       sourcePath: z.string(),
       tag: z.string().optional(),
     })
-    const f = fieldBuilder(schema)
-    expect(f("sourcePath", { type: "string" }).required).toBe(
-      true,
+    const field = fieldBuilder(schema)
+    expect(
+      field("sourcePath", { type: "string" }).required,
+    ).toBe(true)
+    expect(field("tag", { type: "string" }).required).toBe(
+      false,
     )
-    expect(f("tag", { type: "string" }).required).toBe(false)
+  })
+
+  test("required override wins when explicitly given", () => {
+    const schema = z.object({
+      malId: z.number().optional(),
+    })
+    const field = fieldBuilder(schema)
+    expect(
+      field("malId", { type: "number", required: true })
+        .required,
+    ).toBe(true)
   })
 
   test("auto-derives enum options from z.enum(...)", () => {
     const schema = z.object({
       strategy: z.enum(["merge", "replace", "skip"]),
     })
-    const f = fieldBuilder(schema)
-    const field = f("strategy", { type: "enum" })
-    expect(field.options).toEqual([
+    const field = fieldBuilder(schema)
+    const result = field("strategy", { type: "enum" })
+    expect(result.options).toEqual([
       { value: "merge", label: "merge" },
       { value: "replace", label: "replace" },
       { value: "skip", label: "skip" },
@@ -77,18 +93,18 @@ describe("fieldBuilder", () => {
     const schema = z.object({
       malId: z.number().optional(),
     })
-    const f = fieldBuilder(schema)
-    const field = f("malId", {
+    const field = fieldBuilder(schema)
+    const result = field("malId", {
       type: "numberWithLookup",
       lookupType: "mal",
       companionNameField: "malName",
       min: 1,
       visibleWhen: { searchTerm: { isEmpty: true } },
     })
-    expect(field.lookupType).toBe("mal")
-    expect(field.companionNameField).toBe("malName")
-    expect(field.min).toBe(1)
-    expect(field.visibleWhen).toEqual({
+    expect(result.lookupType).toBe("mal")
+    expect(result.companionNameField).toBe("malName")
+    expect(result.min).toBe(1)
+    expect(result.visibleWhen).toEqual({
       searchTerm: { isEmpty: true },
     })
   })

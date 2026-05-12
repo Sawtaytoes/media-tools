@@ -18,8 +18,10 @@
 // JSON.stringify. The server's in-memory `Job` (Date | null) becomes
 // `JobWire` (string | null) on the wire — we re-alias here so existing
 // `import type { Job }` call-sites continue to work without churn.
-export type { JobStatus } from "@media-tools/server/api-types"
-export type { JobWire as Job } from "@media-tools/server/api-types"
+export type {
+  JobStatus,
+  JobWire as Job,
+} from "@media-tools/server/api-types"
 
 export type ProgressSnapshot = {
   ratio?: number

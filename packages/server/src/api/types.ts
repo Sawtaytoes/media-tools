@@ -149,13 +149,12 @@ export type {
   DvdCompareVariant,
 } from "../tools/searchDvdCompare.js"
 
-import { z } from "@hono/zod-openapi"
-
+import type { z } from "@hono/zod-openapi"
+import type * as schemas from "./schemas.js"
 import type {
   directoryEntrySchema,
   fileExplorerEntrySchema,
 } from "./schemas.js"
-import * as schemas from "./schemas.js"
 
 export type DirEntry = ReturnType<
   (typeof directoryEntrySchema)["parse"]

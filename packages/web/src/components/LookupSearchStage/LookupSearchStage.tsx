@@ -113,8 +113,7 @@ const fetchReleases = async (
     const data =
       (await resp.json()) as ListDvdCompareReleasesResponse
     return {
-      releases: (data.releases ??
-        []) as LookupRelease[],
+      releases: (data.releases ?? []) as LookupRelease[],
       debug: data.debug ?? null,
       error: data.error ?? null,
     }

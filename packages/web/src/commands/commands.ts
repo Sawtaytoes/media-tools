@@ -51,20 +51,20 @@ import {
   splitChaptersRequestSchema,
   storeAspectRatioDataRequestSchema,
 } from "@media-tools/server/api-schemas"
-import { fieldBuilder } from "./buildFields"
 import type { Commands } from "../commands/types"
+import { fieldBuilder } from "./buildFields"
 
 export const COMMANDS: Commands = {
   // File Operations
   makeDirectory: (() => {
-    const f = fieldBuilder(makeDirectoryRequestSchema)
+    const field = fieldBuilder(makeDirectoryRequestSchema)
     return {
       summary:
         "Create a directory (or the parent directory of a file path)",
       tag: "File Operations",
       outputFolderName: null,
       fields: [
-        f("filePath", {
+        field("filePath", {
           type: "path",
           label: "Directory Path",
         }),
@@ -72,14 +72,17 @@ export const COMMANDS: Commands = {
     }
   })(),
   copyFiles: (() => {
-    const f = fieldBuilder(copyFilesRequestSchema)
+    const field = fieldBuilder(copyFilesRequestSchema)
     return {
       summary: "Copy files from source to destination",
       tag: "File Operations",
       outputFolderName: null,
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
-        f("destinationPath", {
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
+        field("destinationPath", {
           type: "path",
           label: "Destination Path",
         }),
@@ -87,7 +90,7 @@ export const COMMANDS: Commands = {
     }
   })(),
   flattenOutput: (() => {
-    const f = fieldBuilder(flattenOutputRequestSchema)
+    const field = fieldBuilder(flattenOutputRequestSchema)
     return {
       summary:
         "Flatten a chained step's output (copies files up one level; source folder kept by default)",
@@ -97,11 +100,11 @@ export const COMMANDS: Commands = {
       // should chain off is the parent of the source — not the source itself.
       outputComputation: "parentOfSource",
       fields: [
-        f("sourcePath", {
+        field("sourcePath", {
           type: "path",
           label: "Output Folder to Flatten",
         }),
-        f("deleteSourceFolder", {
+        field("deleteSourceFolder", {
           type: "boolean",
           label:
             "Also delete the source folder after copying",
@@ -110,14 +113,17 @@ export const COMMANDS: Commands = {
     }
   })(),
   moveFiles: (() => {
-    const f = fieldBuilder(moveFilesRequestSchema)
+    const field = fieldBuilder(moveFilesRequestSchema)
     return {
       summary: "Move files from source to destination",
       tag: "File Operations",
       outputFolderName: null,
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
-        f("destinationPath", {
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
+        field("destinationPath", {
           type: "path",
           label: "Destination Path",
         }),
@@ -125,17 +131,19 @@ export const COMMANDS: Commands = {
     }
   })(),
   replaceAttachments: (() => {
-    const f = fieldBuilder(replaceAttachmentsRequestSchema)
+    const field = fieldBuilder(
+      replaceAttachmentsRequestSchema,
+    )
     return {
       summary: "Replace attachments in media files",
       tag: "File Operations",
       outputFolderName: "REPLACED-ATTACHMENTS",
       fields: [
-        f("sourceFilesPath", {
+        field("sourceFilesPath", {
           type: "path",
           label: "Source Files Path",
         }),
-        f("destinationFilesPath", {
+        field("destinationFilesPath", {
           type: "path",
           label: "Destination Files Path",
         }),
@@ -143,28 +151,36 @@ export const COMMANDS: Commands = {
     }
   })(),
   deleteFilesByExtension: (() => {
-    const f = fieldBuilder(deleteFilesByExtensionRequestSchema)
+    const field = fieldBuilder(
+      deleteFilesByExtensionRequestSchema,
+    )
     return {
       summary: "Delete files matching extensions",
       tag: "File Operations",
       outputFolderName: null,
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
         // Drift: `.openapi({ example })` on this field appears to strip the
         // schema's `.describe()` text, so the helper can't pick it up. Pass
         // the description explicitly until the schema chain is reordered.
-        f("extensions", {
+        field("extensions", {
           type: "stringArray",
           label: "Extensions",
           placeholder: ".srt, .idx",
           description:
             "List of file extensions to delete (with or without leading dot), e.g. ['.srt', 'idx'].",
         }),
-        f("isRecursive", { type: "boolean", label: "Recursive" }),
+        field("isRecursive", {
+          type: "boolean",
+          label: "Recursive",
+        }),
         // Schema default is 0 — the runtime sentinel for "use default
         // depth of 2". UI shows that literally; if 2 is wanted instead,
         // override `default` here.
-        f("recursiveDepth", {
+        field("recursiveDepth", {
           type: "number",
           label: "Depth",
           min: 0,
@@ -183,18 +199,18 @@ export const COMMANDS: Commands = {
     }
   })(),
   deleteFolder: (() => {
-    const f = fieldBuilder(deleteFolderRequestSchema)
+    const field = fieldBuilder(deleteFolderRequestSchema)
     return {
       summary:
         "Recursively delete a folder and all its contents (DESTRUCTIVE — requires Confirm)",
       tag: "File Operations",
       outputFolderName: null,
       fields: [
-        f("folderPath", {
+        field("folderPath", {
           type: "path",
           label: "Folder to Delete",
         }),
-        f("confirm", {
+        field("confirm", {
           type: "boolean",
           label:
             "Confirm: I understand this will recursively delete the folder",
@@ -205,14 +221,17 @@ export const COMMANDS: Commands = {
     }
   })(),
   splitChapters: (() => {
-    const f = fieldBuilder(splitChaptersRequestSchema)
+    const field = fieldBuilder(splitChaptersRequestSchema)
     return {
       summary: "Split media files by chapter markers",
       tag: "File Operations",
       outputFolderName: "SPLITS",
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
-        f("chapterSplits", {
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
+        field("chapterSplits", {
           type: "stringArray",
           label: "Chapter Splits",
           placeholder: "ch1, ch2",
@@ -221,26 +240,32 @@ export const COMMANDS: Commands = {
     }
   })(),
   remuxToMkv: (() => {
-    const f = fieldBuilder(remuxToMkvRequestSchema)
+    const field = fieldBuilder(remuxToMkvRequestSchema)
     return {
       summary:
         "Pass-through container remux into .mkv siblings (no track changes)",
       tag: "File Operations",
       outputFolderName: null,
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
         // Drift: `.openapi({ example })` on this field strips the schema's
         // `.describe()` text. Pass the description explicitly until the
         // schema chain is reordered.
-        f("extensions", {
+        field("extensions", {
           type: "stringArray",
           label: "Extensions",
           placeholder: ".ts, .m2ts",
           description:
             "List of file extensions to remux (with or without leading dot), e.g. ['.ts', '.m2ts'].",
         }),
-        f("isRecursive", { type: "boolean", label: "Recursive" }),
-        f("recursiveDepth", {
+        field("isRecursive", {
+          type: "boolean",
+          label: "Recursive",
+        }),
+        field("recursiveDepth", {
           type: "number",
           label: "Depth",
           min: 0,
@@ -249,7 +274,7 @@ export const COMMANDS: Commands = {
             value: true,
           },
         }),
-        f("isSourceDeletedOnSuccess", {
+        field("isSourceDeletedOnSuccess", {
           type: "boolean",
           label: "Delete source on per-file success",
         }),
@@ -264,17 +289,17 @@ export const COMMANDS: Commands = {
   })(),
   // Audio Operations
   getAudioOffsets: (() => {
-    const f = fieldBuilder(getAudioOffsetsRequestSchema)
+    const field = fieldBuilder(getAudioOffsetsRequestSchema)
     return {
       summary: "Calculate audio sync offsets between files",
       tag: "Audio Operations",
       outputFolderName: "AUDIO-OFFSETS",
       fields: [
-        f("sourceFilesPath", {
+        field("sourceFilesPath", {
           type: "path",
           label: "Source Files Path",
         }),
-        f("destinationFilesPath", {
+        field("destinationFilesPath", {
           type: "path",
           label: "Destination Files Path",
         }),
@@ -282,14 +307,19 @@ export const COMMANDS: Commands = {
     }
   })(),
   replaceFlacWithPcmAudio: (() => {
-    const f = fieldBuilder(replaceFlacWithPcmAudioRequestSchema)
+    const field = fieldBuilder(
+      replaceFlacWithPcmAudioRequestSchema,
+    )
     return {
       summary: "Replace FLAC audio with PCM audio",
       tag: "Audio Operations",
       outputFolderName: "AUDIO-CONVERTED",
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
-        f("isRecursive", {
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
+        field("isRecursive", {
           type: "boolean",
           label: "Recursive",
         }),
@@ -298,26 +328,31 @@ export const COMMANDS: Commands = {
   })(),
   // Track Operations
   changeTrackLanguages: (() => {
-    const f = fieldBuilder(changeTrackLanguagesRequestSchema)
+    const field = fieldBuilder(
+      changeTrackLanguagesRequestSchema,
+    )
     return {
       summary: "Change language tags for media tracks",
       tag: "Track Operations",
       outputFolderName: null,
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
-        f("isRecursive", {
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
+        field("isRecursive", {
           type: "boolean",
           label: "Recursive",
         }),
-        f("audioLanguage", {
+        field("audioLanguage", {
           type: "languageCode",
           label: "Audio Language",
         }),
-        f("subtitlesLanguage", {
+        field("subtitlesLanguage", {
           type: "languageCode",
           label: "Subtitles Language",
         }),
-        f("videoLanguage", {
+        field("videoLanguage", {
           type: "languageCode",
           label: "Video Language",
         }),
@@ -325,7 +360,7 @@ export const COMMANDS: Commands = {
     }
   })(),
   fixIncorrectDefaultTracks: (() => {
-    const f = fieldBuilder(
+    const field = fieldBuilder(
       fixIncorrectDefaultTracksRequestSchema,
     )
     return {
@@ -333,8 +368,11 @@ export const COMMANDS: Commands = {
       tag: "Track Operations",
       outputFolderName: null,
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
-        f("isRecursive", {
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
+        field("isRecursive", {
           type: "boolean",
           label: "Recursive",
         }),
@@ -342,39 +380,45 @@ export const COMMANDS: Commands = {
     }
   })(),
   keepLanguages: (() => {
-    const f = fieldBuilder(keepLanguagesRequestSchema)
+    const field = fieldBuilder(keepLanguagesRequestSchema)
     return {
       summary: "Filter media tracks by language",
       tag: "Track Operations",
       outputFolderName: "LANGUAGE-TRIMMED",
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
-        f("isRecursive", {
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
+        field("isRecursive", {
           type: "boolean",
           label: "Recursive",
         }),
-        f("audioLanguages", {
+        field("audioLanguages", {
           type: "languageCodes",
           label: "Audio Languages",
           placeholder: "eng, jpn",
         }),
-        f("subtitlesLanguages", {
+        field("subtitlesLanguages", {
           type: "languageCodes",
           label: "Subtitles Languages",
           placeholder: "eng",
         }),
-        f("useFirstAudioLanguage", {
+        field("useFirstAudioLanguage", {
           type: "boolean",
           label: "First Audio Only",
         }),
-        f("useFirstSubtitlesLanguage", {
+        field("useFirstSubtitlesLanguage", {
           type: "boolean",
           label: "First Subtitles Only",
         }),
       ],
       groups: [
         {
-          fields: ["audioLanguages", "useFirstAudioLanguage"],
+          fields: [
+            "audioLanguages",
+            "useFirstAudioLanguage",
+          ],
           layout: "field-group-two-col",
         },
         {
@@ -388,33 +432,33 @@ export const COMMANDS: Commands = {
     }
   })(),
   mergeTracks: (() => {
-    const f = fieldBuilder(mergeTracksRequestSchema)
+    const field = fieldBuilder(mergeTracksRequestSchema)
     return {
       summary: "Merge subtitle tracks into media files",
       tag: "Track Operations",
       outputFolderName: "SUBTITLED",
       fields: [
-        f("mediaFilesPath", {
+        field("mediaFilesPath", {
           type: "path",
           label: "Media Files Path",
         }),
-        f("subtitlesPath", {
+        field("subtitlesPath", {
           type: "path",
           label: "Subtitles Path",
         }),
-        f("hasChapterSyncOffset", {
+        field("hasChapterSyncOffset", {
           type: "boolean",
           label: "Chapter-Sync Offset",
         }),
-        f("globalOffset", {
+        field("globalOffset", {
           type: "number",
           label: "Global Offset (ms)",
         }),
-        f("includeChapters", {
+        field("includeChapters", {
           type: "boolean",
           label: "Include Chapters",
         }),
-        f("offsets", {
+        field("offsets", {
           type: "numberArray",
           label: "Per-file Offsets (ms)",
           placeholder: "0, -200, 150",
@@ -423,28 +467,31 @@ export const COMMANDS: Commands = {
     }
   })(),
   reorderTracks: (() => {
-    const f = fieldBuilder(reorderTracksRequestSchema)
+    const field = fieldBuilder(reorderTracksRequestSchema)
     return {
       summary: "Reorder media tracks",
       tag: "Track Operations",
       outputFolderName: "REORDERED-TRACKS",
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
-        f("isRecursive", {
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
+        field("isRecursive", {
           type: "boolean",
           label: "Recursive",
         }),
-        f("videoTrackIndexes", {
+        field("videoTrackIndexes", {
           type: "numberArray",
           label: "Video Track Indexes",
           placeholder: "0",
         }),
-        f("audioTrackIndexes", {
+        field("audioTrackIndexes", {
           type: "numberArray",
           label: "Audio Track Indexes",
           placeholder: "0, 1",
         }),
-        f("subtitlesTrackIndexes", {
+        field("subtitlesTrackIndexes", {
           type: "numberArray",
           label: "Subtitles Track Indexes",
           placeholder: "0",
@@ -453,47 +500,47 @@ export const COMMANDS: Commands = {
     }
   })(),
   replaceTracks: (() => {
-    const f = fieldBuilder(replaceTracksRequestSchema)
+    const field = fieldBuilder(replaceTracksRequestSchema)
     return {
       summary: "Replace media tracks in destination files",
       tag: "Track Operations",
       outputFolderName: "REPLACED-TRACKS",
       fields: [
-        f("sourceFilesPath", {
+        field("sourceFilesPath", {
           type: "path",
           label: "Source Files Path",
         }),
-        f("destinationFilesPath", {
+        field("destinationFilesPath", {
           type: "path",
           label: "Destination Files Path",
         }),
-        f("hasChapterSyncOffset", {
+        field("hasChapterSyncOffset", {
           type: "boolean",
           label: "Chapter-Sync Offset",
         }),
-        f("globalOffset", {
+        field("globalOffset", {
           type: "number",
           label: "Global Offset (ms)",
         }),
-        f("includeChapters", {
+        field("includeChapters", {
           type: "boolean",
           label: "Include Chapters",
         }),
-        f("audioLanguages", {
+        field("audioLanguages", {
           type: "languageCodes",
           label: "Audio Languages",
           placeholder: "eng, jpn",
         }),
-        f("subtitlesLanguages", {
+        field("subtitlesLanguages", {
           type: "languageCodes",
           label: "Subtitles Languages",
           placeholder: "eng",
         }),
-        f("videoLanguages", {
+        field("videoLanguages", {
           type: "languageCodes",
           label: "Video Languages",
         }),
-        f("offsets", {
+        field("offsets", {
           type: "numberArray",
           label: "Per-file Offsets (ms)",
         }),
@@ -502,19 +549,24 @@ export const COMMANDS: Commands = {
   })(),
   // Subtitle Operations
   extractSubtitles: (() => {
-    const f = fieldBuilder(extractSubtitlesRequestSchema)
+    const field = fieldBuilder(
+      extractSubtitlesRequestSchema,
+    )
     return {
       summary:
         "Extract subtitle tracks into separate files alongside each video file",
       tag: "Subtitle Operations",
       outputFolderName: "EXTRACTED-SUBTITLES",
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
-        f("isRecursive", {
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
+        field("isRecursive", {
           type: "boolean",
           label: "Recursive",
         }),
-        f("subtitlesLanguage", {
+        field("subtitlesLanguage", {
           type: "languageCode",
           label: "Subtitles Language",
         }),
@@ -522,7 +574,9 @@ export const COMMANDS: Commands = {
     }
   })(),
   copyOutSubtitles: (() => {
-    const f = fieldBuilder(copyOutSubtitlesRequestSchema)
+    const field = fieldBuilder(
+      copyOutSubtitlesRequestSchema,
+    )
     return {
       summary:
         "[DEPRECATED — use extractSubtitles] Extract subtitle tracks into separate files alongside each video file",
@@ -530,12 +584,15 @@ export const COMMANDS: Commands = {
       tag: "Subtitle Operations",
       outputFolderName: "EXTRACTED-SUBTITLES",
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
-        f("isRecursive", {
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
+        field("isRecursive", {
           type: "boolean",
           label: "Recursive",
         }),
-        f("subtitlesLanguage", {
+        field("subtitlesLanguage", {
           type: "languageCode",
           label: "Subtitles Language",
         }),
@@ -543,14 +600,20 @@ export const COMMANDS: Commands = {
     }
   })(),
   isMissingSubtitles: (() => {
-    const f = fieldBuilder(isMissingSubtitlesRequestSchema)
+    const field = fieldBuilder(
+      isMissingSubtitlesRequestSchema,
+    )
     return {
-      summary: "Identify media files missing subtitle tracks",
+      summary:
+        "Identify media files missing subtitle tracks",
       tag: "Subtitle Operations",
       outputFolderName: null,
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
-        f("isRecursive", {
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
+        field("isRecursive", {
           type: "boolean",
           label: "Recursive",
         }),
@@ -558,20 +621,25 @@ export const COMMANDS: Commands = {
     }
   })(),
   modifySubtitleMetadata: (() => {
-    const f = fieldBuilder(modifySubtitleMetadataRequestSchema)
+    const field = fieldBuilder(
+      modifySubtitleMetadataRequestSchema,
+    )
     return {
       summary:
         "Apply DSL-driven modifications to ASS subtitle metadata. Toggle hasDefaultRules to prepend the in-tree heuristic rules.",
       tag: "Subtitle Operations",
       outputFolderName: null,
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
-        f("isRecursive", {
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
+        field("isRecursive", {
           type: "boolean",
           label: "Recursive",
         }),
         // Schema default is 0 — runtime sentinel for "use default depth of 2"
-        f("recursiveDepth", {
+        field("recursiveDepth", {
           type: "number",
           label: "Depth",
           min: 0,
@@ -584,8 +652,8 @@ export const COMMANDS: Commands = {
         // edited together inside the structured `subtitleRules` editor below.
         // Listing them as `hidden` keeps buildParams emitting them into YAML
         // without the step renderer trying to show a separate input row.
-        f("predicates", { type: "hidden" }),
-        f("hasDefaultRules", { type: "hidden" }),
+        field("predicates", { type: "hidden" }),
+        field("hasDefaultRules", { type: "hidden" }),
         // `subtitleRules` is the structured form-builder for the
         // modifySubtitleMetadata DSL — see
         // public/builder/js/components/dsl-rules-builder.js. It renders
@@ -597,7 +665,7 @@ export const COMMANDS: Commands = {
         // Schema has `.default([])` which would derive required:true, but
         // the structured rules editor explicitly supports an empty list
         // (the Default Rules toggle alone covers most cases).
-        f("rules", {
+        field("rules", {
           type: "subtitleRules",
           label: "Rules",
           required: false,
@@ -613,20 +681,23 @@ export const COMMANDS: Commands = {
   })(),
   // Analysis
   hasBetterAudio: (() => {
-    const f = fieldBuilder(hasBetterAudioRequestSchema)
+    const field = fieldBuilder(hasBetterAudioRequestSchema)
     return {
       summary:
         "Analyze and compare audio quality across files",
       tag: "Analysis",
       outputFolderName: null,
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
-        f("isRecursive", {
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
+        field("isRecursive", {
           type: "boolean",
           label: "Recursive",
         }),
         // Schema default is 0 — runtime sentinel for "use default depth of 2"
-        f("recursiveDepth", {
+        field("recursiveDepth", {
           type: "number",
           label: "Depth",
           min: 0,
@@ -645,19 +716,24 @@ export const COMMANDS: Commands = {
     }
   })(),
   hasBetterVersion: (() => {
-    const f = fieldBuilder(hasBetterVersionRequestSchema)
+    const field = fieldBuilder(
+      hasBetterVersionRequestSchema,
+    )
     return {
       summary: "Check if better version of media exists",
       tag: "Analysis",
       outputFolderName: null,
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
-        f("isRecursive", {
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
+        field("isRecursive", {
           type: "boolean",
           label: "Recursive",
         }),
         // Schema default is 0 — runtime sentinel for "use default depth of 2"
-        f("recursiveDepth", {
+        field("recursiveDepth", {
           type: "number",
           label: "Depth",
           min: 0,
@@ -676,19 +752,24 @@ export const COMMANDS: Commands = {
     }
   })(),
   hasDuplicateMusicFiles: (() => {
-    const f = fieldBuilder(hasDuplicateMusicFilesRequestSchema)
+    const field = fieldBuilder(
+      hasDuplicateMusicFilesRequestSchema,
+    )
     return {
       summary: "Identify duplicate music files",
       tag: "Analysis",
       outputFolderName: null,
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
-        f("isRecursive", {
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
+        field("isRecursive", {
           type: "boolean",
           label: "Recursive",
         }),
         // Schema default is 0 — runtime sentinel for "use default depth of 2"
-        f("recursiveDepth", {
+        field("recursiveDepth", {
           type: "number",
           label: "Depth",
           min: 0,
@@ -707,14 +788,19 @@ export const COMMANDS: Commands = {
     }
   })(),
   hasImaxEnhancedAudio: (() => {
-    const f = fieldBuilder(hasImaxEnhancedAudioRequestSchema)
+    const field = fieldBuilder(
+      hasImaxEnhancedAudioRequestSchema,
+    )
     return {
       summary: "Check for IMAX enhanced audio tracks",
       tag: "Analysis",
       outputFolderName: null,
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
-        f("isRecursive", {
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
+        field("isRecursive", {
           type: "boolean",
           label: "Recursive",
         }),
@@ -722,14 +808,19 @@ export const COMMANDS: Commands = {
     }
   })(),
   hasManyAudioTracks: (() => {
-    const f = fieldBuilder(hasManyAudioTracksRequestSchema)
+    const field = fieldBuilder(
+      hasManyAudioTracksRequestSchema,
+    )
     return {
       summary: "Identify files with many audio tracks",
       tag: "Analysis",
       outputFolderName: null,
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
-        f("isRecursive", {
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
+        field("isRecursive", {
           type: "boolean",
           label: "Recursive",
         }),
@@ -737,19 +828,24 @@ export const COMMANDS: Commands = {
     }
   })(),
   hasSurroundSound: (() => {
-    const f = fieldBuilder(hasSurroundSoundRequestSchema)
+    const field = fieldBuilder(
+      hasSurroundSoundRequestSchema,
+    )
     return {
       summary: "Check for surround sound audio tracks",
       tag: "Analysis",
       outputFolderName: null,
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
-        f("isRecursive", {
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
+        field("isRecursive", {
           type: "boolean",
           label: "Recursive",
         }),
         // Schema default is 0 — runtime sentinel for "use default depth of 2"
-        f("recursiveDepth", {
+        field("recursiveDepth", {
           type: "number",
           label: "Depth",
           min: 0,
@@ -768,15 +864,20 @@ export const COMMANDS: Commands = {
     }
   })(),
   hasWrongDefaultTrack: (() => {
-    const f = fieldBuilder(hasWrongDefaultTrackRequestSchema)
+    const field = fieldBuilder(
+      hasWrongDefaultTrackRequestSchema,
+    )
     return {
       summary:
         "Find files with incorrect default track selection",
       tag: "Analysis",
       outputFolderName: null,
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
-        f("isRecursive", {
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
+        field("isRecursive", {
           type: "boolean",
           label: "Recursive",
         }),
@@ -785,18 +886,23 @@ export const COMMANDS: Commands = {
   })(),
   // Naming Operations
   nameAnimeEpisodes: (() => {
-    const f = fieldBuilder(nameAnimeEpisodesRequestSchema)
+    const field = fieldBuilder(
+      nameAnimeEpisodesRequestSchema,
+    )
     return {
       summary:
         "Rename anime episode files using MyAnimeList metadata",
       tag: "Naming Operations",
       outputFolderName: null,
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
         // Schema marks malId optional (the CLI can take searchTerm instead),
         // but the builder form requires it — the lookup populates it before
         // submit. Override the helper's derivation.
-        f("malId", {
+        field("malId", {
           type: "numberWithLookup",
           lookupType: "mal",
           label: "MAL ID",
@@ -804,7 +910,7 @@ export const COMMANDS: Commands = {
           required: true,
           companionNameField: "malName",
         }),
-        f("seasonNumber", {
+        field("seasonNumber", {
           type: "number",
           label: "Season Number",
           description:
@@ -814,7 +920,7 @@ export const COMMANDS: Commands = {
     }
   })(),
   nameAnimeEpisodesAniDB: (() => {
-    const f = fieldBuilder(
+    const field = fieldBuilder(
       nameAnimeEpisodesAniDBRequestSchema,
     )
     return {
@@ -824,11 +930,14 @@ export const COMMANDS: Commands = {
       tag: "Naming Operations",
       outputFolderName: null,
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
         // Schema marks anidbId optional (the CLI accepts searchTerm), but
         // the builder form requires it — the lookup populates it before
         // submit. Override the helper's derivation.
-        f("anidbId", {
+        field("anidbId", {
           type: "numberWithLookup",
           lookupType: "anidb",
           label: "AniDB Anime ID",
@@ -836,13 +945,13 @@ export const COMMANDS: Commands = {
           required: true,
           companionNameField: "anidbName",
         }),
-        f("seasonNumber", {
+        field("seasonNumber", {
           type: "number",
           label: "Season Number",
           description:
             "Season number for the output filename (Plex-style sNNeNN). Ignored when Episode Type is set to Specials.",
         }),
-        f("episodeType", {
+        field("episodeType", {
           type: "enum",
           label: "Episode Type",
           options: [
@@ -873,7 +982,9 @@ export const COMMANDS: Commands = {
     }
   })(),
   nameSpecialFeatures: (() => {
-    const f = fieldBuilder(nameSpecialFeaturesRequestSchema)
+    const field = fieldBuilder(
+      nameSpecialFeaturesRequestSchema,
+    )
     return {
       summary:
         "Rename special features (and the main movie file) based on DVDCompare timecodes — title canonicalized via TMDB",
@@ -887,11 +998,14 @@ export const COMMANDS: Commands = {
       // round-trip.
       persistedKeys: ["tmdbId", "tmdbName"],
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
         // Schema marks dvdCompareId optional (the CLI accepts searchTerm),
         // but the builder form requires it — the lookup populates it
         // before submit. Override the helper's derivation.
-        f("dvdCompareId", {
+        field("dvdCompareId", {
           type: "numberWithLookup",
           lookupType: "dvdcompare",
           label: "DVDCompare Film ID",
@@ -902,24 +1016,24 @@ export const COMMANDS: Commands = {
         // Drift: schema has no default for `dvdCompareReleaseHash`
         // (`.optional()` with no `.default()`), but the UI defaults to 1
         // (the first release option). Keep the override.
-        f("dvdCompareReleaseHash", {
+        field("dvdCompareReleaseHash", {
           type: "number",
           label: "Release Hash",
           default: 1,
           companionNameField: "dvdCompareReleaseLabel",
         }),
-        f("fixedOffset", {
+        field("fixedOffset", {
           type: "number",
           label: "Fixed Offset (ms)",
         }),
-        f("timecodePadding", {
+        field("timecodePadding", {
           type: "number",
           label: "Timecode Padding",
         }),
         // Defaults to false in the Builder so the Phase-B "which file is
         // which?" pick modal becomes the interactive UX. Schema also
         // defaults to false — matches the UI.
-        f("autoNameDuplicates", {
+        field("autoNameDuplicates", {
           type: "boolean",
           label: "Auto-name duplicates",
           description:
@@ -938,18 +1052,23 @@ export const COMMANDS: Commands = {
     }
   })(),
   nameTvShowEpisodes: (() => {
-    const f = fieldBuilder(nameTvShowEpisodesRequestSchema)
+    const field = fieldBuilder(
+      nameTvShowEpisodesRequestSchema,
+    )
     return {
       summary:
         "Rename TV show episode files based on metadata",
       tag: "Naming Operations",
       outputFolderName: null,
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
         // Schema marks tvdbId optional (the CLI accepts searchTerm), but
         // the builder form requires it — the lookup populates it before
         // submit. Override the helper's derivation.
-        f("tvdbId", {
+        field("tvdbId", {
           type: "numberWithLookup",
           lookupType: "tvdb",
           label: "TVDB ID",
@@ -960,7 +1079,7 @@ export const COMMANDS: Commands = {
         // Schema defaults seasonNumber to 1; surfacing that default in
         // the UI matches the other naming commands. Previously this was
         // required-without-default, which forced users to type "1".
-        f("seasonNumber", {
+        field("seasonNumber", {
           type: "number",
           label: "Season Number",
           description:
@@ -970,14 +1089,18 @@ export const COMMANDS: Commands = {
     }
   })(),
   renameDemos: (() => {
-    const f = fieldBuilder(renameDemosRequestSchema)
+    const field = fieldBuilder(renameDemosRequestSchema)
     return {
-      summary: "Rename demo files based on content analysis",
+      summary:
+        "Rename demo files based on content analysis",
       tag: "Naming Operations",
       outputFolderName: null,
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
-        f("isRecursive", {
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
+        field("isRecursive", {
           type: "boolean",
           label: "Recursive",
         }),
@@ -985,7 +1108,7 @@ export const COMMANDS: Commands = {
     }
   })(),
   renameMovieClipDownloads: (() => {
-    const f = fieldBuilder(
+    const field = fieldBuilder(
       renameMovieClipDownloadsRequestSchema,
     )
     return {
@@ -993,7 +1116,7 @@ export const COMMANDS: Commands = {
       tag: "Naming Operations",
       outputFolderName: null,
       fields: [
-        f("sourcePath", {
+        field("sourcePath", {
           type: "path",
           label: "Source Path",
           description:
@@ -1004,23 +1127,26 @@ export const COMMANDS: Commands = {
   })(),
   // Video Operations
   setDisplayWidth: (() => {
-    const f = fieldBuilder(setDisplayWidthRequestSchema)
+    const field = fieldBuilder(setDisplayWidthRequestSchema)
     return {
       summary: "Set display width for video tracks",
       tag: "Video Operations",
       outputFolderName: null,
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
-        f("displayWidth", {
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
+        field("displayWidth", {
           type: "number",
           label: "Display Width (px)",
         }),
-        f("isRecursive", {
+        field("isRecursive", {
           type: "boolean",
           label: "Recursive",
         }),
         // Schema default is 0 — runtime sentinel for "use default depth of 2"
-        f("recursiveDepth", {
+        field("recursiveDepth", {
           type: "number",
           label: "Depth",
           min: 0,
@@ -1040,18 +1166,23 @@ export const COMMANDS: Commands = {
   })(),
   // Metadata Operations
   storeAspectRatioData: (() => {
-    const f = fieldBuilder(storeAspectRatioDataRequestSchema)
+    const field = fieldBuilder(
+      storeAspectRatioDataRequestSchema,
+    )
     return {
       summary: "Analyze and store aspect ratio metadata",
       tag: "Metadata Operations",
       outputFolderName: null,
       fields: [
-        f("sourcePath", { type: "path", label: "Source Path" }),
-        f("isRecursive", {
+        field("sourcePath", {
+          type: "path",
+          label: "Source Path",
+        }),
+        field("isRecursive", {
           type: "boolean",
           label: "Recursive",
         }),
-        f("recursiveDepth", {
+        field("recursiveDepth", {
           type: "number",
           label: "Depth",
           min: 1,
@@ -1060,24 +1191,24 @@ export const COMMANDS: Commands = {
             value: true,
           },
         }),
-        f("outputPath", {
+        field("outputPath", {
           type: "path",
           label: "Output Path",
         }),
-        f("rootPath", {
+        field("rootPath", {
           type: "string",
           label: "Root Path",
           description:
             "Path your media player (Plex, Jellyfin, Emby) sees for your library — written into the output JSON's file paths so the player can match its catalog. The path does not have to exist on this machine.",
         }),
-        f("folders", {
+        field("folders", {
           type: "folderMultiSelect",
           label: "Folders",
           description:
             "List of folder names relative to the sourcePath to include. If you're searching a root path with lots of media, this can reduce the list to only those in Plex. Ensure these folder names match the ones in Plex.",
           sourceField: "sourcePath",
         }),
-        f("force", {
+        field("force", {
           type: "boolean",
           label: "Force Overwrite",
         }),

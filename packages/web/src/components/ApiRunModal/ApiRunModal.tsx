@@ -1,3 +1,7 @@
+import type {
+  JobLogsEvent,
+  JobStatus,
+} from "@media-tools/server/api-types"
 import { useAtom, useSetAtom } from "jotai"
 import {
   useCallback,
@@ -5,10 +9,6 @@ import {
   useRef,
   useState,
 } from "react"
-import type {
-  JobLogsEvent,
-  JobStatus,
-} from "@media-tools/server/api-types"
 import { apiRunModalAtom } from "../../components/ApiRunModal/apiRunModalAtom"
 import { promptModalAtom } from "../../components/PromptModal/promptModalAtom"
 import { useTolerantEventSource } from "../../hooks/useTolerantEventSource"
