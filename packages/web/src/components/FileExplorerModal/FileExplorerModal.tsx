@@ -2,7 +2,7 @@ import type {
   DeleteFilesResponse,
   DeleteModeResponse,
   ListFilesResponse,
-} from "@media-tools/server/api-types"
+} from "@mux-magic/server/api-types"
 import { useAtom } from "jotai"
 import {
   useCallback,

@@ -3,7 +3,7 @@
 // streams, progress bars, the Jobs page).
 //
 // `Job` and `JobStatus` are the canonical server contract; they live in
-// @media-tools/server/api-types and are re-exported here so consumers in
+// @mux-magic/server/api-types and are re-exported here so consumers in
 // jobs/, components/, and state/ keep their existing import paths while
 // any server-side change to the shape fails web typecheck.
 //
@@ -21,7 +21,7 @@
 export type {
   JobStatus,
   JobWire as Job,
-} from "@media-tools/server/api-types"
+} from "@mux-magic/server/api-types"
 
 export type ProgressSnapshot = {
   ratio?: number

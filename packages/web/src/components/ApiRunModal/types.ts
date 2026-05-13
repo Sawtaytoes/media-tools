@@ -8,7 +8,7 @@
 // server-side (e.g. "skipped" from sequence step short-circuiting) fails
 // web typecheck rather than silently falling into an undefined CSS class.
 
-import type { JobStatus } from "@media-tools/server/api-types"
+import type { JobStatus } from "@mux-magic/server/api-types"
 
 export type ActiveChild = {
   stepId: string

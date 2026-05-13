@@ -50,7 +50,7 @@ import {
   setDisplayWidthRequestSchema,
   splitChaptersRequestSchema,
   storeAspectRatioDataRequestSchema,
-} from "@media-tools/server/api-schemas"
+} from "@mux-magic/server/api-schemas"
 import type { Commands } from "../commands/types"
 import { fieldBuilder } from "./buildFields"
 

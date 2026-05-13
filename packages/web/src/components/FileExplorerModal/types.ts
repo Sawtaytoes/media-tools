@@ -4,7 +4,7 @@
 // FileEntry is defined server-side (shared API contract); the sort
 // + state types are UI-only and live here.
 
-import type { FileEntry } from "@media-tools/server/api-types"
+import type { FileEntry } from "@mux-magic/server/api-types"
 
 export type { FileEntry }
 

@@ -1,4 +1,4 @@
-import type { Job } from "@media-tools/web/job-types"
+import type { Job } from "@mux-magic/web/job-types"
 import { expect, test } from "@playwright/test"
 
 import { webBaseUrl } from "./playwright.setup.js"

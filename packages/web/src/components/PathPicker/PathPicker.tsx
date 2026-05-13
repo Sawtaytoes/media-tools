@@ -1,4 +1,4 @@
-import type { ListDirectoryEntriesResponse } from "@media-tools/server/api-types"
+import type { ListDirectoryEntriesResponse } from "@mux-magic/server/api-types"
 import { useAtom, useSetAtom } from "jotai"
 import { useEffect, useRef } from "react"
 import { createPortal } from "react-dom"

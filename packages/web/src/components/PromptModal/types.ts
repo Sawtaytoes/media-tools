@@ -4,7 +4,7 @@
 // PromptOption is defined server-side (shared API contract); the rest
 // are UI-only and live here.
 
-import type { PromptOption } from "@media-tools/server/api-types"
+import type { PromptOption } from "@mux-magic/server/api-types"
 
 export type { PromptOption }
 

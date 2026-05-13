@@ -1,4 +1,4 @@
-import type { CreateJobResponse } from "@media-tools/server/api-types"
+import type { CreateJobResponse } from "@mux-magic/server/api-types"
 import { useStore } from "jotai"
 import { useCallback } from "react"
 import { apiRunModalAtom } from "../components/ApiRunModal/apiRunModalAtom"

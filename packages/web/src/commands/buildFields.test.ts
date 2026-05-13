@@ -117,7 +117,7 @@ describe("fieldBuilder", () => {
 describe("commands registry default-drift guards", () => {
   test("storeAspectRatioData isRecursive defaults to true", async () => {
     const schemas = await import(
-      "@media-tools/server/api-schemas"
+      "@mux-magic/server/api-schemas"
     )
     const shape =
       schemas.storeAspectRatioDataRequestSchema.def.shape
@@ -132,7 +132,7 @@ describe("commands registry default-drift guards", () => {
 
   test("storeAspectRatioData recursiveDepth defaults to 3", async () => {
     const schemas = await import(
-      "@media-tools/server/api-schemas"
+      "@mux-magic/server/api-schemas"
     )
     const shape =
       schemas.storeAspectRatioDataRequestSchema.def.shape

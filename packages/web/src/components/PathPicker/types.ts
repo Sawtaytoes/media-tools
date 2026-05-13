@@ -4,6 +4,6 @@
 // DirEntry is defined server-side (shared API contract for /files);
 // PathPicker is the only feature that consumes it.
 
-import type { DirEntry } from "@media-tools/server/api-types"
+import type { DirEntry } from "@mux-magic/server/api-types"
 
 export type { DirEntry }
