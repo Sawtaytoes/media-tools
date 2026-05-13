@@ -1,13 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react"
 import { createStore, Provider } from "jotai"
-import { FIXTURE_COMMANDS_BUNDLE_B } from "../../commands/__fixtures__/commands"
+import { FIXTURE_COMMANDS_BUNDLE_E } from "../../commands/__fixtures__/commands"
 import { stepsAtom } from "../../state/stepsAtom"
 import type { Step } from "../../types"
-import { LanguageCodesField } from "./LanguageCodesField"
+import { FolderTagsField } from "./FolderTagsField"
 
 const meta = {
-  title: "Fields/LanguageCodesField",
-  component: LanguageCodesField,
+  title: "Fields/FolderTagsField",
+  component: FolderTagsField,
   tags: ["autodocs"],
   decorators: [
     (Story, context) => {
@@ -21,7 +21,7 @@ const meta = {
       )
     },
   ],
-} satisfies Meta<typeof LanguageCodesField>
+} satisfies Meta<typeof FolderTagsField>
 
 export default meta
 type Story = StoryObj<typeof meta>
@@ -29,7 +29,7 @@ type Story = StoryObj<typeof meta>
 const mockStep = (overrides?: Partial<Step>): Step => ({
   id: "step-1",
   alias: "",
-  command: "keepLanguages",
+  command: "extractSubtitles",
   params: {},
   links: {},
   status: null,
@@ -39,7 +39,7 @@ const mockStep = (overrides?: Partial<Step>): Step => ({
 })
 
 const field =
-  FIXTURE_COMMANDS_BUNDLE_B.keepLanguages.fields[1]
+  FIXTURE_COMMANDS_BUNDLE_E.extractSubtitles.fields[1]
 
 export const Empty: Story = {
   args: { step: mockStep(), field },
@@ -47,7 +47,7 @@ export const Empty: Story = {
 
 export const OneTag: Story = {
   args: {
-    step: mockStep({ params: { audioLanguages: ["eng"] } }),
+    step: mockStep({ params: { folders: ["Subs"] } }),
     field,
   },
 }
@@ -56,7 +56,7 @@ export const ManyTags: Story = {
   args: {
     step: mockStep({
       params: {
-        audioLanguages: ["eng", "jpn", "spa", "fra"],
+        folders: ["Subs", "Subtitles", "Captions"],
       },
     }),
     field,
