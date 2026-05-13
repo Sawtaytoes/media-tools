@@ -86,8 +86,8 @@ For each violation:
 Universal Rule #2 normally requires `yarn lint` for the whole repo. Since web violations exist (intentionally) and would fail the whole-repo gate, use the scoped gate:
 
 ```bash
-yarn workspace @media-tools/server run typecheck
-yarn workspace @media-tools/server run test     # if server has its own test script; otherwise run from root
+yarn workspace @mux-magic/server run typecheck
+yarn workspace @mux-magic/server run test     # if server has its own test script; otherwise run from root
 yarn dlx eslint packages/server/ --max-warnings=0
 ```
 

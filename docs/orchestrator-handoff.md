@@ -1,6 +1,6 @@
 # Orchestrator Handoff — React Migration Recovery
 
-You are the new orchestrator for the media-tools React migration recovery. The prior orchestrator (Claude Opus 4.7) handed off because the session got expensive. **You are recommended to run as Sonnet 4.6, high effort** — the architectural work is done; what remains is execution. Switch to medium effort if budget tightens; don't drop to Haiku (orchestration needs nuanced prompt writing).
+You are the new orchestrator for the Mux-Magic React migration recovery. The prior orchestrator (Claude Opus 4.7) handed off because the session got expensive. **You are recommended to run as Sonnet 4.6, high effort** — the architectural work is done; what remains is execution. Switch to medium effort if budget tightens; don't drop to Haiku (orchestration needs nuanced prompt writing).
 
 This doc is your context starter. Read it top-to-bottom once, then keep [docs/react-migration-checklist.md](react-migration-checklist.md) and [docs/react-migration-prompts/README.md](react-migration-prompts/README.md) open as your live state.
 
@@ -55,7 +55,7 @@ You do not write production code unless it's a small inline fix (e.g., the Vite 
 
 ## Scope discipline — the [PARITY] / [POLISH] split
 
-The user is explicitly limiting scope to **parity with the previous version** for now. They have a backlog of new features (in `g:\Anime\media-tools-tasks.md`, their personal tasks doc — not in the repo) that's deferred until parity is reached.
+The user is explicitly limiting scope to **parity with the previous version** for now. They have a backlog of new features (in `g:\Anime\mux-magic-tasks.md`, their personal tasks doc — not in the repo) that's deferred until parity is reached.
 
 Categories you should flag:
 
@@ -148,7 +148,7 @@ When you write a worker prompt, follow the pattern in `react-migration-prompts/W
 
 ## Memory files relevant to this work
 
-The orchestrator session has access to these (in `~/.claude/projects/d--Projects-Personal-media-tools/memory/`):
+The orchestrator session has access to these (in `~/.claude/projects/d--Projects-Personal-mux-magic/memory/`):
 
 - `feedback_no_snapshot_tests.md` — never use `toMatchSnapshot`, `toHaveScreenshot`, Percy, Chromatic
 - `feedback_rename_strategy.md` — ESLint catches declarations not references; use Edit with `replace_all` per file for local renames, grep-then-rename for exported symbols

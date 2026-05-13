@@ -29,11 +29,11 @@ Last updated: 2026-05-11 by Claude Opus 4.7 (orchestrator handoff to next sessio
 - Playwright for E2E; Vitest browser for component tests
 - No barrel files (except `packages/shared/src/index.ts` — npm package boundary)
 - OpenAPI schema auto-generated from running server; not committed to git
-- `@media-tools/shared` v0.1.0 publish to npm is **deferred** out of PR #1 (workflow is in place; manual publish later)
+- `@mux-magic/tools` v0.1.0 publish to npm is **deferred** out of PR #1 (workflow is in place; manual publish later)
 
 ## Deferred from PR #1 (do these in focused follow-up PRs)
 
-- **npm publish of `@media-tools/shared` v0.1.0**: workflow exists at `.github/workflows/publish-shared.yml` but no tag has been pushed. Re-open before any `media-sync` consumer work begins. Requires `NPM_TOKEN` repo secret.
+- **npm publish of `@mux-magic/tools` v0.1.0**: workflow exists at `.github/workflows/publish-shared.yml` but no tag has been pushed. Re-open before any `media-sync` consumer work begins. Requires `NPM_TOKEN` repo secret.
 - **Hono dev proxy to Vite**: in PR #1 the two servers run independently (Hono on :3000, Vite on :5173). Adding a proxy that falls through to Vite for non-API / non-static paths needs careful testing against `serveStatic`'s 404 behaviour — keeping it isolated in its own PR makes the failure mode bisectable.
 - **Biome scope expansion + reformat**: `biome check` currently runs only on `packages/web/` and `packages/shared/`. Expanding to the legacy server tree, `scripts/`, and `public/` will produce ~500 formatter changes; do that as a single dedicated reformat-and-include PR so the diff doesn't dilute migration work.
 - **ESLint plugin install**: `eslint-plugin-react-compiler`, `eslint-plugin-testing-library`, `import-x/no-barrel-files` are referenced in `eslint.config.js` comments but not yet installed. Land each one alongside the first file it polices (PR #2 brings react-compiler + the first React component, the first `.test.tsx` brings testing-library).
@@ -42,15 +42,15 @@ Last updated: 2026-05-11 by Claude Opus 4.7 (orchestrator handoff to next sessio
 
 ## Deferred from PR #2
 
-- ~~**Storybook v10 install**~~: Done (79929fc). `@storybook/react-vite`, `addon-docs`, `addon-a11y`, `addon-themes`, `addon-vitest`, `msw-storybook-addon` installed; `yarn workspace @media-tools/web storybook` runs at :6006 with LoadModal story visible.
+- ~~**Storybook v10 install**~~: Done (79929fc). `@storybook/react-vite`, `addon-docs`, `addon-a11y`, `addon-themes`, `addon-vitest`, `msw-storybook-addon` installed; `yarn workspace @mux-magic/web storybook` runs at :6006 with LoadModal story visible.
 - **Hono dev proxy** (carried from PR #1): The Vite bundle is injected into `public/builder/index.html` via a hardcoded `http://localhost:5173/src/app.tsx` dev script tag. This works in dev but needs the Hono proxy for a clean production path. Remove the script tag from the legacy HTML when the proxy lands.
 - **ESLint plugin install** (carried from PR #1): `eslint-plugin-react-compiler`, `eslint-plugin-testing-library`, `eslint-plugin-import-x` are referenced in `eslint.config.js` but not installed. Install in a dedicated PR before CI is enabled.
 
 ## Post-Migration: Rename to MuxMagic
 
-After the Final PR is merged and the user confirms migration complete, the project will be renamed from `media-tools` → **MuxMagic**. This includes npm scope (`@media-tools/*` → `@muxmagic/*`), repo/directory rename, Docker image tag, and republishing `@media-tools/shared` under `@muxmagic/shared`.
+After the Final PR is merged and the user confirms migration complete, the project will be renamed from `media-tools` → **Mux-Magic**. This includes npm scope (`@mux-magic/*`), repo/directory rename, Docker image tag, and republishing `@mux-magic/tools` under the new scope.
 
-**Do not pre-emptively rename anything during migration phases.** All workers use `@media-tools/*` until the dedicated rename pass. The local directory and repo rename requires manual coordination by the user (CI config, nginx-proxy-manager, `media-sync` references).
+**Do not pre-emptively rename anything during migration phases.** All workers use `@mux-magic/*` until the dedicated rename pass. The local directory and repo rename requires manual coordination by the user (CI config, nginx-proxy-manager, `media-sync` references).
 
 See `docs/react-migration-plan.md` § "Post-Migration: Rename to MuxMagic" for the full scope table.
 

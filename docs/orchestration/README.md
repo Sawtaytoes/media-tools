@@ -5,7 +5,7 @@ Started 2026-05-07. Driven by a single orchestrator Claude session at the user's
 ## Roles
 
 - **Orchestrator (this Claude session):** plans, writes briefs, spawns workers, owns `docs/CHECKLIST.md`, surfaces options docs to the user, never writes feature code.
-- **Worker:** spawned via the Agent tool with `isolation: "worktree"`. Each worker gets its own worktree + branch, follows its inline brief, commits as it goes, pushes the branch, and (for media-tools) opens a PR via `gh pr create`. For media-sync (Gitea remote), it pushes the branch and reports the name; user opens the PR in Gitea.
+- **Worker:** spawned via the Agent tool with `isolation: "worktree"`. Each worker gets its own worktree + branch, follows its inline brief, commits as it goes, pushes the branch, and (for Mux-Magic) opens a PR via `gh pr create`. For media-sync (Gitea remote), it pushes the branch and reports the name; user opens the PR in Gitea.
 
 ## File layout
 

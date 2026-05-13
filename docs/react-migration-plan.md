@@ -1,8 +1,8 @@
-# React 19 + Vite Migration Plan for media-tools
+# React 19 + Vite Migration Plan for Mux-Magic
 
 ## Purpose
 
-This document is the authoritative plan for migrating the media-tools frontend to React 19.
+This document is the authoritative plan for migrating the Mux-Magic frontend to React 19.
 **It is written for a future AI assistant (likely Claude Sonnet) that will execute the work.**
 Follow it precisely, phase by phase. Each phase is independently verifiable.
 Multiple AI workers can execute Wave phases in parallel on separate worktrees.
@@ -13,7 +13,7 @@ Do not improvise architecture. Do not add libraries not listed here. When in dou
 
 ## Context
 
-The media-tools project currently serves a 77-file plain-JavaScript frontend (in `public/builder/` and `public/jobs/`) via a Hono API server. There is no bundler for the frontend — files are served raw as ES modules. State is managed via `window.mediaTools` globals and module-level variables. Tests run in real Chromium via `@vitest/browser`.
+The Mux-Magic project currently serves a 77-file plain-JavaScript frontend (in `public/builder/` and `public/jobs/`) via a Hono API server. There is no bundler for the frontend — files are served raw as ES modules. State is managed via `window.mediaTools` globals and module-level variables. Tests run in real Chromium via `@vitest/browser`.
 
 This migration adds:
 - **React 19** with React Compiler (auto-memoization)
@@ -25,7 +25,7 @@ This migration adds:
 - **ESLint** (minimal, two plugins only)
 - **Storybook v10** for component documentation
 - **Yarn 4 workspaces** (monorepo)
-- **`@media-tools/shared`** — a new npm-published package for utilities shared with media-sync
+- **`@mux-magic/tools`** — a new npm-published package for utilities shared with media-sync
 
 The migration is **iterative**: the app keeps working at every step.
 Legacy JS files are deleted only after the equivalent React component is fully working and tested.
@@ -76,14 +76,14 @@ Save this plan as `docs/react-migration-plan.md` in the repo. This is the canoni
 
 ```bash
 # Initial setup (done once by orchestrator)
-git worktree add ../media-tools-react-migration react-migration
+git worktree add ../mux-magic-react-migration react-migration
 ```
 
 Each AI worker gets their own worktree derived from `react-migration`:
 
 ```bash
 # Per worker (replace WORKER_NAME)
-git worktree add ../media-tools-react-WORKER_NAME react-migration
+git worktree add ../mux-magic-react-WORKER_NAME react-migration
 ```
 
 Rules:
@@ -101,7 +101,7 @@ Rules:
 > Yarn version is **4.14.1** (see `packageManager` field in `package.json`). Do not downgrade or change the version.
 
 ```
-media-tools/
+mux-magic/
 ├── package.json                       # root; workspaces: ["packages/*"]
 ├── tsconfig.base.json                 # shared base TS config
 ├── biome.json                         # formatter + linter (root, covers all packages)
@@ -112,7 +112,7 @@ media-tools/
 ├── .github/
 │   └── workflows/
 │       ├── deploy.yml                 # existing: Docker build + push to ghcr.io
-│       └── publish-shared.yml         # NEW: publish @media-tools/shared to npm on tag
+│       └── publish-shared.yml         # NEW: publish @mux-magic/tools to npm on tag
 │
 ├── .storybook/
 │   ├── main.ts                        # @storybook/react-vite, v10
@@ -128,7 +128,7 @@ media-tools/
 └── packages/
     │
     ├── server/                        # existing server code, moved here
-    │   ├── package.json               # name: "@media-tools/server"
+    │   ├── package.json               # name: "@mux-magic/server"
     │   ├── tsconfig.json              # NodeNext, no jsx, extends ../../tsconfig.base.json
     │   └── src/
     │       ├── api/
@@ -143,7 +143,7 @@ media-tools/
     │       └── server.ts
     │
     ├── web/                           # Vite frontend
-    │   ├── package.json               # name: "@media-tools/web"
+    │   ├── package.json               # name: "@mux-magic/web"
     │   ├── tsconfig.json              # ESNext, bundler, jsx: react-jsx
     │   ├── vite.config.ts
     │   ├── vitest.config.ts           # browser project only
@@ -190,7 +190,7 @@ media-tools/
     │           └── builderStyles.css   # existing 325-line custom CSS (unchanged, moved)
     │
     └── shared/                        # publishable npm package
-        ├── package.json               # name: "@media-tools/shared"; public; version-tagged
+        ├── package.json               # name: "@mux-magic/tools"; public; version-tagged
         ├── tsconfig.json
         └── src/
             ├── index.ts               # ONLY barrel file in the project; re-exports all public APIs
@@ -377,9 +377,9 @@ Update `generateSchemas.ts` to write output to `packages/web/src/api/schema.gene
 
 ### Developer Workflow
 
-1. `yarn workspace @media-tools/server run start` (start Hono on :3000)
+1. `yarn workspace @mux-magic/server run start` (start Hono on :3000)
 2. `yarn generate-schemas` (calls the existing TS file; writes `schema.generated.ts`)
-3. `yarn workspace @media-tools/web run dev` (Vite can now compile)
+3. `yarn workspace @mux-magic/web run dev` (Vite can now compile)
 
 ### Docker / CI Workflow
 
@@ -415,8 +415,8 @@ Do not make the client code depend on a file that must be fetched at runtime.
 Run each server in its own terminal. Do not use `concurrently`.
 
 ```
-Terminal 1: yarn workspace @media-tools/server run start  → Hono API on :3000
-Terminal 2: yarn workspace @media-tools/web run dev       → Vite frontend on :5173
+Terminal 1: yarn workspace @mux-magic/server run start  → Hono API on :3000
+Terminal 2: yarn workspace @mux-magic/web run dev       → Vite frontend on :5173
 ```
 
 Optionally, add a root-level `dev` script to `package.json` that uses Yarn 4's native parallel runner:
@@ -508,7 +508,7 @@ The `media-sync` sibling repo at `../media-sync` has copy-pasted utilities from 
 
 ```json
 {
-  "name": "@media-tools/shared",
+  "name": "@mux-magic/tools",
   "version": "1.0.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -527,7 +527,7 @@ This is the ONE acceptable barrel file in the project (at the npm package bounda
 New workflow: `.github/workflows/publish-shared.yml`
 
 ```yaml
-name: Publish @media-tools/shared
+name: Publish @mux-magic/tools
 on:
   push:
     tags: ["shared-v*.*.*"]
@@ -541,8 +541,8 @@ jobs:
           node-version: 24
           registry-url: "https://registry.npmjs.org"
       - run: corepack enable && yarn install
-      - run: yarn workspace @media-tools/shared run build
-      - run: yarn workspace @media-tools/shared npm publish
+      - run: yarn workspace @mux-magic/tools run build
+      - run: yarn workspace @mux-magic/tools npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
@@ -552,12 +552,12 @@ Tag format: `git tag shared-v1.0.0 && git push --tags`
 
 ### Workspace Dependency in Server and Web
 
-Both `packages/server` and `packages/web` declare `@media-tools/shared` as a `workspace:*` dependency:
+Both `packages/server` and `packages/web` declare `@mux-magic/tools` as a `workspace:*` dependency:
 
 ```json
 // packages/server/package.json and packages/web/package.json
 "dependencies": {
-  "@media-tools/shared": "workspace:*"
+  "@mux-magic/tools": "workspace:*"
 }
 ```
 
@@ -565,14 +565,14 @@ Both `packages/server` and `packages/web` declare `@media-tools/shared` as a `wo
 
 ### Parallel Workstream: media-sync Migration
 
-**Blocks on**: `@media-tools/shared` v0.1.0 published to npm (happens in PR #1).
+**Blocks on**: `@mux-magic/tools` v0.1.0 published to npm (happens in PR #1).
 **Independent of**: React wave work (Waves A–F). Can run concurrently.
 **Repo**: `../media-sync` (separate repo, separate PRs).
 
-Once `@media-tools/shared` is published:
+Once `@mux-magic/tools` is published:
 
-1. In `media-sync`, add `@media-tools/shared` to the relevant workspace packages
-2. Replace each copy-pasted file in `media-sync/packages/shared-tools/src/` with an import from `@media-tools/shared`
+1. In `media-sync`, add `@mux-magic/tools` to the relevant workspace packages
+2. Replace each copy-pasted file in `media-sync/packages/shared-tools/src/` with an import from `@mux-magic/tools`
 3. Delete the now-redundant files from `media-sync/packages/shared-tools/src/`
 4. If `shared-tools` becomes empty, remove the package entirely and update its dependents
 
@@ -629,7 +629,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 24 }
       - run: corepack enable && yarn install --immutable
-      - run: yarn workspace @media-tools/web dlx playwright install chromium --with-deps
+      - run: yarn workspace @mux-magic/web dlx playwright install chromium --with-deps
       - run: yarn generate-schemas
       - run: yarn test                 # both vitest projects (node + browser/chromium)
 
@@ -677,7 +677,7 @@ Add a reusable shell script `scripts/generate:schemas-ci.sh`:
 
 ```bash
 #!/usr/bin/env bash
-yarn workspace @media-tools/server run start &
+yarn workspace @mux-magic/server run start &
 SERVER_PID=$!
 # Wait for Hono to be ready (poll /health or just sleep)
 npx wait-on http://localhost:3000/openapi.json --timeout 30000
@@ -694,8 +694,8 @@ Use `@changesets/cli` for automated version bumping as PRs merge.
 
 **Two version streams:**
 
-- `@media-tools/server` + `@media-tools/web` — always bump together (one app version, shared by the Docker image tag and any UI version display)
-- `@media-tools/shared` — bumps independently; its version is what consumers in `media-sync` pin to
+- `@mux-magic/server` + `@mux-magic/web` — always bump together (one app version, shared by the Docker image tag and any UI version display)
+- `@mux-magic/tools` — bumps independently; its version is what consumers in `media-sync` pin to
 
 **Setup** (done in PR #1):
 
@@ -709,7 +709,7 @@ Configure `.changeset/config.json`:
 {
   "changelog": "@changesets/cli/changelog",
   "commit": false,
-  "linked": [["@media-tools/server", "@media-tools/web"]],
+  "linked": [["@mux-magic/server", "@mux-magic/web"]],
   "access": "restricted",
   "baseBranch": "react-migration",
   "updateInternalDependencies": "patch",
@@ -717,7 +717,7 @@ Configure `.changeset/config.json`:
 }
 ```
 
-Set `"access": "public"` for `@media-tools/shared` in its own `package.json` — Changesets respects per-package `publishConfig.access`.
+Set `"access": "public"` for `@mux-magic/tools` in its own `package.json` — Changesets respects per-package `publishConfig.access`.
 
 **PR author workflow** (each AI worker follows this per PR):
 ```bash
@@ -744,7 +744,7 @@ Add to `.github/workflows/ci.yml` a new job (runs only on push to `react-migrati
       - run: corepack enable && yarn install --immutable
       - uses: changesets/action@v1
         with:
-          publish: yarn changeset publish   # only publishes @media-tools/shared to npm
+          publish: yarn changeset publish   # only publishes @mux-magic/tools to npm
           title: "chore: version packages"
           commit: "chore: version packages"
         env:
@@ -752,7 +752,7 @@ Add to `.github/workflows/ci.yml` a new job (runs only on push to `react-migrati
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
 
-This creates a "Version PR" automatically. When you merge the Version PR, package.json files are bumped and `@media-tools/shared` is published to npm if it has pending changesets.
+This creates a "Version PR" automatically. When you merge the Version PR, package.json files are bumped and `@mux-magic/tools` is published to npm if it has pending changesets.
 
 The Docker image is tagged with the server package version (already done in `deploy.yml` via the SHA tag; add a version tag too).
 
@@ -809,7 +809,7 @@ Update `Dockerfile` CMD to use the new monorepo structure:
 
 ```dockerfile
 # In the existing Dockerfile, update the final CMD:
-CMD ["yarn", "workspace", "@media-tools/server", "run", "start-server"]
+CMD ["yarn", "workspace", "@mux-magic/server", "run", "start-server"]
 ```
 
 Or add a root-level `start-docker` script to `package.json` that does the same.
@@ -968,7 +968,7 @@ Tasks:
 10. Create minimal ESLint config (`eslint.config.js`)
 11. Run `msw init packages/web/public/`
 12. Create `packages/shared/` with the utility files listed in the architecture section
-13. Publish first `@media-tools/shared` version (v0.1.0) to npm
+13. Publish first `@mux-magic/tools` version (v0.1.0) to npm
 14. Add Hono dev proxy to `packages/server/src/api/hono-routes.ts`
 15. Add `start-docker` script; update `Dockerfile` CMD
 16. Create `.github/workflows/publish-shared.yml`
@@ -1107,19 +1107,19 @@ yarn workspace server run start-server   # Hono serves dist/
 
 **Planned after the Final PR is merged and the user confirms migration complete.**
 
-The project will be renamed from `media-tools` → **MuxMagic**. This is a pure rename — no architecture changes.
+The project will be renamed from `media-tools` → **Mux-Magic**. This is a pure rename — no architecture changes.
 
 Scope of the rename:
 
 | Item | Before | After |
 |------|--------|-------|
-| npm package scope | `@media-tools/server`, `@media-tools/web`, `@media-tools/shared` | `@muxmagic/server`, `@muxmagic/web`, `@muxmagic/shared` |
+| npm package scope | `@mux-magic/server`, `@mux-magic/web`, `@mux-magic/tools` | `@muxmagic/server`, `@muxmagic/web`, `@muxmagic/shared` |
 | GitHub repo | `media-tools` | `muxmagic` |
 | Local directory | `d:/Projects/Personal/media-tools` | `d:/Projects/Personal/muxmagic` |
-| Docker image | `ghcr.io/<owner>/media-tools` | `ghcr.io/<owner>/muxmagic` |
-| npm published package | `@media-tools/shared` | `@muxmagic/shared` (republish under new scope; deprecate old) |
+| Docker image | `ghcr.io/<owner>/mux-magic` | `ghcr.io/<owner>/muxmagic` |
+| npm published package | `@mux-magic/tools` | `@muxmagic/shared` (republish under new scope; deprecate old) |
 
-**Until then**: all workers continue using `@media-tools/*` package names and the `media-tools` directory. Do not pre-emptively rename any package name, import path, or workspace reference during the React migration phases. The rename is a single dedicated pass after the Final PR.
+**Until then**: all workers continue using `@mux-magic/*` package names and the `mux-magic` directory. Do not pre-emptively rename any package name, import path, or workspace reference during the React migration phases. The rename is a single dedicated pass after the Final PR.
 
 The local directory and repo rename requires coordination outside this repo (CI config, nginx-proxy-manager labels, any `media-sync` `package.json` references). The user will handle this manually after migration is done.
 
@@ -1135,7 +1135,7 @@ The local directory and repo rename requires coordination outside this repo (CI 
 - **CSS-in-JS**, CSS Modules — Tailwind + global CSS files
 - **XState / state machines** — not yet; the existing imperative approach works
 - **Auth** — out of scope for this tool
-- **Publishing `@media-tools/web` to npm** — only `@media-tools/shared` is published
+- **Publishing `@mux-magic/web` to npm** — only `@mux-magic/tools` is published
 - **Converting media-sync to React** — that happens after this migration is done and the shared library is published
 
 ---

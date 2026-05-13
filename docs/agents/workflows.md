@@ -2,14 +2,14 @@
 
 ## Multi-Agent Workflow
 
-This repo can be cloned into sibling working trees named `media-tools-worker-<name>/` so several Claudes can work in parallel without stepping on each other. **Identify your role from your repo's folder name:**
+This repo can be cloned into sibling working trees named `mux-magic-worker-<name>/` so several Claudes can work in parallel without stepping on each other. **Identify your role from your repo's folder name:**
 
-- **Primary** (`media-tools/`, no suffix): you're the canonical Claude. `master` lives here; worker trees clone from it. Existing push rule applies unchanged: do NOT push to `master` unless the user explicitly says so. Because nothing leaves the local repo until the user asks, **commit-as-you-go is the safeguard** — each logical group must land in its own commit so unpushed work is never sitting in the working tree as a single uncommitted blob the user can't recover.
-- **Worker** (`media-tools-worker-<name>/`): you're the worker named `<name>`. Work happens on a feature branch and is pushed continuously, not held until the user asks.
+- **Primary** (`mux-magic/`, no suffix): you're the canonical Claude. `master` lives here; worker trees clone from it. Existing push rule applies unchanged: do NOT push to `master` unless the user explicitly says so. Because nothing leaves the local repo until the user asks, **commit-as-you-go is the safeguard** — each logical group must land in its own commit so unpushed work is never sitting in the working tree as a single uncommitted blob the user can't recover.
+- **Worker** (`mux-magic-worker-<name>/`): you're the worker named `<name>`. Work happens on a feature branch and is pushed continuously, not held until the user asks.
 
 ## Worker Workflow
 
-If your repo folder name starts with `media-tools-worker-`:
+If your repo folder name starts with `mux-magic-worker-`:
 
 1. **Create a feature branch** at the start of any non-trivial work — don't commit directly to `master`. Naming: `feature/<short-description>` (e.g. `feature/jobs-progress-followup`). If a feature branch is already checked out and matches the task, keep using it.
 2. **Commit AND push** to that branch as you go. This is the explicit reversal of the primary's "never push" rule — the push is what makes your work visible to the user and lets the primary (and other workers) see what you're up to. Push after every commit; don't batch.

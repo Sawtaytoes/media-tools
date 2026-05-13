@@ -6,7 +6,7 @@
 
 ## Context
 
-The media-tools React migration is partially complete and out of sync with its own checklist. The original plan ran *Waves* sequentially with *components within a wave* parallelized via worktrees, but the execution got inverted: work happened in undocumented order, several "Done" checklist entries don't reflect reality, and the builder page still loads ~80 vanilla JS files via legacy `<script>` tags.
+The Mux-Magic React migration is partially complete and out of sync with its own checklist. The original plan ran *Waves* sequentially with *components within a wave* parallelized via worktrees, but the execution got inverted: work happened in undocumented order, several "Done" checklist entries don't reflect reality, and the builder page still loads ~80 vanilla JS files via legacy `<script>` tags.
 
 **The audit (confirmed 2026-05-10):**
 - [packages/web/public/builder/index.html](packages/web/public/builder/index.html) still loads legacy scripts; React only adds modals as overlays.
@@ -661,7 +661,7 @@ Read [docs/react-migration-checklist.md](docs/react-migration-checklist.md) row-
 2. For every "Done" sub-task checkbox (e.g. `[x] BooleanField`), grep the codebase to confirm the file and its test exist:
    ```bash
    ls packages/web/src/components/BooleanField/
-   yarn workspace @media-tools/web test BooleanField
+   yarn workspace @mux-magic/web test BooleanField
    ```
 3. If you find a drift (checklist says Done, code says No), **STOP**. Reopen that worker's row as ⚠️ Blocked, document the gap, and notify the user. Do not merge to master until reality matches the checklist.
 4. Once the entire table is verified accurate: mark all rows ✅ Done with completion dates. Add a final entry to "Progress Log": `W4A | <date> | checklist audited; all rows verified against code`.
@@ -699,8 +699,8 @@ Author Playwright e2e specs for the now-fully-React app, in parallel with W4A's 
 Create a dedicated worktree off the post-W3 react-migration state:
 
 ```bash
-git worktree add ../media-tools-e2e -b e2e-tests react-migration
-cd ../media-tools-e2e
+git worktree add ../mux-magic-e2e -b e2e-tests react-migration
+cd ../mux-magic-e2e
 yarn install
 ```
 
@@ -756,7 +756,7 @@ One commit per spec, push as you go (in your worktree, on the `e2e-tests` branch
 3. After merge, clean up the worktree:
    ```bash
    cd ..
-   git worktree remove media-tools-e2e
+   git worktree remove mux-magic-e2e
    git branch -d e2e-tests
    ```
 4. Mark W4B ✅ Done in the checklist. Then notify the orchestrator that W5 (cleanup) can spawn whenever the user is ready.

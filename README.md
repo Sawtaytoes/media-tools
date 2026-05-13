@@ -151,7 +151,7 @@ Examples:
 yarn cli-app:sea
 ```
 
-Output: `dist/media-tools.exe`
+Output: `dist/mux-magic.exe`
 
 ---
 
@@ -176,7 +176,7 @@ All environment variables are optional. Set them in `.env` or pass them to the s
 | `MAX_THREADS` | CPU core count | Concurrent thread limit for all commands. **Important for lower-end systems** — set to 2–4 to reduce memory/CPU usage. Example: `MAX_THREADS=2 yarn server`. |
 | `DELETE_TO_TRASH` | `true` | Send deleted files to trash instead of permanent deletion. Set to `false` for immediate deletion. |
 | `MAX_TRANSCODE_CONCURRENCY` | `4` | Maximum number of concurrent audio transcode jobs (for browser audio playback fallback). Lower this on resource-constrained systems. |
-| `TRANSCODE_CACHE_MAX_BYTES` | `4294967296` (4 GB) | Maximum size of the transcode cache directory. Cache lives in `os.tmpdir()/media-tools-transcode-cache/`. |
+| `TRANSCODE_CACHE_MAX_BYTES` | `4294967296` (4 GB) | Maximum size of the transcode cache directory. Cache lives in `os.tmpdir()/mux-magic-transcode-cache/`. |
 | `ANIDB_CACHE_FOLDER` | `./.cache/anidb` | Cache directory for AniDB metadata. **In Docker, set this to a mounted volume** so cache survives restarts (e.g., `/cache/anidb`). |
 | `TMDB_API_KEY` | — | The Movie Database API key for movie/TV metadata lookup. Get one free at [themoviedb.org/settings/api](https://www.themoviedb.org/settings/api). |
 | `REMOTE_SERVER_URL` | — | Public URL for remote-server links in API documentation. Only needed when the server is accessible from the internet. |
@@ -199,7 +199,7 @@ CMD ["yarn", "server"]
 Or via `docker run`:
 
 ```sh
-docker run -e PORT=3000 -e MAX_THREADS=2 -e ANIDB_CACHE_FOLDER=/cache/anidb -v /host/cache:/cache/anidb media-tools
+docker run -e PORT=3000 -e MAX_THREADS=2 -e ANIDB_CACHE_FOLDER=/cache/anidb -v /host/cache:/cache/anidb mux-magic
 ```
 
 ### Job lifecycle
@@ -270,7 +270,7 @@ volumes:
 
 If the volume isn't mounted (or the file lives elsewhere), the modal falls back to the direct `/files/stream` path; you'll see video without audio for unsupported-codec sources, and the **Open in external app** fallback (VLC etc.) is always available as a last resort.
 
-The transcode cache lives under `os.tmpdir()/media-tools-transcode-cache/` and is bounded at 4 GB by default — override via `TRANSCODE_CACHE_MAX_BYTES`. Concurrent encodes are gated at 4 by default — override via `MAX_TRANSCODE_CONCURRENCY`. Same-source-and-params requests coalesce onto one in-flight encode automatically.
+The transcode cache lives under `os.tmpdir()/mux-magic-transcode-cache/` and is bounded at 4 GB by default — override via `TRANSCODE_CACHE_MAX_BYTES`. Concurrent encodes are gated at 4 by default — override via `MAX_TRANSCODE_CONCURRENCY`. Same-source-and-params requests coalesce onto one in-flight encode automatically.
 
 #### Example: start a job and stream its logs
 
@@ -485,7 +485,7 @@ The response carries the job id; `curl -N http://localhost:3000/jobs/<jobId>/log
 ```sh
 yarn test          # run all tests (vitest)
 yarn typecheck     # TypeScript type check without emitting
-yarn build:cli-app # bundle CLI to build/media-tools.cjs (used by `yarn sea`)
+yarn build:cli-app # bundle CLI to build/mux-magic.cjs (used by `yarn sea`)
 ```
 
 Tests live next to their source files (`foo.ts` → `foo.test.ts`). The filesystem is globally mocked with `memfs` in tests — see `vitest.setup.ts`.

@@ -1,6 +1,6 @@
 # Diagnostics: Docker stale-image hypothesis (split into two errors)
 
-The two errors observed against the deployed media-tools container are
+The two errors observed against the deployed Mux-Magic container are
 **not the same bug** and should not be bundled. One is a real code/Dockerfile
 defect that a redeploy will not fix; the other is a textbook stale-image
 artifact that redeploying current `master` should resolve.
@@ -77,7 +77,7 @@ Either is fine. The decision is the user's. Flagged for W13b.
 
 The literal phrase `stream broke` does **not** exist in this repo's `src/`
 or `public/` on any branch — the only hit anywhere is in
-`docs/CHECKLIST.md`. So the message is not produced by media-tools. It is
+`docs/CHECKLIST.md`. So the message is not produced by Mux-Magic. It is
 produced by the **media-sync** consumer when its undici-based fetch reader
 times out reading the SSE body; `terminated TypeError: terminated` is the
 standard undici surface for "response body closed mid-read."
@@ -99,7 +99,7 @@ the consumer no longer surfaces the message.
 
 ### Why a redeploy fixes this
 
-The media-tools change is purely additive (new keepalive writes, new
+The Mux-Magic change is purely additive (new keepalive writes, new
 client-side wrapper). A deployed image that predates `d896d21` emits no
 keepalives. Redeploying current `master` immediately starts emitting them
 and the consumer-side error disappears.
