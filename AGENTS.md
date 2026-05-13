@@ -97,12 +97,11 @@ See the detailed guide for CLI command modules, adding new commands, and utility
 
 **Role identification:**
 
-- **Primary** (`d:\Projects\Personal\media-tools/`, branch `master` or `feat/mux-magic-revamp`):
+- **Primary** (repo root, branch `master` or `feat/mux-magic-revamp`):
   Never push unless told. Commit-as-you-go keeps work safe.
-- **Worker** (`.claude/worktrees/<id>_<slug>/`, branch `feat/mux-magic-revamp/<id>-<slug>`):
+- **Worker** (`.claude/worktrees/<id>_<slug>/`, branch `worker-<id>-<slug>`):
   Commit and push every change to your sub-branch. Open a PR against `feat/mux-magic-revamp`.
-  Only merge when explicitly told (or when AGENTS.md auto-merge gates are satisfied per
-  [feedback_auto_merge.md](C:\Users\satur\.claude\projects\d--Projects-Personal-media-tools\memory\feedback_auto_merge.md)).
+  Only merge when explicitly told.
 
 **Worktree workflow:** Commit as you go → push to PR → user reviews → merge when told.
 
