@@ -1,4 +1,4 @@
-import { z } from "@hono/zod-openapi"
+﻿import { z } from "@hono/zod-openapi"
 import { describe, expect, test } from "vitest"
 import { fieldBuilder } from "./buildFields"
 
