@@ -12,7 +12,10 @@ vi.unmock("node:fs")
  */
 describe("packages/web/vitest.storybook.config.ts", () => {
   it("sets test.name to storybook:<configDir> to match the addon-vitest project filter", async () => {
-    const { readFileSync } = await vi.importActual<typeof import("node:fs")>("node:fs")
+    const { readFileSync } =
+      await vi.importActual<typeof import("node:fs")>(
+        "node:fs",
+      )
 
     const configPath = join(
       import.meta.dirname,
