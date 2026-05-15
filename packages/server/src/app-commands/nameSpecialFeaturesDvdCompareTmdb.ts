@@ -22,9 +22,7 @@ import {
   Observable,
   of,
   scan,
-  switchMap,
   tap,
-  throwError,
   toArray,
 } from "rxjs"
 import {
@@ -35,6 +33,13 @@ import {
   isMainFeatureFilename,
   parseEditionFromFilename,
 } from "./nameSpecialFeaturesDvdCompareTmdb.editionTag.js"
+import { resolveUrl } from "./nameSpecialFeaturesDvdCompareTmdb.resolveUrl.js"
+import { flattenAllKnownNames } from "./nameSpecialFeaturesDvdCompareTmdb.flattenAllKnownNames.js"
+import {
+  findMatchingCut,
+  MAIN_FEATURE_MIN_DURATION_SECONDS,
+  timecodeToSeconds,
+} from "./nameSpecialFeaturesDvdCompareTmdb.timecode.js"
 import type {
   NameSpecialFeaturesResult,
   UnnamedFileCandidate,
@@ -51,7 +56,6 @@ import {
 } from "../tools/getFileDuration.js"
 import { getMediaInfo } from "../tools/getMediaInfo.js"
 import {
-  getIsSimilarTimecode,
   getSpecialFeatureFromTimecode,
   type TimecodeDeviation,
 } from "../tools/getSpecialFeatureFromTimecode.js"
@@ -63,141 +67,10 @@ import {
   type SpecialFeature,
 } from "../tools/parseSpecialFeatures.js"
 import { withFileProgress } from "../tools/progressEmitter.js"
-import {
-  displayDvdCompareVariant,
-  findDvdCompareResults,
-  searchDvdCompare,
-} from "../tools/searchDvdCompare.js"
+import { searchDvdCompare } from "../tools/searchDvdCompare.js"
 
 const getNextFilenameCount = (previousCount?: number) =>
   (previousCount || 0) + 1
-
-const DVDCOMPARE_FILM_BASE =
-  "https://www.dvdcompare.net/comparisons/film.php?fid="
-
-const resolveUrl = ({
-  dvdCompareId,
-  dvdCompareReleaseHash,
-  searchTerm,
-  url,
-}: {
-  dvdCompareId?: number
-  dvdCompareReleaseHash?: number
-  searchTerm?: string
-  url?: string
-}): Observable<string> => {
-  if (url) return of(url)
-
-  const hash = dvdCompareReleaseHash ?? 1
-
-  if (dvdCompareId != null)
-    return of(
-      `${DVDCOMPARE_FILM_BASE}${dvdCompareId}#${hash}`,
-    )
-
-  if (searchTerm) {
-    return findDvdCompareResults(searchTerm).pipe(
-      switchMap(({ isDirectListing, results }) => {
-        if (results.length === 0) {
-          throw new Error(
-            `No DVDCompare results found for: ${searchTerm}`,
-          )
-        }
-
-        // DVDCompare redirected straight to the film page — no picker
-        // needed. Auto-select the lone result and build the URL directly.
-        if (isDirectListing) {
-          const result = results[0]
-          if (result == null)
-            throw new Error(
-              "DVDCompare returned no results.",
-            )
-          console.log(
-            `DVDCompare search landed on a film page directly (fid=${result.id}). ` +
-              "Auto-selecting listing ID; use dvdCompareReleaseHash to choose a release.",
-          )
-          return of(
-            `${DVDCOMPARE_FILM_BASE}${result.id}#${hash}`,
-          )
-        }
-
-        return getUserSearchInput({
-          message: `Search results for "${searchTerm}":`,
-          options: [
-            ...results.map((result, index) => ({
-              index,
-              label: `${result.baseTitle}${result.variant !== "DVD" ? ` (${displayDvdCompareVariant(result.variant)})` : ""}${result.year ? ` (${result.year})` : ""}`,
-            })),
-            {
-              index: -1,
-              label: "Cancel / skip",
-            },
-          ],
-        }).pipe(
-          map((selectedIndex) => {
-            if (selectedIndex === -1) return undefined
-
-            return results.at(selectedIndex)
-          }),
-          tap((result) => {
-            if (!result)
-              throw new Error("No result selected.")
-          }),
-          map(
-            (result) =>
-              `${DVDCOMPARE_FILM_BASE}${result?.id}#${hash}`,
-          ),
-        )
-      }),
-    )
-  }
-
-  return throwError(
-    () =>
-      new Error(
-        "Provide url, dvdCompareId, or searchTerm.",
-      ),
-  )
-}
-
-// Flatten the parser's structured `extras` + `cuts` + standalone
-// `possibleNames` (the untimed-suggestions list) into a single ordered
-// array of every label the user might want to pick from. Order matches
-// the DVDCompare scrape order: parents and children appear in their
-// nested position, cut labels follow, and the untimed-suggestion list
-// brings up the rear (most of which already appear in `extras`, but the
-// final `Array.from(new Set(...))` dedupes while preserving first-seen
-// order). The UI dropdown is driven off this list.
-export const flattenAllKnownNames = ({
-  cuts,
-  extras,
-  possibleNames,
-}: {
-  cuts: Cut[]
-  extras: SpecialFeature[]
-  possibleNames: PossibleName[]
-}): string[] => {
-  const fromExtras = extras.flatMap((extra) => {
-    const children = (extra.children ?? []).map(
-      (child) => child.text,
-    )
-    return [extra.text, ...children]
-  })
-  const fromCuts = cuts
-    .map((cut) => cut.name)
-    .filter(Boolean)
-  const fromPossibleNames = possibleNames.map(
-    (entry) => entry.name,
-  )
-  const combined = [
-    ...fromExtras,
-    ...fromCuts,
-    ...fromPossibleNames,
-  ]
-    .map((label) => label.trim())
-    .filter(Boolean)
-  return Array.from(new Set(combined))
-}
 
 // Topological reorder: a rename whose target name equals another file's
 // CURRENT name has to run AFTER that other file's rename completes —
@@ -233,56 +106,6 @@ export const reorderRenamesForOnDiskConflicts = <
     }
   }
   return [...upfront, ...deferred]
-}
-
-// Files shorter than this never get the main-feature fallback rename.
-// 30 min is a generous floor — typical movie cuts exceed it by a wide
-// margin, while typical extras (clips, image galleries, trailers,
-// short featurettes) come in well under. Surfaced as a constant so it's
-// easy to retune when a real-world false-positive shows up.
-const MAIN_FEATURE_MIN_DURATION_SECONDS = 30 * 60
-
-const timecodeToSeconds = (timecode: string): number => {
-  const parts = timecode
-    .split(":")
-    .map((segment) => Number(segment) || 0)
-  if (parts.length === 1) return parts[0]
-  if (parts.length === 2) return parts[0] * 60 + parts[1]
-  return parts[0] * 3600 + parts[1] * 60 + parts[2]
-}
-
-// Movie-cut matching uses a wider tolerance window than extras matching.
-// Full-feature rips routinely drift 5–10 seconds from DVDCompare's
-// published runtime (encoder padding, leading/trailing logos, slightly
-// different chapter handling), which the default per-extra padding of 2
-// would reject. Cuts on a single release are minutes apart, so a 15-sec
-// window won't false-positive across editions but does catch typical
-// rip variance.
-const CUT_TIMECODE_PADDING_FALLBACK = 15
-
-export const findMatchingCut = (
-  cuts: Cut[],
-  fileTimecode: string,
-  deviation: TimecodeDeviation,
-): Cut | null => {
-  const cutDeviation: TimecodeDeviation = {
-    fixedOffset: deviation.fixedOffset,
-    timecodePaddingAmount: Math.max(
-      deviation.timecodePaddingAmount ?? 0,
-      CUT_TIMECODE_PADDING_FALLBACK,
-    ),
-  }
-  return (
-    cuts.find(
-      (cut) =>
-        cut.timecode != null &&
-        getIsSimilarTimecode(
-          fileTimecode,
-          cut.timecode,
-          cutDeviation,
-        ),
-    ) ?? null
-  )
 }
 
 // Produces the final {fileInfo, renamedFilename} pairs, applying movie
