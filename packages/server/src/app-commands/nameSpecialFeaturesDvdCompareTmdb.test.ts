@@ -5,16 +5,12 @@ import type {
   Cut,
   SpecialFeature,
 } from "../tools/parseSpecialFeatures.js"
+import type { FileMatch } from "./nameSpecialFeaturesDvdCompareTmdb.fileMatch.js"
 import {
-  buildMovieBaseName,
-  buildMovieFeatureName,
   buildUnnamedFileCandidates,
-  type FileMatch,
   findMatchingCut,
   flattenAllKnownNames,
   groupRenamesByTarget,
-  isMainFeatureFilename,
-  parseEditionFromFilename,
   postProcessMatches,
   promoteRenameToFront,
   reorderRenamesForOnDiskConflicts,
@@ -33,52 +29,6 @@ const makeFileInfo = (filename: string): FileInfo => ({
 // reflect the "obviously the movie" case. Tests that exercise the
 // under-threshold filter pass an explicit short timecode.
 const MOVIE_LENGTH_TIMECODE = "1:30:00"
-
-describe(buildMovieBaseName.name, () => {
-  test("formats 'Title (Year)' for a normal entry", () => {
-    expect(
-      buildMovieBaseName({
-        title: "Inception",
-        year: "2010",
-      }),
-    ).toBe("Inception (2010)")
-  })
-
-  test("drops the year parenthetical when missing", () => {
-    expect(
-      buildMovieBaseName({ title: "Untitled", year: "" }),
-    ).toBe("Untitled")
-  })
-
-  test("strips filename-illegal characters from the title", () => {
-    expect(
-      buildMovieBaseName({
-        title: "Soldier: Reloaded?",
-        year: "1998",
-      }),
-    ).toBe("Soldier - Reloaded (1998)")
-  })
-})
-
-describe(buildMovieFeatureName.name, () => {
-  test("appends '{edition-…}' when a cut name is provided", () => {
-    expect(
-      buildMovieFeatureName(
-        { title: "Dragon Lord", year: "1982" },
-        "Hong Kong Version",
-      ),
-    ).toBe("Dragon Lord (1982) {edition-Hong Kong Version}")
-  })
-
-  test("omits the edition suffix for an empty cut name", () => {
-    expect(
-      buildMovieFeatureName(
-        { title: "Dragon Lord", year: "1982" },
-        "",
-      ),
-    ).toBe("Dragon Lord (1982)")
-  })
-})
 
 describe(findMatchingCut.name, () => {
   test("returns null when no cut has a timecode close to the file's", () => {
@@ -510,107 +460,6 @@ describe(reorderRenamesForOnDiskConflicts.name, () => {
 })
 
 // ── N1: Edition-aware folder layout helpers ────────────────────────────────
-
-describe(parseEditionFromFilename.name, () => {
-  test("extracts the edition string from a filename with a {edition-…} tag", () => {
-    expect(
-      parseEditionFromFilename(
-        "Dragon Lord (1982) {edition-Hong Kong Version}.mkv",
-      ),
-    ).toBe("Hong Kong Version")
-  })
-
-  test("returns null when the filename has no {edition-…} tag", () => {
-    expect(
-      parseEditionFromFilename("Dragon Lord (1982).mkv"),
-    ).toBeNull()
-  })
-
-  test("works on a bare stem (no extension)", () => {
-    expect(
-      parseEditionFromFilename(
-        "Dragon Lord (1982) {edition-Director's Cut}",
-      ),
-    ).toBe("Director's Cut")
-  })
-
-  test("returns null for a special-feature filename that looks similar", () => {
-    // Plex suffix present — there's no {edition-…} block here anyway
-    expect(
-      parseEditionFromFilename(
-        "Making Of -behindthescenes.mkv",
-      ),
-    ).toBeNull()
-  })
-})
-
-describe(isMainFeatureFilename.name, () => {
-  test("returns true for a plain 'Title (Year)' filename", () => {
-    expect(
-      isMainFeatureFilename("Dragon Lord (1982).mkv"),
-    ).toBe(true)
-  })
-
-  test("returns true for a 'Title (Year) {edition-…}' filename", () => {
-    expect(
-      isMainFeatureFilename(
-        "Dragon Lord (1982) {edition-Hong Kong Version}.mkv",
-      ),
-    ).toBe(true)
-  })
-
-  test("returns false for a file ending in -trailer", () => {
-    expect(
-      isMainFeatureFilename(
-        "Theatrical Trailer -trailer.mkv",
-      ),
-    ).toBe(false)
-  })
-
-  test("returns false for a file ending in -behindthescenes", () => {
-    expect(
-      isMainFeatureFilename(
-        "Making Of -behindthescenes.mkv",
-      ),
-    ).toBe(false)
-  })
-
-  test("returns false for a file ending in -featurette", () => {
-    expect(
-      isMainFeatureFilename("EPK -featurette.mkv"),
-    ).toBe(false)
-  })
-
-  test("returns false for a file ending in -deleted", () => {
-    expect(
-      isMainFeatureFilename("Cut Scene -deleted.mkv"),
-    ).toBe(false)
-  })
-
-  test("returns false for a file ending in -interview", () => {
-    expect(
-      isMainFeatureFilename("Director Chat -interview.mkv"),
-    ).toBe(false)
-  })
-
-  test("returns false for a file ending in -scene", () => {
-    expect(
-      isMainFeatureFilename("Opening Scene -scene.mkv"),
-    ).toBe(false)
-  })
-
-  test("returns false for a file ending in -short", () => {
-    expect(
-      isMainFeatureFilename("Short Film -short.mkv"),
-    ).toBe(false)
-  })
-
-  test("returns false for a file ending in -other", () => {
-    expect(
-      isMainFeatureFilename("Storyboard -other.mkv"),
-    ).toBe(false)
-  })
-})
 
 // ── N4: Unnamed-file follow-up candidates ─────────────────────────────────
 

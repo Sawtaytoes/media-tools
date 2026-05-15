@@ -32,6 +32,20 @@ import {
   type MovieIdentity,
 } from "../tools/canonicalizeMovieTitle.js"
 import {
+  isMainFeatureFilename,
+  parseEditionFromFilename,
+} from "./nameSpecialFeaturesDvdCompareTmdb.editionTag.js"
+import type {
+  NameSpecialFeaturesResult,
+  UnnamedFileCandidate,
+} from "./nameSpecialFeaturesDvdCompareTmdb.events.js"
+import type { FileMatch } from "./nameSpecialFeaturesDvdCompareTmdb.fileMatch.js"
+import {
+  buildMovieBaseName,
+  buildMovieFeatureName,
+  stripExtension,
+} from "./nameSpecialFeaturesDvdCompareTmdb.filename.js"
+import {
   convertDurationToDvdCompareTimecode,
   getFileDuration,
 } from "../tools/getFileDuration.js"
@@ -60,79 +74,6 @@ const getNextFilenameCount = (previousCount?: number) =>
 
 const DVDCOMPARE_FILM_BASE =
   "https://www.dvdcompare.net/comparisons/film.php?fid="
-
-// Plex (and most filesystems) reject these characters; replace with safe
-// ASCII fallbacks so the resulting names stay readable rather than just
-// stripping characters and leaving awkward gaps.
-const sanitizeFilenameSegment = (name: string): string =>
-  name
-    .replace(/:/gu, " -")
-    .replace(/\?/gu, "")
-    .replace(/"/gu, "'")
-    .replace(/[\\/|*<>]/gu, "")
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: strips ASCII control chars from filenames
-    .replace(/[\u0000-\u001f]/gu, "")
-    .trim()
-
-export const buildMovieBaseName = (
-  movie: MovieIdentity,
-): string => {
-  const title = sanitizeFilenameSegment(movie.title)
-  const yearPart = movie.year ? ` (${movie.year})` : ""
-  return `${title}${yearPart}`
-}
-
-export const buildMovieFeatureName = (
-  movie: MovieIdentity,
-  cutName: string,
-): string => {
-  const editionPart = cutName
-    ? ` {edition-${sanitizeFilenameSegment(cutName)}}`
-    : ""
-  return `${buildMovieBaseName(movie)}${editionPart}`
-}
-
-// Parse the edition tag from an already-renamed filename stem (or full
-// filename with extension). Returns the edition string (e.g. "Director's Cut")
-// or null when the stem carries no {edition-…} tag.
-export const parseEditionFromFilename = (
-  filename: string,
-): string | null => {
-  const stem = filename.slice(
-    0,
-    filename.length - extname(filename).length,
-  )
-  const match = stem.match(/\{edition-([^}]+)\}/)
-  return match ? match[1] : null
-}
-
-// Returns true when a renamed filename looks like a main-feature file
-// (i.e. matches "Title (Year)" or "Title (Year) {edition-…}" without any
-// Plex special-feature suffix like -trailer, -behindthescenes, etc.).
-// The heuristic: if the stem ends in one of the known Plex suffixes it's
-// a special feature; otherwise it's the main feature.
-const PLEX_SPECIAL_FEATURE_SUFFIXES = [
-  "-trailer",
-  "-behindthescenes",
-  "-deleted",
-  "-featurette",
-  "-interview",
-  "-scene",
-  "-short",
-  "-other",
-] as const
-
-export const isMainFeatureFilename = (
-  filename: string,
-): boolean => {
-  const stem = filename.slice(
-    0,
-    filename.length - extname(filename).length,
-  )
-  return !PLEX_SPECIAL_FEATURE_SUFFIXES.some((suffix) =>
-    stem.endsWith(suffix),
-  )
-}
 
 const resolveUrl = ({
   dvdCompareId,
@@ -219,45 +160,6 @@ const resolveUrl = ({
   )
 }
 
-// Per-rename emission shape. The pipeline emits one of these per file
-// it actually renamed (`{ oldName, newName }`), then a single trailing
-// summary record (`{ unrenamedFilenames, possibleNames, allKnownNames }`)
-// so the builder can render "Files not renamed: …" plus an optional
-// "Possible names (no timecode in listing): …" hint underneath, AND
-// drive the autocomplete dropdown in the interactive renamer.
-// `possibleNames` is `{ name, timecode? }[]` so the smart-suggestion
-// modal (Option C) can rank candidates by duration proximity when a
-// timecode is available; the field is empty whenever every file was
-// successfully renamed.
-// `allKnownNames` carries every extras label (timecoded + untimed) and
-// cut name in DVDCompare-order so the UI's fuzzy autocomplete has the
-// full set without re-parsing.
-//
-// The `collision` variant is only emitted in interactive (non-automated)
-// mode when a rename target already exists on disk. The UI can render
-// it as a "review needed" event prompting the user to compare and pick.
-//
-// The `movedToEditionFolder` variant is emitted after a main-feature
-// file is successfully moved into its edition-aware nested folder.
-export type NameSpecialFeaturesResult =
-  | { oldName: string; newName: string }
-  | {
-      unrenamedFilenames: string[]
-      possibleNames: PossibleName[]
-      allKnownNames: string[]
-      unnamedFileCandidates?: UnnamedFileCandidate[]
-    }
-  | {
-      hasCollision: true
-      filename: string
-      targetFilename: string
-    }
-  | {
-      hasMovedToEditionFolder: true
-      filename: string
-      destinationPath: string
-    }
-
 // Flatten the parser's structured `extras` + `cuts` + standalone
 // `possibleNames` (the untimed-suggestions list) into a single ordered
 // array of every label the user might want to pick from. Order matches
@@ -296,46 +198,6 @@ export const flattenAllKnownNames = ({
     .filter(Boolean)
   return Array.from(new Set(combined))
 }
-
-// A candidate association for an unnamed file — used in the follow-up
-// association report when files remain unnamed after the main pass and
-// there are untimed DVDCompare entries that could match them.
-export type UnnamedFileCandidate = {
-  filename: string
-  candidates: string[]
-}
-
-// Per-file match outcome. The post-processor walks the buffered list of
-// these and assigns final renamedFilenames, including the (1)/(2) prefix
-// fallback for unmatched files when no cut matched anything. Each match
-// carries the file's computed timecode so the post-processor's
-// main-feature fallback can apply a minimum-duration filter (image
-// galleries and other short DVDCompare-unlisted extras shouldn't be
-// renamed as the movie just because they didn't match anything).
-export type FileMatch =
-  | {
-      fileInfo: FileInfo
-      timecode: string
-      kind: "cut"
-      cut: Cut
-    }
-  | {
-      fileInfo: FileInfo
-      timecode: string
-      kind: "extra"
-      renamedFilename: string
-    }
-  | {
-      fileInfo: FileInfo
-      timecode: string
-      kind: "unmatched"
-    }
-
-const stripExtension = (filename: string): string =>
-  filename.slice(
-    0,
-    filename.length - extname(filename).length,
-  )
 
 // Topological reorder: a rename whose target name equals another file's
 // CURRENT name has to run AFTER that other file's rename completes —
