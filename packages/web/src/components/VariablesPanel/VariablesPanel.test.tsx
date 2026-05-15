@@ -103,10 +103,10 @@ describe("VariablesPanel", () => {
       screen.getByRole("button", {
         name: /dvd compare id/i,
       }),
-    ).toBeInTheDocument()
+    ).toBeVisible()
     expect(
       screen.getByRole("button", { name: /^path$/i }),
-    ).toBeInTheDocument()
+    ).toBeVisible()
   })
 
   test("picking DVD Compare ID adds a dvdCompareId variable", async () => {

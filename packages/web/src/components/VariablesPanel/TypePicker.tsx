@@ -15,8 +15,8 @@ export const TypePicker = ({
   const availableTypes = listVariableTypes().filter(
     (definition) => {
       if (definition.cardinality === "singleton") {
-        return !variables.some(
-          (variable) => variable.type === definition.type,
+        return variables.every(
+          (variable) => variable.type !== definition.type,
         )
       }
       return true
