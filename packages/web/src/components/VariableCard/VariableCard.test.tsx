@@ -106,4 +106,54 @@ describe("VariableCard", () => {
       screen.getByText("path variable"),
     ).toBeInTheDocument()
   })
+
+  test("renders a dvdCompareId value input when type is dvdCompareId", () => {
+    const variable: Variable = {
+      id: "dvdCompareIdVariable_abc",
+      label: "Spider-Man 2002",
+      value: "spider-man-2002",
+      type: "dvdCompareId",
+    }
+    renderCard(variable)
+    expect(
+      screen.getByDisplayValue("spider-man-2002"),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText("dvdCompareId variable"),
+    ).toBeInTheDocument()
+  })
+
+  test("updates dvdCompareId value in atom on change", async () => {
+    const user = userEvent.setup({ delay: null })
+    const variable: Variable = {
+      id: "dvdCompareIdVariable_abc",
+      label: "Spider-Man 2002",
+      value: "spider-man-2002",
+      type: "dvdCompareId",
+    }
+    const store = renderCard(variable)
+
+    const valueInput = screen.getByDisplayValue(
+      "spider-man-2002",
+    )
+    await user.clear(valueInput)
+    await user.type(valueInput, "74759")
+
+    expect(store.get(variablesAtom)[0].value).toBe("74759")
+  })
+
+  test("does not show the folder browse button for dvdCompareId variables", () => {
+    const variable: Variable = {
+      id: "dvdCompareIdVariable_abc",
+      label: "Spider-Man 2002",
+      value: "",
+      type: "dvdCompareId",
+    }
+    renderCard(variable)
+    expect(
+      screen.queryByTitle(
+        /browse|pick a folder/i,
+      ),
+    ).toBeNull()
+  })
 })
