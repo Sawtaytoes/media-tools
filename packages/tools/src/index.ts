@@ -59,6 +59,7 @@ export {
   registerLogSink,
 } from "./logging/logger.js"
 export {
+  __resetLoggingModeForTests,
   getLoggingMode,
   type LoggingMode,
   setLoggingMode,
