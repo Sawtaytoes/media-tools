@@ -56,17 +56,17 @@ describe("initTaskScheduler — injected getActiveJobId", () => {
   test("defaults to a null provider when no injection is supplied", () => {
     initTaskScheduler(1)
 
-    let didRun = false
+    let hasRun = false
 
     runTask(
       defer(() => {
-        didRun = true
+        hasRun = true
         return of(undefined)
       }),
     ).subscribe()
 
     // CLI passes no provider; scheduler must still function and treat
     // the active job id as null (no per-job claim consulted).
-    expect(didRun).toBe(true)
+    expect(hasRun).toBe(true)
   })
 })
