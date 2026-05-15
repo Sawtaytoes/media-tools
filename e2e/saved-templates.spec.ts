@@ -12,27 +12,12 @@ import { expect, test } from "@playwright/test"
 // breakpoint.
 
 test.describe("Saved Templates sidebar", () => {
+  // Workers run with an isolated APP_DATA_DIR (see e2e launch protocol in
+  // AGENTS.md), so the templates list starts empty per session. Template
+  // names are also timestamped, which makes the spec resilient to leftover
+  // state in case APP_DATA_DIR is reused.
   test.beforeEach(async ({ page }) => {
     await page.goto("/builder/")
-    // Best-effort cleanup of any leftover templates from prior runs in
-    // the same APP_DATA_DIR. The DELETE endpoint is idempotent enough
-    // that 404s are safe; we just want a known-clean list at start.
-    const response = await page.request.get(
-      "/api/templates",
-    )
-    if (response.ok()) {
-      const body = (await response.json()) as {
-        templates: { id: string }[]
-      }
-      await Promise.all(
-        body.templates.map((template) =>
-          page.request.delete(
-            `/api/templates/${template.id}`,
-          ),
-        ),
-      )
-    }
-    await page.reload()
   })
 
   test("save current → reload page → template still listed → load restores it", async ({
@@ -48,6 +33,14 @@ test.describe("Saved Templates sidebar", () => {
     await expect(
       section.getByText("No saved templates yet."),
     ).toBeVisible()
+
+    // Need at least one step in the sequence — toYamlStr returns the
+    // comment "# No steps yet" for an empty sequence, which the server's
+    // validator (correctly) rejects as not a valid template body.
+    await page
+      .getByRole("button", { name: "➕ Step" })
+      .first()
+      .click()
 
     // Open the save modal and submit a uniquely-named template.
     await section

@@ -4,12 +4,7 @@ import {
   useSetAtom,
   useStore,
 } from "jotai"
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
   loadYamlFromText,
   toYamlStr,
@@ -55,8 +50,14 @@ export const SavedTemplatesPanel = () => {
   const [undoSnapshot, setUndoSnapshot] = useAtom(
     templateLoadUndoAtom,
   )
-  const [isSaveModalOpen, setIsSaveModalOpen] =
-    useState(false)
+  // Snapshot of the yaml at the moment the user opens the modal. We
+  // freeze it here rather than reading live atoms inside the modal so
+  // edits to the sequence made after opening the modal don't change
+  // what gets saved — the user's intent at click-time is the contract.
+  const [pendingSaveYaml, setPendingSaveYaml] = useState<
+    string | null
+  >(null)
+  const isSaveModalOpen = pendingSaveYaml !== null
 
   const refetch = useCallback(async () => {
     try {
@@ -76,14 +77,18 @@ export const SavedTemplatesPanel = () => {
     void refetch()
   }, [refetch])
 
-  const currentYaml = useMemo(() => {
-    // Re-encode on render so "Save current" / "Update from current"
-    // always see the freshest sequence. toYamlStr is microsecond-scale.
+  // Read the live atoms at the moment we need to serialize, not at
+  // render. Using `useMemo([store])` would have captured the initial
+  // YAML at mount because `store` is a stable reference — the dep list
+  // never invalidates and updates to stepsAtom/pathsAtom would never
+  // refresh the memoized value. e2e caught this on the "save current
+  // after adding a step" flow.
+  const readCurrentYaml = () => {
     const commands = store.get(commandsAtom)
     const steps = store.get(stepsAtom)
     const paths = store.get(pathsAtom)
     return toYamlStr(steps, paths, commands)
-  }, [store])
+  }
 
   const onLoad = async (id: string) => {
     try {
@@ -137,7 +142,7 @@ export const SavedTemplatesPanel = () => {
 
   const onUpdateFromCurrent = async (id: string) => {
     try {
-      await updateTemplate(id, { yaml: currentYaml })
+      await updateTemplate(id, { yaml: readCurrentYaml() })
       await refetch()
     } catch (error) {
       setErrorMessage(
@@ -229,7 +234,9 @@ export const SavedTemplatesPanel = () => {
         </h3>
         <button
           type="button"
-          onClick={() => setIsSaveModalOpen(true)}
+          onClick={() =>
+            setPendingSaveYaml(readCurrentYaml())
+          }
           className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-500 rounded text-white"
         >
           Save current
@@ -299,8 +306,8 @@ export const SavedTemplatesPanel = () => {
 
       <SaveTemplateModal
         isOpen={isSaveModalOpen}
-        yaml={currentYaml}
-        onClose={() => setIsSaveModalOpen(false)}
+        yaml={pendingSaveYaml ?? ""}
+        onClose={() => setPendingSaveYaml(null)}
         onSaved={(created) => {
           setSelectedTemplateId(created.id)
           void refetch()
