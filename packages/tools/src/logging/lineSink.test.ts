@@ -80,6 +80,43 @@ describe(formatLogLine.name, () => {
     expect(line).toContain(`detail="two words"`)
   })
 
+  test("renders `[ts] [TAG] msg` when a `tag` field is present (preserves legacy chalk-stripped shape)", () => {
+    const now = new Date()
+    now.setHours(8, 21, 33, 512)
+
+    const line = formatLogLine(
+      {
+        level: "info",
+        msg: "Step step1 starting.",
+        tag: "SEQUENCE",
+      },
+      now,
+    )
+
+    expect(line).toBe(
+      "[08:21:33.512] [SEQUENCE] Step step1 starting.",
+    )
+  })
+
+  test("tag-mode line still appends remaining extra fields", () => {
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+
+    const line = formatLogLine(
+      {
+        level: "info",
+        msg: "Step step1 starting.",
+        tag: "SEQUENCE",
+        stepIndex: 1,
+      },
+      now,
+    )
+
+    expect(line).toBe(
+      "[00:00:00.000] [SEQUENCE] stepIndex=1 Step step1 starting.",
+    )
+  })
+
   test("serialises nested objects via JSON", () => {
     const now = new Date()
     now.setHours(0, 0, 0, 0)
