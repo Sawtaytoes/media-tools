@@ -151,8 +151,9 @@ describe(installLogBridge.name, () => {
       job.id,
       expect.stringContaining("structured line"),
     )
-    expect(appendSpy.mock.calls[0]?.[1]).toContain(
-      "stepIndex=2",
+    expect(appendSpy).toHaveBeenCalledWith(
+      job.id,
+      expect.stringContaining("stepIndex=2"),
     )
   })
 
@@ -165,9 +166,9 @@ describe(installLogBridge.name, () => {
   })
 
   test("withJobContext seeds the structured logger's jobId field", () => {
-    const records: LogRecord[] = []
+    let records: readonly LogRecord[] = []
     registerLogSink((record) => {
-      records.push(record)
+      records = records.concat(record)
     })
 
     const job = jobStore.createJob({ commandName: "test" })

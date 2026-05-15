@@ -15,13 +15,13 @@ import {
 } from "./logger.js"
 
 describe("startSpan", () => {
-  let records: LogRecord[]
+  let records: readonly LogRecord[]
 
   beforeEach(() => {
     __resetLogSinksForTests()
     records = []
     registerLogSink((record) => {
-      records.push(record)
+      records = records.concat(record)
     })
   })
 

@@ -16,13 +16,13 @@ import {
 } from "./logger.js"
 
 describe(getLogger.name, () => {
-  let records: LogRecord[]
+  let records: readonly LogRecord[]
 
   beforeEach(() => {
     __resetLogSinksForTests()
     records = []
     registerLogSink((record) => {
-      records.push(record)
+      records = records.concat(record)
     })
   })
 
@@ -135,9 +135,9 @@ describe(getLogger.name, () => {
     getLogger().info("second")
 
     expect(sink).toHaveBeenCalledTimes(1)
-    expect(sink.mock.calls[0]?.[0]).toMatchObject({
-      msg: "first",
-    })
+    expect(sink).toHaveBeenCalledWith(
+      expect.objectContaining({ msg: "first" }),
+    )
   })
 
   test("multiple sinks each receive every record", () => {

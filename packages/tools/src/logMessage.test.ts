@@ -127,9 +127,11 @@ describe(createLogMessage.name, () => {
       })("HELLO WORLD")
 
       expect(consoleSpy).toHaveBeenCalledOnce()
-
-      expect(consoleSpy.mock.calls.at(0)?.at(0)).toContain(
-        "HELLO WORLD",
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining("HELLO WORLD"),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
       )
     })
   })
@@ -184,8 +186,11 @@ describe(logError.name, () => {
     captureConsoleMessage("error", (consoleSpy) => {
       logError("ERROR")
 
-      expect(consoleSpy.mock.calls.at(0)?.at(0)).toContain(
-        "ERROR",
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining("ERROR"),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
       )
     })
   })
@@ -196,8 +201,11 @@ describe(logInfo.name, () => {
     captureConsoleMessage("info", (consoleSpy) => {
       logInfo("INFO")
 
-      expect(consoleSpy.mock.calls.at(0)?.at(0)).toContain(
-        "INFO",
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining("INFO"),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
       )
     })
   })
@@ -208,8 +216,11 @@ describe(logWarning.name, () => {
     captureConsoleMessage("warn", (consoleSpy) => {
       logWarning("WARNING")
 
-      expect(consoleSpy.mock.calls.at(0)?.at(0)).toContain(
-        "WARNING",
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining("WARNING"),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
       )
     })
   })
@@ -218,9 +229,9 @@ describe(logWarning.name, () => {
 describe("logMessage mode-awareness", () => {
   test('"api" mode emits a structured record AND skips chalk console', () => {
     __resetLogSinksForTests()
-    const records: LogRecord[] = []
+    let records: readonly LogRecord[] = []
     registerLogSink((record) => {
-      records.push(record)
+      records = records.concat(record)
     })
     setLoggingMode("api")
 
@@ -242,9 +253,9 @@ describe("logMessage mode-awareness", () => {
 
   test('"cli" mode (default) emits NO structured record', () => {
     __resetLogSinksForTests()
-    const records: LogRecord[] = []
+    let records: readonly LogRecord[] = []
     registerLogSink((record) => {
-      records.push(record)
+      records = records.concat(record)
     })
 
     captureConsoleMessage("info", () => {
@@ -257,9 +268,9 @@ describe("logMessage mode-awareness", () => {
 
   test('"cli-debug" mode emits BOTH a structured record AND the chalk console line', () => {
     __resetLogSinksForTests()
-    const records: LogRecord[] = []
+    let records: readonly LogRecord[] = []
     registerLogSink((record) => {
-      records.push(record)
+      records = records.concat(record)
     })
     setLoggingMode("cli-debug")
 
@@ -277,9 +288,9 @@ describe("logMessage mode-awareness", () => {
 
   test('"api" mode for logError emits a structured "error" record', () => {
     __resetLogSinksForTests()
-    const records: LogRecord[] = []
+    let records: readonly LogRecord[] = []
     registerLogSink((record) => {
-      records.push(record)
+      records = records.concat(record)
     })
     setLoggingMode("api")
 

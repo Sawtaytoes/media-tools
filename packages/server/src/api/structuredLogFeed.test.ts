@@ -116,9 +116,9 @@ describe("GET /logs/structured", () => {
 
 describe("2-step sequence: both legacy + structured feeds carry records", () => {
   test("legacy job.logs receives lines AND a sink receives structured records with jobId/stepIndex context", async () => {
-    const structured: LogRecord[] = []
+    let structured: readonly LogRecord[] = []
     const unsubscribe = registerLogSink((record) => {
-      structured.push(record)
+      structured = structured.concat(record)
     })
 
     try {

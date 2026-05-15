@@ -31,6 +31,23 @@ const formatValue = (value: unknown): string => {
   }
 }
 
+const renderField = ([key, value]: [
+  string,
+  unknown,
+]): string => `${key}=${formatValue(value)}`
+
+const isRenderableEntry =
+  (excludedKeys: ReadonlySet<string>) =>
+  ([key, value]: [string, unknown]): boolean =>
+    !excludedKeys.has(key) && value !== undefined
+
+const joinFields = (fields: readonly string[]): string =>
+  fields.length > 0 ? ` ${fields.join(" ")}` : ""
+
+const TAG_MODE_EXCLUDED_KEYS: ReadonlySet<string> = new Set(
+  [...RESERVED_KEYS, "tag"],
+)
+
 // When a record carries a `tag` field (set by the `logInfo/logError/logWarning`
 // bridge in api mode), render as `[ts] [TAG] msg` so the SSE feed stays byte-
 // identical to today's chalk-stripped console-patch output. Anything else
@@ -40,30 +57,18 @@ export const formatLogLine = (
   now: Date = new Date(),
 ): string => {
   if (typeof record.tag === "string") {
-    const extras: string[] = []
-    for (const [key, value] of Object.entries(record)) {
-      if (
-        RESERVED_KEYS.has(key) ||
-        key === "tag" ||
-        value === undefined
-      ) {
-        continue
-      }
-      extras.push(`${key}=${formatValue(value)}`)
-    }
-    const extraPart =
-      extras.length > 0 ? ` ${extras.join(" ")}` : ""
+    const extraPart = joinFields(
+      Object.entries(record)
+        .filter(isRenderableEntry(TAG_MODE_EXCLUDED_KEYS))
+        .map(renderField),
+    )
     return `${formatTimestamp(now)} [${record.tag}]${extraPart} ${record.msg}`
   }
 
-  const fields: string[] = []
-  for (const [key, value] of Object.entries(record)) {
-    if (RESERVED_KEYS.has(key) || value === undefined) {
-      continue
-    }
-    fields.push(`${key}=${formatValue(value)}`)
-  }
-  const fieldPart =
-    fields.length > 0 ? ` ${fields.join(" ")}` : ""
+  const fieldPart = joinFields(
+    Object.entries(record)
+      .filter(isRenderableEntry(RESERVED_KEYS))
+      .map(renderField),
+  )
   return `${formatTimestamp(now)} ${record.level}${fieldPart} ${record.msg}`
 }
