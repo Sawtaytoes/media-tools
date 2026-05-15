@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest"
 import {
   groupRenamesByTarget,
   promoteRenameToFront,
-} from "./nameSpecialFeaturesDvdCompareTmdb.js"
+} from "./nameSpecialFeaturesDvdCompareTmdb.duplicates.js"
 
 describe(groupRenamesByTarget.name, () => {
   test("groups multiple renames sharing the same target and preserves input order within each group", () => {
