@@ -152,9 +152,7 @@ describe("VariableCard", () => {
     }
     renderCard(variable)
     expect(
-      screen.queryByTitle(
-        /browse|pick a folder/i,
-      ),
+      screen.queryByTitle(/browse|pick a folder/i),
     ).toBeNull()
   })
 })
