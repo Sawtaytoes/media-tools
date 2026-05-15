@@ -605,7 +605,9 @@ steps:
       const renameCalls = warnSpy.mock.calls.filter(
         ([msg]) =>
           typeof msg === "string" &&
-          msg.includes('renamed command "nameSpecialFeatures"'),
+          msg.includes(
+            'renamed command "nameSpecialFeatures"',
+          ),
       )
       expect(renameCalls).toHaveLength(1)
     } finally {
