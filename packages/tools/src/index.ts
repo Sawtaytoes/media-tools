@@ -43,6 +43,22 @@ export {
 export { logAndRethrowPipelineError } from "./logAndRethrowPipelineError.js"
 export { logAndSwallowPipelineError } from "./logAndSwallowPipelineError.js"
 export {
+  getLoggingContext,
+  loggingContext,
+  type LoggerContext,
+  withLoggingContext,
+} from "./logging/context.js"
+export { formatLogLine } from "./logging/lineSink.js"
+export {
+  __resetLogSinksForTests,
+  getLogger,
+  type Logger,
+  type LogLevel,
+  type LogRecord,
+  type LogSink,
+  registerLogSink,
+} from "./logging/logger.js"
+export {
   createAddColorToChalk,
   createLogMessage,
   logError,
