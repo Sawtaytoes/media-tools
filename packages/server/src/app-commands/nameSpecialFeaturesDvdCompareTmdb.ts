@@ -1,6 +1,5 @@
 import { access } from "node:fs/promises"
 import { basename, extname, join } from "node:path"
-import type { FileInfo } from "@mux-magic/tools"
 import {
   getFilesAtDepth,
   logAndRethrowPipelineError,
@@ -11,7 +10,6 @@ import {
   defaultIfEmpty,
   defer,
   EMPTY,
-  from,
   map,
   mergeAll,
   mergeMap,
@@ -26,37 +24,6 @@ import {
   type MovieIdentity,
 } from "../tools/canonicalizeMovieTitle.js"
 import {
-  isMainFeatureFilename,
-  parseEditionFromFilename,
-} from "./nameSpecialFeaturesDvdCompareTmdb.editionTag.js"
-import { resolveUrl } from "./nameSpecialFeaturesDvdCompareTmdb.resolveUrl.js"
-import { buildUnnamedFileCandidates } from "./nameSpecialFeaturesDvdCompareTmdb.buildUnnamedFileCandidates.js"
-import {
-  reorderForDuplicatePrompts,
-} from "./nameSpecialFeaturesDvdCompareTmdb.duplicates.js"
-import {
-  findUniqueTargetPath,
-  moveFileToEditionFolder,
-} from "./nameSpecialFeaturesDvdCompareTmdb.editions.js"
-import { postProcessMatches } from "./nameSpecialFeaturesDvdCompareTmdb.postProcessMatches.js"
-import { reorderRenamesForOnDiskConflicts } from "./nameSpecialFeaturesDvdCompareTmdb.reorderRenamesForOnDiskConflicts.js"
-import { flattenAllKnownNames } from "./nameSpecialFeaturesDvdCompareTmdb.flattenAllKnownNames.js"
-import {
-  findMatchingCut,
-  MAIN_FEATURE_MIN_DURATION_SECONDS,
-  timecodeToSeconds,
-} from "./nameSpecialFeaturesDvdCompareTmdb.timecode.js"
-import type {
-  NameSpecialFeaturesResult,
-  UnnamedFileCandidate,
-} from "./nameSpecialFeaturesDvdCompareTmdb.events.js"
-import type { FileMatch } from "./nameSpecialFeaturesDvdCompareTmdb.fileMatch.js"
-import {
-  buildMovieBaseName,
-  buildMovieFeatureName,
-  stripExtension,
-} from "./nameSpecialFeaturesDvdCompareTmdb.filename.js"
-import {
   convertDurationToDvdCompareTimecode,
   getFileDuration,
 } from "../tools/getFileDuration.js"
@@ -65,15 +32,26 @@ import {
   getSpecialFeatureFromTimecode,
   type TimecodeDeviation,
 } from "../tools/getSpecialFeatureFromTimecode.js"
-import { getUserSearchInput } from "../tools/getUserSearchInput.js"
-import {
-  type Cut,
-  type PossibleName,
-  parseSpecialFeatures,
-  type SpecialFeature,
-} from "../tools/parseSpecialFeatures.js"
+import { parseSpecialFeatures } from "../tools/parseSpecialFeatures.js"
 import { withFileProgress } from "../tools/progressEmitter.js"
 import { searchDvdCompare } from "../tools/searchDvdCompare.js"
+import { buildUnnamedFileCandidates } from "./nameSpecialFeaturesDvdCompareTmdb.buildUnnamedFileCandidates.js"
+import { reorderForDuplicatePrompts } from "./nameSpecialFeaturesDvdCompareTmdb.duplicates.js"
+import {
+  findUniqueTargetPath,
+  moveFileToEditionFolder,
+} from "./nameSpecialFeaturesDvdCompareTmdb.editions.js"
+import {
+  isMainFeatureFilename,
+  parseEditionFromFilename,
+} from "./nameSpecialFeaturesDvdCompareTmdb.editionTag.js"
+import type { NameSpecialFeaturesResult } from "./nameSpecialFeaturesDvdCompareTmdb.events.js"
+import type { FileMatch } from "./nameSpecialFeaturesDvdCompareTmdb.fileMatch.js"
+import { flattenAllKnownNames } from "./nameSpecialFeaturesDvdCompareTmdb.flattenAllKnownNames.js"
+import { postProcessMatches } from "./nameSpecialFeaturesDvdCompareTmdb.postProcessMatches.js"
+import { reorderRenamesForOnDiskConflicts } from "./nameSpecialFeaturesDvdCompareTmdb.reorderRenamesForOnDiskConflicts.js"
+import { resolveUrl } from "./nameSpecialFeaturesDvdCompareTmdb.resolveUrl.js"
+import { findMatchingCut } from "./nameSpecialFeaturesDvdCompareTmdb.timecode.js"
 
 const getNextFilenameCount = (previousCount?: number) =>
   (previousCount || 0) + 1
