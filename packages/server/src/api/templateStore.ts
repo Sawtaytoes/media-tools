@@ -64,10 +64,7 @@ export type TemplateStore = {
 // Combining-diacritic block U+0300..U+036F; built via RegExp constructor
 // so the file stays ASCII-safe on Windows toolchains that misread direct
 // non-BMP literals.
-const COMBINING_DIACRITICS = new RegExp(
-  "[\\u0300-\\u036f]",
-  "g",
-)
+const COMBINING_DIACRITICS = /[\u0300-\u036f]/g
 
 const slugifyName = (name: string): string => {
   const stripped = name
@@ -270,10 +267,10 @@ export const createTemplateStore = ({
   ): Promise<boolean> =>
     serializeWrite(async () => {
       const file = await readTemplatesFile(filePath)
-      const exists = file.templates.some(
+      const hasMatch = file.templates.some(
         (tpl) => tpl.id === id,
       )
-      if (!exists) return false
+      if (!hasMatch) return false
       const next: TemplatesFile = {
         version: 1,
         templates: file.templates.filter(

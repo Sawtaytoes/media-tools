@@ -292,8 +292,8 @@ templateRoutes.openapi(
   }),
   async (context) => {
     const { id } = context.req.valid("param")
-    const deleted = await getStore().deleteTemplate(id)
-    if (!deleted) {
+    const isDeleted = await getStore().deleteTemplate(id)
+    if (!isDeleted) {
       return context.json({ error: "not found" }, 404)
     }
     return context.body(null, 204)

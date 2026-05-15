@@ -160,7 +160,7 @@ describe("PUT /api/templates/:id", () => {
         yaml: SAMPLE_YAML,
       })
     ).json()) as { id: string; updatedAt: string }
-    await new Promise((r) => setTimeout(r, 5))
+    await new Promise((resolve) => setTimeout(resolve, 5))
     const response = await putJson(
       `/api/templates/${created.id}`,
       {
@@ -235,7 +235,9 @@ describe("full round-trip", () => {
     const list = (await (
       await get("/api/templates")
     ).json()) as { templates: { id: string }[] }
-    expect(list.templates.map((t) => t.id)).toContain(id)
+    expect(
+      list.templates.map((template) => template.id),
+    ).toContain(id)
 
     const fetched = await get(`/api/templates/${id}`)
     expect(fetched.status).toBe(200)

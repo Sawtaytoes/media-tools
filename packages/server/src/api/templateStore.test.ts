@@ -133,7 +133,7 @@ describe("templateStore — CRUD round-trip", () => {
       name: "Movie Workflow",
       yaml: SAMPLE_YAML,
     })
-    await new Promise((r) => setTimeout(r, 5))
+    await new Promise((resolve) => setTimeout(resolve, 5))
     const updated = await store.updateTemplate(created.id, {
       name: "Renamed",
       description: "now described",
@@ -250,6 +250,8 @@ describe("templateStore — persistence across instances", () => {
     })
     expect(existsSync(nested)).toBe(true)
     const raw = await readFile(nested, "utf8")
-    expect((JSON.parse(raw) as { version: number }).version).toBe(1)
+    expect(
+      (JSON.parse(raw) as { version: number }).version,
+    ).toBe(1)
   })
 })
