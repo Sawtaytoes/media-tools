@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test"
 
+import { apiBaseUrl } from "./playwright.setup.js"
+
 // Saved Templates sidebar — save / reload / load round-trip.
 //
 // Templates persist server-side via /api/templates (worker 2a). This
@@ -12,12 +14,34 @@ import { expect, test } from "@playwright/test"
 // breakpoint.
 
 test.describe("Saved Templates sidebar", () => {
-  // Workers run with an isolated APP_DATA_DIR (see e2e launch protocol in
-  // AGENTS.md), so the templates list starts empty per session. Template
-  // names are also timestamped, which makes the spec resilient to leftover
-  // state in case APP_DATA_DIR is reused.
+  // Best-effort cleanup of any leftover templates from prior runs that
+  // happened to reuse the same APP_DATA_DIR. The worker-port/PID
+  // protocol in AGENTS.md fabricates a fresh tmpdir per session, so
+  // the loop is a no-op on the first run, but it keeps the spec
+  // re-runnable in dev without the launcher dance — the first
+  // assertion below depends on "No saved templates yet." being
+  // visible. The api lives on its own origin (PORT, not WEB_PORT),
+  // hence the absolute URL — `page.request.get("/api/templates")`
+  // would resolve against the web baseURL and the SPA's index.html
+  // fallback would return non-JSON.
   test.beforeEach(async ({ page }) => {
     await page.goto("/builder/")
+    const listResponse = await page.request.get(
+      `${apiBaseUrl}/api/templates`,
+    )
+    if (listResponse.ok()) {
+      const body = (await listResponse.json()) as {
+        templates: { id: string }[]
+      }
+      await Promise.all(
+        body.templates.map((template) =>
+          page.request.delete(
+            `${apiBaseUrl}/api/templates/${template.id}`,
+          ),
+        ),
+      )
+    }
+    await page.reload()
   })
 
   test("save current → reload page → template still listed → load restores it", async ({
