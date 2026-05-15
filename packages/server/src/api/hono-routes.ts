@@ -12,6 +12,7 @@ import { queryRoutes } from "./routes/queryRoutes.js"
 import { sequenceRoutes } from "./routes/sequenceRoutes.js"
 import { serverIdRoutes } from "./routes/serverIdRoutes.js"
 import { systemRoutes } from "./routes/systemRoutes.js"
+import { templateRoutes } from "./routes/templateRoutes.js"
 import { transcodeRoutes } from "./routes/transcodeRoutes.js"
 import { versionRoutes } from "./routes/versionRoutes.js"
 
@@ -28,6 +29,7 @@ app.route("/", haTriggerRoutes)
 app.route("/", fileRoutes)
 app.route("/", serverIdRoutes)
 app.route("/", systemRoutes)
+app.route("/", templateRoutes)
 app.route("/", transcodeRoutes)
 app.route("/", versionRoutes)
 
