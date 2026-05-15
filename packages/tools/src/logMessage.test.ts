@@ -2,6 +2,15 @@ import { Chalk } from "chalk"
 import { describe, expect, test } from "vitest"
 import { captureConsoleMessage } from "./captureConsoleMessage.js"
 import {
+  __resetLogSinksForTests,
+  type LogRecord,
+  registerLogSink,
+} from "./logging/logger.js"
+import {
+  __resetLoggingModeForTests,
+  setLoggingMode,
+} from "./logging/mode.js"
+import {
   createAddColorToChalk,
   createLogMessage,
   logError,
@@ -202,6 +211,89 @@ describe(logWarning.name, () => {
       expect(consoleSpy.mock.calls.at(0)?.at(0)).toContain(
         "WARNING",
       )
+    })
+  })
+})
+
+describe("logMessage mode-awareness", () => {
+  test('"api" mode emits a structured record AND skips chalk console', () => {
+    __resetLogSinksForTests()
+    const records: LogRecord[] = []
+    registerLogSink((record) => {
+      records.push(record)
+    })
+    setLoggingMode("api")
+
+    captureConsoleMessage("info", (consoleSpy) => {
+      logInfo("SEQUENCE", "Step step1 starting.")
+      expect(consoleSpy).not.toHaveBeenCalled()
+    })
+
+    __resetLoggingModeForTests()
+    __resetLogSinksForTests()
+
+    expect(records).toHaveLength(1)
+    expect(records[0]).toMatchObject({
+      level: "info",
+      tag: "SEQUENCE",
+      msg: "Step step1 starting.",
+    })
+  })
+
+  test('"cli" mode (default) emits NO structured record', () => {
+    __resetLogSinksForTests()
+    const records: LogRecord[] = []
+    registerLogSink((record) => {
+      records.push(record)
+    })
+
+    captureConsoleMessage("info", () => {
+      logInfo("SEQUENCE", "Step step1 starting.")
+    })
+
+    expect(records).toHaveLength(0)
+    __resetLogSinksForTests()
+  })
+
+  test('"cli-debug" mode emits BOTH a structured record AND the chalk console line', () => {
+    __resetLogSinksForTests()
+    const records: LogRecord[] = []
+    registerLogSink((record) => {
+      records.push(record)
+    })
+    setLoggingMode("cli-debug")
+
+    captureConsoleMessage("info", (consoleSpy) => {
+      logInfo("SEQUENCE", "Step step1 starting.")
+      expect(consoleSpy).toHaveBeenCalled()
+    })
+
+    __resetLoggingModeForTests()
+    __resetLogSinksForTests()
+
+    expect(records).toHaveLength(1)
+    expect(records[0]?.tag).toBe("SEQUENCE")
+  })
+
+  test('"api" mode for logError emits a structured "error" record', () => {
+    __resetLogSinksForTests()
+    const records: LogRecord[] = []
+    registerLogSink((record) => {
+      records.push(record)
+    })
+    setLoggingMode("api")
+
+    captureConsoleMessage("error", () => {
+      logError("SEQUENCE", "boom")
+    })
+
+    __resetLoggingModeForTests()
+    __resetLogSinksForTests()
+
+    expect(records[0]).toMatchObject({
+      level: "error",
+      tag: "SEQUENCE",
+      msg: "boom",
     })
   })
 })

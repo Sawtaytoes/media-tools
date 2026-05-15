@@ -58,6 +58,11 @@ export {
   type LogSink,
   registerLogSink,
 } from "./logging/logger.js"
+export {
+  getLoggingMode,
+  type LoggingMode,
+  setLoggingMode,
+} from "./logging/mode.js"
 export { startSpan } from "./logging/startSpan.js"
 export {
   createAddColorToChalk,
