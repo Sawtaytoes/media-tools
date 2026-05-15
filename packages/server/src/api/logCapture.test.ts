@@ -7,18 +7,29 @@ import {
   vi,
 } from "vitest"
 
+import {
+  __resetLogSinksForTests,
+  getLogger,
+  type LogRecord,
+  registerLogSink,
+} from "@mux-magic/tools/src/logging/logger.js"
+
 import * as jobStore from "./jobStore.js"
 import {
   getActiveJobId,
+  installLogBridge,
   installLogCapture,
   originalConsole,
   stripAnsi,
+  uninstallLogBridge,
   uninstallLogCapture,
   withJobContext,
 } from "./logCapture.js"
 
 afterEach(() => {
   uninstallLogCapture()
+  uninstallLogBridge()
+  __resetLogSinksForTests()
   jobStore.resetStore()
   vi.restoreAllMocks()
 })
@@ -120,5 +131,49 @@ describe(installLogCapture.name, () => {
       job.id,
       expect.stringContaining("an error"),
     )
+  })
+})
+
+describe(installLogBridge.name, () => {
+  beforeEach(() => {
+    installLogBridge()
+  })
+
+  test("routes structured logger calls inside a job context to appendJobLog", () => {
+    const appendSpy = vi.spyOn(jobStore, "appendJobLog")
+    const job = jobStore.createJob({ commandName: "test" })
+
+    withJobContext(job.id, () => {
+      getLogger().info("structured line", { stepIndex: 2 })
+    })
+
+    expect(appendSpy).toHaveBeenCalledTimes(1)
+    expect(appendSpy).toHaveBeenCalledWith(
+      job.id,
+      expect.stringContaining("structured line"),
+    )
+    expect(appendSpy.mock.calls[0]?.[1]).toContain("stepIndex=2")
+  })
+
+  test("does not call appendJobLog when the structured logger fires outside a job context", () => {
+    const appendSpy = vi.spyOn(jobStore, "appendJobLog")
+
+    getLogger().info("orphan structured line")
+
+    expect(appendSpy).not.toHaveBeenCalled()
+  })
+
+  test("withJobContext seeds the structured logger's jobId field", () => {
+    const records: LogRecord[] = []
+    registerLogSink((record) => {
+      records.push(record)
+    })
+
+    const job = jobStore.createJob({ commandName: "test" })
+    withJobContext(job.id, () => {
+      getLogger().info("hi")
+    })
+
+    expect(records[0]?.jobId).toBe(job.id)
   })
 })
