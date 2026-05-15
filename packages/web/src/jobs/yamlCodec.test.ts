@@ -43,9 +43,9 @@ const MAKE_DIR_COMMAND: Commands = {
   makeDirectory: {
     fields: [
       {
-        name: "filePath",
+        name: "sourcePath",
         type: "path",
-        label: "Directory Path",
+        label: "Source Path",
         isRequired: true,
       },
     ],
@@ -95,7 +95,7 @@ describe("toYamlStr — link resolution", () => {
   test("string link becomes @<id> in serialized params", () => {
     const step = makeStep({
       command: "makeDirectory",
-      links: { filePath: "basePath" },
+      links: { sourcePath: "basePath" },
     })
     const paths: PathVariable[] = [BASE_PATH]
 
@@ -105,14 +105,14 @@ describe("toYamlStr — link resolution", () => {
       MAKE_DIR_COMMAND,
     )
 
-    expect(result).toContain("filePath: '@basePath'")
+    expect(result).toContain("sourcePath: '@basePath'")
   })
 
   test("object link is serialized as linkedTo/output object", () => {
     const step = makeStep({
       command: "makeDirectory",
       links: {
-        filePath: {
+        sourcePath: {
           linkedTo: "prev-step",
           output: "folder",
         },
@@ -224,7 +224,7 @@ describe("toYamlStr — paths block", () => {
   test("path variable with value appears in output", () => {
     const step = makeStep({
       command: "makeDirectory",
-      links: { filePath: "basePath" },
+      links: { sourcePath: "basePath" },
     })
 
     const result = toYamlStr(
