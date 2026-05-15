@@ -1,5 +1,6 @@
 import {
   cleanup,
+  fireEvent,
   render,
   screen,
 } from "@testing-library/react"
@@ -123,8 +124,7 @@ describe("VariableCard", () => {
     ).toBeInTheDocument()
   })
 
-  test("updates dvdCompareId value in atom on change", async () => {
-    const user = userEvent.setup({ delay: null })
+  test("updates dvdCompareId value in atom on change", () => {
     const variable: Variable = {
       id: "dvdCompareIdVariable_abc",
       label: "Spider-Man 2002",
@@ -136,8 +136,9 @@ describe("VariableCard", () => {
     const valueInput = screen.getByDisplayValue(
       "spider-man-2002",
     )
-    await user.clear(valueInput)
-    await user.type(valueInput, "74759")
+    fireEvent.change(valueInput, {
+      target: { value: "74759" },
+    })
 
     expect(store.get(variablesAtom)[0].value).toBe("74759")
   })

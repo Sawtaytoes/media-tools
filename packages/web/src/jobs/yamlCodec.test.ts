@@ -313,7 +313,6 @@ describe("toYamlStr — variables: block output", () => {
       yamlStr,
       MAKE_DIR_COMMAND,
       [],
-      0,
     )
     const dvdCompareIdReloaded = reloaded.paths.find(
       (variable) =>
