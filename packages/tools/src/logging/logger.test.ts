@@ -1,4 +1,11 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  test,
+  vi,
+} from "vitest"
 
 import { withLoggingContext } from "./context.js"
 import {
@@ -40,7 +47,7 @@ describe(getLogger.name, () => {
     logger.warn("w")
     logger.error("e")
 
-    expect(records.map((r) => r.level)).toEqual([
+    expect(records.map((record) => record.level)).toEqual([
       "debug",
       "warn",
       "error",
@@ -90,7 +97,9 @@ describe(getLogger.name, () => {
   })
 
   test("child(bindings) merges bindings into every emitted record", () => {
-    const childLogger = getLogger().child({ component: "renamer" })
+    const childLogger = getLogger().child({
+      component: "renamer",
+    })
 
     childLogger.info("named")
     childLogger.warn("careful")
@@ -126,7 +135,9 @@ describe(getLogger.name, () => {
     getLogger().info("second")
 
     expect(sink).toHaveBeenCalledTimes(1)
-    expect(sink.mock.calls[0]?.[0]).toMatchObject({ msg: "first" })
+    expect(sink.mock.calls[0]?.[0]).toMatchObject({
+      msg: "first",
+    })
   })
 
   test("multiple sinks each receive every record", () => {

@@ -17,17 +17,34 @@ export type LogRecord = {
 export type LogSink = (record: LogRecord) => void
 
 export type Logger = {
-  debug: (msg: string, extra?: Record<string, unknown>) => void
-  info: (msg: string, extra?: Record<string, unknown>) => void
-  warn: (msg: string, extra?: Record<string, unknown>) => void
-  error: (msg: string, extra?: Record<string, unknown>) => void
+  debug: (
+    msg: string,
+    extra?: Record<string, unknown>,
+  ) => void
+  info: (
+    msg: string,
+    extra?: Record<string, unknown>,
+  ) => void
+  warn: (
+    msg: string,
+    extra?: Record<string, unknown>,
+  ) => void
+  error: (
+    msg: string,
+    extra?: Record<string, unknown>,
+  ) => void
   child: (bindings: Record<string, unknown>) => Logger
-  startSpan: <T>(name: string, fn: () => Promise<T> | T) => Promise<T>
+  startSpan: <T>(
+    name: string,
+    fn: () => Promise<T> | T,
+  ) => Promise<T>
 }
 
 const sinks: Set<LogSink> = new Set()
 
-export const registerLogSink = (sink: LogSink): (() => void) => {
+export const registerLogSink = (
+  sink: LogSink,
+): (() => void) => {
   sinks.add(sink)
   return () => {
     sinks.delete(sink)

@@ -1,4 +1,10 @@
-import { afterEach, beforeEach, describe, expect, test } from "vitest"
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  test,
+} from "vitest"
 
 import { getLoggingContext } from "./context.js"
 import {
@@ -24,16 +30,22 @@ describe("startSpan", () => {
   })
 
   test("returns the value the wrapped fn returned", async () => {
-    const result = await getLogger().startSpan("work", () => 7)
+    const result = await getLogger().startSpan(
+      "work",
+      () => 7,
+    )
 
     expect(result).toBe(7)
   })
 
   test("awaits async fn results", async () => {
-    const result = await getLogger().startSpan("work", async () => {
-      await Promise.resolve()
-      return "done"
-    })
+    const result = await getLogger().startSpan(
+      "work",
+      async () => {
+        await Promise.resolve()
+        return "done"
+      },
+    )
 
     expect(result).toBe("done")
   })
@@ -65,11 +77,15 @@ describe("startSpan", () => {
     )
 
     expect(typeof exit?.elapsedMs).toBe("number")
-    expect(exit?.elapsedMs as number).toBeGreaterThanOrEqual(0)
+    expect(
+      exit?.elapsedMs as number,
+    ).toBeGreaterThanOrEqual(0)
   })
 
   test("propagates traceId/spanId into the AsyncLocalStorage context", async () => {
-    let innerContext = {} as ReturnType<typeof getLoggingContext>
+    let innerContext = {} as ReturnType<
+      typeof getLoggingContext
+    >
 
     await getLogger().startSpan("work", () => {
       innerContext = getLoggingContext()
@@ -84,7 +100,9 @@ describe("startSpan", () => {
       getLogger().info("inner")
     })
 
-    const inner = records.find((record) => record.msg === "inner")
+    const inner = records.find(
+      (record) => record.msg === "inner",
+    )
 
     expect(inner?.traceId).toBeTypeOf("string")
     expect(inner?.spanId).toBeTypeOf("string")

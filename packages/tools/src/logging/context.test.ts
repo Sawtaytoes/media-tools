@@ -23,8 +23,9 @@ describe(withLoggingContext.name, () => {
     const seen = withLoggingContext(
       { jobId: "j1", stepIndex: 0 },
       () =>
-        withLoggingContext({ stepIndex: 2, fileId: "f" }, () =>
-          getLoggingContext(),
+        withLoggingContext(
+          { stepIndex: 2, fileId: "f" },
+          () => getLoggingContext(),
         ),
     )
 
@@ -40,7 +41,9 @@ describe(withLoggingContext.name, () => {
       { jobId: "j-async" },
       async () => {
         await Promise.resolve()
-        await new Promise((resolve) => setTimeout(resolve, 0))
+        await new Promise((resolve) =>
+          setTimeout(resolve, 0),
+        )
         return getLoggingContext()
       },
     )

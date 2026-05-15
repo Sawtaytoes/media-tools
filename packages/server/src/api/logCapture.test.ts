@@ -1,4 +1,10 @@
 import {
+  __resetLogSinksForTests,
+  getLogger,
+  type LogRecord,
+  registerLogSink,
+} from "@mux-magic/tools/src/logging/logger.js"
+import {
   afterEach,
   beforeEach,
   describe,
@@ -6,13 +12,6 @@ import {
   test,
   vi,
 } from "vitest"
-
-import {
-  __resetLogSinksForTests,
-  getLogger,
-  type LogRecord,
-  registerLogSink,
-} from "@mux-magic/tools/src/logging/logger.js"
 
 import * as jobStore from "./jobStore.js"
 import {
@@ -152,7 +151,9 @@ describe(installLogBridge.name, () => {
       job.id,
       expect.stringContaining("structured line"),
     )
-    expect(appendSpy.mock.calls[0]?.[1]).toContain("stepIndex=2")
+    expect(appendSpy.mock.calls[0]?.[1]).toContain(
+      "stepIndex=2",
+    )
   })
 
   test("does not call appendJobLog when the structured logger fires outside a job context", () => {

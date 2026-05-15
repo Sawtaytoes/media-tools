@@ -8,7 +8,8 @@ export type LoggerContext = {
   spanId?: string
 }
 
-export const loggingContext = new AsyncLocalStorage<LoggerContext>()
+export const loggingContext =
+  new AsyncLocalStorage<LoggerContext>()
 
 export const getLoggingContext = (): LoggerContext =>
   loggingContext.getStore() ?? {}

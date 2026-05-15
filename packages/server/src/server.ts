@@ -13,11 +13,13 @@ import {
 import { app } from "./api/hono-routes.js"
 import {
   getActiveJobId,
+  installLogBridge,
   installLogCapture,
 } from "./api/logCapture.js"
 import { API_PORT, MAX_THREADS } from "./tools/envVars.js"
 
 installLogCapture()
+installLogBridge()
 initTaskScheduler(MAX_THREADS, { getActiveJobId })
 
 serve(

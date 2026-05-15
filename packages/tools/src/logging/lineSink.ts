@@ -2,8 +2,8 @@ import type { LogRecord } from "./logger.js"
 
 const RESERVED_KEYS = new Set(["level", "msg"])
 
-const pad = (n: number, w: number): string =>
-  String(n).padStart(w, "0")
+const pad = (value: number, width: number): string =>
+  String(value).padStart(width, "0")
 
 const formatTimestamp = (date: Date): string =>
   `[${pad(date.getHours(), 2)}:${pad(date.getMinutes(), 2)}:${pad(
@@ -18,7 +18,10 @@ const formatValue = (value: unknown): string => {
   if (typeof value === "string") {
     return /\s/.test(value) ? `"${value}"` : value
   }
-  if (typeof value === "number" || typeof value === "boolean") {
+  if (
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
     return String(value)
   }
   try {
@@ -39,6 +42,7 @@ export const formatLogLine = (
     }
     fields.push(`${key}=${formatValue(value)}`)
   }
-  const fieldPart = fields.length > 0 ? ` ${fields.join(" ")}` : ""
+  const fieldPart =
+    fields.length > 0 ? ` ${fields.join(" ")}` : ""
   return `${formatTimestamp(now)} ${record.level}${fieldPart} ${record.msg}`
 }

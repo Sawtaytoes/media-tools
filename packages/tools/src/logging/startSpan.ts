@@ -1,7 +1,10 @@
 import { randomUUID } from "node:crypto"
 import { performance } from "node:perf_hooks"
 
-import { getLoggingContext, loggingContext } from "./context.js"
+import {
+  getLoggingContext,
+  loggingContext,
+} from "./context.js"
 import type { Logger } from "./logger.js"
 
 export const startSpan = async <T>(
@@ -38,7 +41,8 @@ export const startSpan = async <T>(
           spanId,
           spanName: name,
           elapsedMs: performance.now() - startedAt,
-          errorName: error instanceof Error ? error.name : "unknown",
+          errorName:
+            error instanceof Error ? error.name : "unknown",
         })
         throw error
       }

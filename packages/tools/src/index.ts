@@ -44,12 +44,11 @@ export { logAndRethrowPipelineError } from "./logAndRethrowPipelineError.js"
 export { logAndSwallowPipelineError } from "./logAndSwallowPipelineError.js"
 export {
   getLoggingContext,
-  loggingContext,
   type LoggerContext,
+  loggingContext,
   withLoggingContext,
 } from "./logging/context.js"
 export { formatLogLine } from "./logging/lineSink.js"
-export { startSpan } from "./logging/startSpan.js"
 export {
   __resetLogSinksForTests,
   getLogger,
@@ -59,6 +58,7 @@ export {
   type LogSink,
   registerLogSink,
 } from "./logging/logger.js"
+export { startSpan } from "./logging/startSpan.js"
 export {
   createAddColorToChalk,
   createLogMessage,
