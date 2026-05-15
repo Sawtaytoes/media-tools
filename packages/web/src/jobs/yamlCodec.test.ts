@@ -929,7 +929,11 @@ describe("legacy field renames — read-time remapping", () => {
   }
 
   const loadWithRenameCommands = (text: string) =>
-    loadYamlFromText(text, LEGACY_RENAME_COMMANDS, BASE_PATHS)
+    loadYamlFromText(
+      text,
+      LEGACY_RENAME_COMMANDS,
+      BASE_PATHS,
+    )
 
   test.each([
     ["getAudioOffsets", "sourceFilesPath"],
