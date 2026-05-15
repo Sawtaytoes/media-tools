@@ -1,9 +1,6 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
-import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
 
 import {
-  afterEach,
   beforeEach,
   describe,
   expect,
@@ -38,19 +35,11 @@ const makeRecord = (
   ...overrides,
 })
 
-let tempDir = ""
-let storePath = ""
+const storePath = "/test-app-data/job-errors.json"
 
 beforeEach(async () => {
-  tempDir = await mkdtemp(
-    join(tmpdir(), "mux-magic-job-errors-"),
-  )
-  storePath = join(tempDir, "job-errors.json")
+  await mkdir("/test-app-data", { recursive: true })
   __resetJobErrorStoreForTests(storePath)
-})
-
-afterEach(async () => {
-  await rm(tempDir, { force: true, recursive: true })
 })
 
 describe("applyEvictionPolicy", () => {
