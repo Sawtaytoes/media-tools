@@ -78,12 +78,11 @@ export const applyDeliveryOutcome = (
     outcome.kind === "retryable" &&
     nextAttempts >= MAX_DELIVERY_ATTEMPTS
 
-  const nextState: WebhookDeliveryState =
-    isSuccess
-      ? "delivered"
-      : isRejected || isRetryableExhausted
-        ? "exhausted"
-        : "pending"
+  const nextState: WebhookDeliveryState = isSuccess
+    ? "delivered"
+    : isRejected || isRetryableExhausted
+      ? "exhausted"
+      : "pending"
 
   const lastError = isSuccess ? undefined : outcome.reason
 

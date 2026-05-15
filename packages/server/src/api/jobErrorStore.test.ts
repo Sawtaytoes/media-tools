@@ -1,11 +1,10 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises"
-
 import {
-  beforeEach,
-  describe,
-  expect,
-  test,
-} from "vitest"
+  mkdir,
+  readFile,
+  writeFile,
+} from "node:fs/promises"
+
+import { beforeEach, describe, expect, test } from "vitest"
 
 import {
   __resetJobErrorStoreForTests,
@@ -56,12 +55,18 @@ describe("applyEvictionPolicy", () => {
       makeRecord({
         id: "old-delivered",
         occurredAt: "2026-01-01T00:00:00.000Z",
-        webhookDelivery: { attempts: 1, state: "delivered" },
+        webhookDelivery: {
+          attempts: 1,
+          state: "delivered",
+        },
       }),
       makeRecord({
         id: "old-exhausted",
         occurredAt: "2026-01-02T00:00:00.000Z",
-        webhookDelivery: { attempts: 8, state: "exhausted" },
+        webhookDelivery: {
+          attempts: 8,
+          state: "exhausted",
+        },
       }),
       makeRecord({
         id: "new-pending",
@@ -81,12 +86,18 @@ describe("applyEvictionPolicy", () => {
       makeRecord({
         id: "old-exhausted-1",
         occurredAt: "2026-01-01T00:00:00.000Z",
-        webhookDelivery: { attempts: 8, state: "exhausted" },
+        webhookDelivery: {
+          attempts: 8,
+          state: "exhausted",
+        },
       }),
       makeRecord({
         id: "old-exhausted-2",
         occurredAt: "2026-01-02T00:00:00.000Z",
-        webhookDelivery: { attempts: 8, state: "exhausted" },
+        webhookDelivery: {
+          attempts: 8,
+          state: "exhausted",
+        },
       }),
       makeRecord({
         id: "new-pending",
@@ -159,7 +170,10 @@ describe("file persistence", () => {
       makeRecord({
         id: "b",
         occurredAt: "2026-02-01T00:00:00.000Z",
-        webhookDelivery: { attempts: 1, state: "delivered" },
+        webhookDelivery: {
+          attempts: 1,
+          state: "delivered",
+        },
       }),
     )
     await addJobError(

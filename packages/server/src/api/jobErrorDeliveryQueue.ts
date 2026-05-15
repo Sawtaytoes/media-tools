@@ -78,7 +78,10 @@ const runFetchAttempt = async (
   } catch (error) {
     return {
       kind: "retryable",
-      reason: error instanceof Error ? error.message : String(error),
+      reason:
+        error instanceof Error
+          ? error.message
+          : String(error),
     }
   }
 }
@@ -107,7 +110,11 @@ export const attemptDeliveryOnce = async (
 
   const outcome = await runFetchAttempt(url, current)
   const nowIso = activeDeps.now().toISOString()
-  const updated = applyDeliveryOutcome(current, outcome, nowIso)
+  const updated = applyDeliveryOutcome(
+    current,
+    outcome,
+    nowIso,
+  )
 
   await updateJobError(recordId, () => updated)
 
@@ -122,7 +129,10 @@ export const attemptDeliveryOnce = async (
   return { next: updated, scheduleMs: null }
 }
 
-const timers = new Map<string, ReturnType<typeof setTimeout>>()
+const timers = new Map<
+  string,
+  ReturnType<typeof setTimeout>
+>()
 
 const clearTimerFor = (recordId: string): void => {
   const existing = timers.get(recordId)
@@ -182,7 +192,10 @@ export const redeliverError = async (
   return flipped
 }
 
-export const cancelAllScheduledDeliveriesForTests = (): void => {
-  timers.forEach((timer) => clearTimeout(timer))
-  timers.clear()
-}
+export const cancelAllScheduledDeliveriesForTests =
+  (): void => {
+    timers.forEach((timer) => {
+      clearTimeout(timer)
+    })
+    timers.clear()
+  }

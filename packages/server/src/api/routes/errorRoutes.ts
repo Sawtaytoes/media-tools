@@ -48,7 +48,8 @@ errorRoutes.openapi(
   createRoute({
     method: "get",
     path: "/errors",
-    summary: "List persisted job error records, newest first",
+    summary:
+      "List persisted job error records, newest first",
     tags: ["Errors"],
     request: {
       query: z.object({

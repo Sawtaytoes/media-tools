@@ -9,7 +9,9 @@ import {
   type PersistedJobError,
 } from "./jobErrorDeliveryStateMachine.js"
 
-const fixedNow = new Date("2026-05-15T12:00:00.000Z").toISOString()
+const fixedNow = new Date(
+  "2026-05-15T12:00:00.000Z",
+).toISOString()
 
 const baseRecord = (
   overrides: Partial<PersistedJobError> = {},
@@ -62,7 +64,9 @@ describe("applyDeliveryOutcome", () => {
     )
     expect(next.webhookDelivery.state).toBe("delivered")
     expect(next.webhookDelivery.attempts).toBe(1)
-    expect(next.webhookDelivery.lastAttemptAt).toBe(fixedNow)
+    expect(next.webhookDelivery.lastAttemptAt).toBe(
+      fixedNow,
+    )
     expect(next.webhookDelivery.lastError).toBeUndefined()
   })
 
@@ -93,7 +97,9 @@ describe("applyDeliveryOutcome", () => {
     )
     expect(next.webhookDelivery.state).toBe("pending")
     expect(next.webhookDelivery.attempts).toBe(3)
-    expect(next.webhookDelivery.lastAttemptAt).toBe(fixedNow)
+    expect(next.webhookDelivery.lastAttemptAt).toBe(
+      fixedNow,
+    )
     expect(next.webhookDelivery.lastError).toBe("HTTP 500")
   })
 
@@ -115,7 +121,9 @@ describe("applyDeliveryOutcome", () => {
     expect(next.webhookDelivery.attempts).toBe(
       MAX_DELIVERY_ATTEMPTS,
     )
-    expect(next.webhookDelivery.lastError).toBe("network down")
+    expect(next.webhookDelivery.lastError).toBe(
+      "network down",
+    )
   })
 
   test("input is not mutated (purity)", () => {
@@ -149,7 +157,9 @@ describe("getBackoffMs", () => {
       getBackoffMs(attempts),
     )
     delays.slice(1).forEach((delay, index) => {
-      expect(delay).toBeGreaterThanOrEqual(delays[index] ?? 0)
+      expect(delay).toBeGreaterThanOrEqual(
+        delays[index] ?? 0,
+      )
     })
   })
 

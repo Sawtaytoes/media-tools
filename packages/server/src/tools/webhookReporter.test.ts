@@ -176,10 +176,13 @@ describe("reportJobFailed — persist-first behavior", () => {
     // persisted state *before* delivery resolves.
     const fetchMock = vi.fn(
       () =>
-        new Promise<Response>(() => undefined) as Promise<Response>,
+        new Promise<Response>(
+          () => undefined,
+        ) as Promise<Response>,
     )
     __setDeliveryDepsForTests({
-      fetch: fetchMock as unknown as typeof globalThis.fetch,
+      fetch:
+        fetchMock as unknown as typeof globalThis.fetch,
       getWebhookUrl: () => FAILED_URL,
     })
 
@@ -200,7 +203,8 @@ describe("reportJobFailed — persist-first behavior", () => {
   test("persists even when WEBHOOK_JOB_FAILED_URL is unset (operator visibility)", async () => {
     const fetchMock = vi.fn()
     __setDeliveryDepsForTests({
-      fetch: fetchMock as unknown as typeof globalThis.fetch,
+      fetch:
+        fetchMock as unknown as typeof globalThis.fetch,
       getWebhookUrl: () => undefined,
     })
 
@@ -220,7 +224,8 @@ describe("reportJobFailed — persist-first behavior", () => {
       .fn()
       .mockResolvedValue({ ok: true, status: 200 })
     __setDeliveryDepsForTests({
-      fetch: fetchMock as unknown as typeof globalThis.fetch,
+      fetch:
+        fetchMock as unknown as typeof globalThis.fetch,
       getWebhookUrl: () => FAILED_URL,
     })
 
@@ -244,9 +249,9 @@ describe("reportJobFailed — persist-first behavior", () => {
     }
     expect(body.errorId).toBe(record.id)
     expect(body.jobId).toBe("abc-123")
-    expect(getJobError(record.id)?.webhookDelivery.state).toBe(
-      "delivered",
-    )
+    expect(
+      getJobError(record.id)?.webhookDelivery.state,
+    ).toBe("delivered")
     vi.useRealTimers()
   })
 })

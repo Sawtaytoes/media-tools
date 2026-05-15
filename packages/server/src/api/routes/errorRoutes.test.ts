@@ -82,7 +82,10 @@ describe("GET /errors", () => {
     await addJobError(
       makeRecord({
         id: "b",
-        webhookDelivery: { attempts: 1, state: "delivered" },
+        webhookDelivery: {
+          attempts: 1,
+          state: "delivered",
+        },
       }),
     )
 
@@ -146,12 +149,13 @@ describe("POST /errors/:id/redeliver", () => {
     )
 
     expect(response.status).toBe(200)
-    const body = (await response.json()) as PersistedJobError
+    const body =
+      (await response.json()) as PersistedJobError
     expect(body.webhookDelivery.state).toBe("pending")
     expect(body.webhookDelivery.attempts).toBe(0)
-    expect(getJobError("rec_1")?.webhookDelivery.state).toBe(
-      "pending",
-    )
+    expect(
+      getJobError("rec_1")?.webhookDelivery.state,
+    ).toBe("pending")
   })
 
   test("returns 404 for unknown id", async () => {

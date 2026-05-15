@@ -1,13 +1,18 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises"
+import {
+  mkdir,
+  readFile,
+  rename,
+  writeFile,
+} from "node:fs/promises"
 import { dirname } from "node:path"
 
-import {
-  type PersistedJobError,
-  type WebhookDeliveryState,
+import type {
+  PersistedJobError,
+  WebhookDeliveryState,
 } from "./jobErrorDeliveryStateMachine.js"
 import { resolveJobErrorsFilePath } from "./jobErrorStorePath.js"
 
-export { type PersistedJobError } from "./jobErrorDeliveryStateMachine.js"
+export type { PersistedJobError } from "./jobErrorDeliveryStateMachine.js"
 
 export const ERROR_STORE_CAP = 1000
 
@@ -44,16 +49,21 @@ export const applyEvictionPolicy = (
   if (errors.length <= cap) return errors.slice()
 
   const pendings = filterByState(errors, "pending")
-  const delivereds = filterByState(errors, "delivered").sort(
-    compareOccurredAtAsc,
-  )
-  const exhausteds = filterByState(errors, "exhausted").sort(
-    compareOccurredAtAsc,
-  )
+  const delivereds = filterByState(
+    errors,
+    "delivered",
+  ).sort(compareOccurredAtAsc)
+  const exhausteds = filterByState(
+    errors,
+    "exhausted",
+  ).sort(compareOccurredAtAsc)
 
   const overBy = errors.length - cap
 
-  const droppedDelivered = Math.min(overBy, delivereds.length)
+  const droppedDelivered = Math.min(
+    overBy,
+    delivereds.length,
+  )
   const droppedExhausted = Math.min(
     overBy - droppedDelivered,
     exhausteds.length,
@@ -76,7 +86,7 @@ type WriteQueue = Promise<void>
 type StoreState = {
   filePath: string
   errors: PersistedJobError[]
-  loaded: boolean
+  isLoaded: boolean
   writeQueue: WriteQueue
 }
 
@@ -85,7 +95,7 @@ const createInitialState = (
 ): StoreState => ({
   errors: [],
   filePath: filePath ?? resolveJobErrorsFilePath(),
-  loaded: false,
+  isLoaded: false,
   writeQueue: Promise.resolve(),
 })
 
@@ -114,27 +124,28 @@ const parseFile = (raw: string): PersistedJobError[] => {
   }
 }
 
-export const loadJobErrorsFromDisk = async (): Promise<void> => {
-  try {
-    const raw = await readFile(state.filePath, "utf8")
-    state = {
-      ...state,
-      errors: parseFile(raw),
-      loaded: true,
+export const loadJobErrorsFromDisk =
+  async (): Promise<void> => {
+    try {
+      const raw = await readFile(state.filePath, "utf8")
+      state = {
+        ...state,
+        errors: parseFile(raw),
+        isLoaded: true,
+      }
+    } catch (error: unknown) {
+      if (
+        (error as NodeJS.ErrnoException).code === "ENOENT"
+      ) {
+        state = { ...state, errors: [], isLoaded: true }
+        return
+      }
+      state = { ...state, errors: [], isLoaded: true }
     }
-  } catch (error: unknown) {
-    if (
-      (error as NodeJS.ErrnoException).code === "ENOENT"
-    ) {
-      state = { ...state, errors: [], loaded: true }
-      return
-    }
-    state = { ...state, errors: [], loaded: true }
   }
-}
 
 const ensureLoaded = async (): Promise<void> => {
-  if (state.loaded) return
+  if (state.isLoaded) return
   await loadJobErrorsFromDisk()
 }
 
@@ -224,13 +235,13 @@ export const listJobErrors = (
   const jobIdFilter = filter.jobId
   return state.errors
     .filter((record) => {
-      const stateMatches =
+      const isStateMatch =
         stateFilter === undefined ||
         record.webhookDelivery.state === stateFilter
-      const jobIdMatches =
+      const isJobIdMatch =
         jobIdFilter === undefined ||
         record.jobId === jobIdFilter
-      return stateMatches && jobIdMatches
+      return isStateMatch && isJobIdMatch
     })
     .slice()
     .sort(compareOccurredAtDesc)

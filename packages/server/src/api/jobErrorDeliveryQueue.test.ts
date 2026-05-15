@@ -65,9 +65,13 @@ afterEach(() => {
 describe("attemptDeliveryOnce", () => {
   test("2xx response transitions to delivered with no further schedule", async () => {
     await addJobError(makeRecord())
-    fetchMock.mockResolvedValueOnce({ ok: true, status: 200 })
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+    })
 
-    const { scheduleMs } = await attemptDeliveryOnce("rec_1")
+    const { scheduleMs } =
+      await attemptDeliveryOnce("rec_1")
 
     expect(fetchMock).toHaveBeenCalledOnce()
     const [url, init] = fetchMock.mock.calls[0] as [
@@ -82,53 +86,72 @@ describe("attemptDeliveryOnce", () => {
       ],
     ).toBe("application/json")
     expect(scheduleMs).toBeNull()
-    expect(getJobError("rec_1")?.webhookDelivery.state).toBe(
-      "delivered",
-    )
+    expect(
+      getJobError("rec_1")?.webhookDelivery.state,
+    ).toBe("delivered")
   })
 
   test("4xx non-429 transitions to exhausted with no schedule", async () => {
     await addJobError(makeRecord())
-    fetchMock.mockResolvedValueOnce({ ok: false, status: 404 })
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+    })
 
-    const { scheduleMs } = await attemptDeliveryOnce("rec_1")
+    const { scheduleMs } =
+      await attemptDeliveryOnce("rec_1")
 
     expect(scheduleMs).toBeNull()
     const record = getJobError("rec_1")
     expect(record?.webhookDelivery.state).toBe("exhausted")
-    expect(record?.webhookDelivery.lastError).toBe("HTTP 404")
+    expect(record?.webhookDelivery.lastError).toBe(
+      "HTTP 404",
+    )
   })
 
   test("5xx remains pending and returns a backoff schedule", async () => {
     await addJobError(makeRecord())
-    fetchMock.mockResolvedValueOnce({ ok: false, status: 503 })
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+    })
 
-    const { scheduleMs } = await attemptDeliveryOnce("rec_1")
+    const { scheduleMs } =
+      await attemptDeliveryOnce("rec_1")
 
     expect(scheduleMs).toBe(1_000) // first retry = 1s per state machine
     const record = getJobError("rec_1")
     expect(record?.webhookDelivery.state).toBe("pending")
     expect(record?.webhookDelivery.attempts).toBe(1)
-    expect(record?.webhookDelivery.lastError).toBe("HTTP 503")
+    expect(record?.webhookDelivery.lastError).toBe(
+      "HTTP 503",
+    )
   })
 
   test("429 (too many requests) is treated as retryable", async () => {
     await addJobError(makeRecord())
-    fetchMock.mockResolvedValueOnce({ ok: false, status: 429 })
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 429,
+    })
 
-    const { scheduleMs } = await attemptDeliveryOnce("rec_1")
+    const { scheduleMs } =
+      await attemptDeliveryOnce("rec_1")
 
     expect(scheduleMs).toBe(1_000)
-    expect(getJobError("rec_1")?.webhookDelivery.state).toBe(
-      "pending",
-    )
+    expect(
+      getJobError("rec_1")?.webhookDelivery.state,
+    ).toBe("pending")
   })
 
   test("network error remains pending and reports lastError", async () => {
     await addJobError(makeRecord())
-    fetchMock.mockRejectedValueOnce(new Error("ECONNREFUSED"))
+    fetchMock.mockRejectedValueOnce(
+      new Error("ECONNREFUSED"),
+    )
 
-    const { scheduleMs } = await attemptDeliveryOnce("rec_1")
+    const { scheduleMs } =
+      await attemptDeliveryOnce("rec_1")
 
     expect(scheduleMs).toBe(1_000)
     const record = getJobError("rec_1")
@@ -144,13 +167,14 @@ describe("attemptDeliveryOnce", () => {
     })
     await addJobError(makeRecord())
 
-    const { scheduleMs } = await attemptDeliveryOnce("rec_1")
+    const { scheduleMs } =
+      await attemptDeliveryOnce("rec_1")
 
     expect(fetchMock).not.toHaveBeenCalled()
     expect(scheduleMs).toBeNull()
-    expect(getJobError("rec_1")?.webhookDelivery.state).toBe(
-      "pending",
-    )
+    expect(
+      getJobError("rec_1")?.webhookDelivery.state,
+    ).toBe("pending")
   })
 
   test("unknown record id is a no-op", async () => {
@@ -165,11 +189,15 @@ describe("attemptDeliveryOnce", () => {
   test("non-pending record is left alone", async () => {
     await addJobError(
       makeRecord({
-        webhookDelivery: { attempts: 1, state: "delivered" },
+        webhookDelivery: {
+          attempts: 1,
+          state: "delivered",
+        },
       }),
     )
 
-    const { scheduleMs } = await attemptDeliveryOnce("rec_1")
+    const { scheduleMs } =
+      await attemptDeliveryOnce("rec_1")
 
     expect(scheduleMs).toBeNull()
     expect(fetchMock).not.toHaveBeenCalled()
@@ -184,7 +212,10 @@ describe("attemptDeliveryOnce", () => {
         traceId: "trace-1",
       }),
     )
-    fetchMock.mockResolvedValueOnce({ ok: true, status: 200 })
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+    })
 
     await attemptDeliveryOnce("rec_1")
 
@@ -193,7 +224,11 @@ describe("attemptDeliveryOnce", () => {
       RequestInit,
     ]
     const body = JSON.parse(init.body as string) as {
-      error: { message: string; name: string; stack: string }
+      error: {
+        message: string
+        name: string
+        stack: string
+      }
       errorId: string
       jobId: string
       traceId: string
@@ -211,7 +246,10 @@ describe("queueErrorForDelivery + timers", () => {
   test("first attempt on success transitions to delivered, no further timers", async () => {
     vi.useFakeTimers()
     await addJobError(makeRecord())
-    fetchMock.mockResolvedValueOnce({ ok: true, status: 200 })
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+    })
 
     queueErrorForDelivery("rec_1", 0)
 
@@ -219,9 +257,9 @@ describe("queueErrorForDelivery + timers", () => {
     // The async attempt may need a microtask to resolve.
     await vi.runAllTimersAsync()
 
-    expect(getJobError("rec_1")?.webhookDelivery.state).toBe(
-      "delivered",
-    )
+    expect(
+      getJobError("rec_1")?.webhookDelivery.state,
+    ).toBe("delivered")
     vi.useRealTimers()
   })
 })
@@ -233,7 +271,10 @@ describe("resumePendingDeliveries", () => {
     await addJobError(
       makeRecord({
         id: "b",
-        webhookDelivery: { attempts: 1, state: "delivered" },
+        webhookDelivery: {
+          attempts: 1,
+          state: "delivered",
+        },
       }),
     )
     await addJobError(makeRecord({ id: "c" }))
@@ -268,16 +309,19 @@ describe("redeliverError", () => {
         },
       }),
     )
-    fetchMock.mockResolvedValueOnce({ ok: true, status: 200 })
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+    })
 
     const flipped = await redeliverError("rec_1")
     expect(flipped?.webhookDelivery.state).toBe("pending")
     expect(flipped?.webhookDelivery.attempts).toBe(0)
 
     await vi.runAllTimersAsync()
-    expect(getJobError("rec_1")?.webhookDelivery.state).toBe(
-      "delivered",
-    )
+    expect(
+      getJobError("rec_1")?.webhookDelivery.state,
+    ).toBe("delivered")
     vi.useRealTimers()
   })
 
