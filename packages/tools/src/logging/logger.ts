@@ -1,4 +1,5 @@
 import { getLoggingContext } from "./context.js"
+import { startSpan } from "./startSpan.js"
 
 export type LogLevel = "debug" | "info" | "warn" | "error"
 
@@ -43,24 +44,6 @@ const emit = (record: LogRecord): void => {
   }
 }
 
-// Lazily bound by ./startSpan.ts to avoid a module cycle.
-let startSpanImpl: <T>(
-  logger: Logger,
-  name: string,
-  fn: () => Promise<T> | T,
-) => Promise<T> = async () => {
-  throw new Error(
-    "startSpan implementation has not been registered. " +
-      "Import './startSpan.js' to register it.",
-  )
-}
-
-export const __registerStartSpanImpl = (
-  impl: typeof startSpanImpl,
-): void => {
-  startSpanImpl = impl
-}
-
 const buildRecord = (
   bindings: Record<string, unknown>,
   level: LogLevel,
@@ -88,7 +71,7 @@ const createLogger = (
       emit(buildRecord(bindings, "error", msg, extra)),
     child: (childBindings) =>
       createLogger({ ...bindings, ...childBindings }),
-    startSpan: (name, fn) => startSpanImpl(logger, name, fn),
+    startSpan: (name, fn) => startSpan(logger, name, fn),
   }
   return logger
 }

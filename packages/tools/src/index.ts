@@ -49,6 +49,7 @@ export {
   withLoggingContext,
 } from "./logging/context.js"
 export { formatLogLine } from "./logging/lineSink.js"
+export { startSpan } from "./logging/startSpan.js"
 export {
   __resetLogSinksForTests,
   getLogger,
