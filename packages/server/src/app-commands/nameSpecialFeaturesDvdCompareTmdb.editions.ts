@@ -1,4 +1,7 @@
-import { access, rename as fsRename } from "node:fs/promises"
+import {
+  access,
+  rename as fsRename,
+} from "node:fs/promises"
 import { basename, dirname, extname, join } from "node:path"
 import { makeDirectory } from "@mux-magic/tools"
 import { concatMap, defer, type Observable, of } from "rxjs"

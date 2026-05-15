@@ -4,7 +4,9 @@ import type { MovieIdentity } from "../tools/canonicalizeMovieTitle.js"
 // Plex (and most filesystems) reject these characters; replace with safe
 // ASCII fallbacks so the resulting names stay readable rather than just
 // stripping characters and leaving awkward gaps.
-export const sanitizeFilenameSegment = (name: string): string =>
+export const sanitizeFilenameSegment = (
+  name: string,
+): string =>
   name
     .replace(/:/gu, " -")
     .replace(/\?/gu, "")

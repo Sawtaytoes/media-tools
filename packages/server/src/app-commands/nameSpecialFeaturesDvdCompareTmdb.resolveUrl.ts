@@ -1,4 +1,11 @@
-import { map, type Observable, of, switchMap, tap, throwError } from "rxjs"
+import {
+  map,
+  type Observable,
+  of,
+  switchMap,
+  tap,
+  throwError,
+} from "rxjs"
 import { getUserSearchInput } from "../tools/getUserSearchInput.js"
 import {
   displayDvdCompareVariant,

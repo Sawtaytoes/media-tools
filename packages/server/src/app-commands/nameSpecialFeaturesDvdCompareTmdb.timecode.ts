@@ -11,7 +11,9 @@ import type { Cut } from "../tools/parseSpecialFeatures.js"
 // easy to retune when a real-world false-positive shows up.
 export const MAIN_FEATURE_MIN_DURATION_SECONDS = 30 * 60
 
-export const timecodeToSeconds = (timecode: string): number => {
+export const timecodeToSeconds = (
+  timecode: string,
+): number => {
   const parts = timecode
     .split(":")
     .map((segment) => Number(segment) || 0)

@@ -92,6 +92,8 @@ describe(moveFileToEditionFolder.name, () => {
       ),
     ).rejects.toThrow()
     // Destination exists.
-    await expect(access(result as string)).resolves.toBeUndefined()
+    await expect(
+      access(result as string),
+    ).resolves.toBeUndefined()
   })
 })

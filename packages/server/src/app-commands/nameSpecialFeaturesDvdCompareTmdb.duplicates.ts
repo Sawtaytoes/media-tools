@@ -1,5 +1,12 @@
 import type { FileInfo } from "@mux-magic/tools"
-import { concatMap, from, map, type Observable, of, toArray } from "rxjs"
+import {
+  concatMap,
+  from,
+  map,
+  type Observable,
+  of,
+  toArray,
+} from "rxjs"
 import { getUserSearchInput } from "../tools/getUserSearchInput.js"
 
 // Group renames by target name and detect intra-run duplicates (groups

@@ -125,11 +125,13 @@ describe(reorderForDuplicatePrompts.name, () => {
     const renames = [
       {
         fileInfo: makeFileInfo("disc-a.mkv"),
-        renamedFilename: "Behind the Scenes -behindthescenes",
+        renamedFilename:
+          "Behind the Scenes -behindthescenes",
       },
       {
         fileInfo: makeFileInfo("disc-b.mkv"),
-        renamedFilename: "Behind the Scenes -behindthescenes",
+        renamedFilename:
+          "Behind the Scenes -behindthescenes",
       },
       {
         fileInfo: makeFileInfo("c.mkv"),
@@ -151,11 +153,13 @@ describe(reorderForDuplicatePrompts.name, () => {
     const renames = [
       {
         fileInfo: makeFileInfo("disc-a.mkv"),
-        renamedFilename: "Behind the Scenes -behindthescenes",
+        renamedFilename:
+          "Behind the Scenes -behindthescenes",
       },
       {
         fileInfo: makeFileInfo("disc-b.mkv"),
-        renamedFilename: "Behind the Scenes -behindthescenes",
+        renamedFilename:
+          "Behind the Scenes -behindthescenes",
       },
     ]
     vi.mocked(getUserSearchInput).mockReturnValue(of(-1))

@@ -109,7 +109,9 @@ describe(resolveUrl.name, () => {
   })
 
   test("errors when given no input at all (no url, no id, no searchTerm)", async () => {
-    await expect(firstValueFrom(resolveUrl({}))).rejects.toThrow(
+    await expect(
+      firstValueFrom(resolveUrl({})),
+    ).rejects.toThrow(
       /Provide url, dvdCompareId, or searchTerm/,
     )
   })
