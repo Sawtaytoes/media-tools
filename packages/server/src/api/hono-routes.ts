@@ -3,6 +3,7 @@ import { cors } from "hono/cors"
 
 import { commandRoutes } from "./routes/commandRoutes.js"
 import { addDocRoutes } from "./routes/docRoutes.js"
+import { errorRoutes } from "./routes/errorRoutes.js"
 import { featuresRoutes } from "./routes/featuresRoutes.js"
 import { fileRoutes } from "./routes/fileRoutes.js"
 import { haTriggerRoutes } from "./routes/haTriggerRoutes.js"
@@ -54,5 +55,6 @@ app.route("/", systemRoutes)
 app.route("/", templateRoutes)
 app.route("/", transcodeRoutes)
 app.route("/", versionRoutes)
+app.route("/", errorRoutes)
 
 addDocRoutes(app)

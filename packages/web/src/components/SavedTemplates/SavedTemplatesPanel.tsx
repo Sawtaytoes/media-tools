@@ -24,7 +24,10 @@ import {
   templatesAtom,
   templatesErrorAtom,
 } from "../../state/templatesAtoms"
-import type { SequenceItem, Variable } from "../../types"
+import type {
+  PathVariable,
+  SequenceItem,
+} from "../../types"
 import { SavedTemplateRow } from "./SavedTemplateRow"
 import { SaveTemplateModal } from "./SaveTemplateModal"
 
@@ -107,7 +110,18 @@ export const SavedTemplatesPanel = () => {
         templateIdAtTimeOfLoad: selectedTemplateId,
       })
       store.set(stepsAtom, result.steps)
-      store.set(pathsAtom, result.paths)
+      // Cast: pathsAtom's writer expects PathVariable[]; loadYamlFromText
+      // returns Variable[] but in practice only emits path-typed entries
+      // here. Worker 35 widened the variable union to include
+      // dvdCompareId — those land in variablesAtom directly, not via the
+      // pathsAtom shim. Narrowing here is the cheapest correct fix.
+      store.set(
+        pathsAtom,
+        result.paths.filter(
+          (variable): variable is PathVariable =>
+            variable.type === "path",
+        ),
+      )
       setSelectedTemplateId(id)
 
       // Clear ?seq= — the server-backed template is now the source
@@ -133,7 +147,10 @@ export const SavedTemplatesPanel = () => {
       stepsAtom,
       undoSnapshot.steps as SequenceItem[],
     )
-    store.set(pathsAtom, undoSnapshot.paths as Variable[])
+    store.set(
+      pathsAtom,
+      undoSnapshot.paths as PathVariable[],
+    )
     setSelectedTemplateId(
       undoSnapshot.templateIdAtTimeOfLoad,
     )
