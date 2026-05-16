@@ -295,10 +295,7 @@ streamQueue$
           )
 
           childProcess.stderr.on("data", (data) => {
-            logWarning(
-              "TRANSCODE AUDIO",
-              data.toString(),
-            )
+            logWarning("TRANSCODE AUDIO", data.toString())
           })
 
           const stream = Readable.toWeb(

@@ -53,7 +53,10 @@ export const hasDuplicateMusicFiles = ({
       groupObservable.pipe(take(1)),
     ),
     tap((directoryWithDuplicates) => {
-      logInfo("DUPLICATE MUSIC FILES", directoryWithDuplicates)
+      logInfo(
+        "DUPLICATE MUSIC FILES",
+        directoryWithDuplicates,
+      )
     }),
     logAndRethrowPipelineError(hasDuplicateMusicFiles),
   )

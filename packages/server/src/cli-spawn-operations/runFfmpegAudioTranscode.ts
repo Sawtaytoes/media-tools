@@ -1,9 +1,8 @@
 import { spawn } from "node:child_process"
 import { createWriteStream } from "node:fs"
 import { tmpdir } from "node:os"
-import { Observable } from "rxjs"
-
 import { logWarning } from "@mux-magic/tools"
+import { Observable } from "rxjs"
 import { ffmpegPath as defaultFfmpegPath } from "../tools/appPaths.js"
 import {
   type TranscodeCacheKey,

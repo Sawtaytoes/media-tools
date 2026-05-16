@@ -34,7 +34,10 @@ export const hasImaxEnhancedAudio = ({
             }) => additionalFeatures === "XLL X IMAX",
           ),
           tap(() => {
-            logInfo("IMAX ENHANCED AUDIO", fileInfo.filename)
+            logInfo(
+              "IMAX ENHANCED AUDIO",
+              fileInfo.filename,
+            )
           }),
         ),
       { concurrency: Infinity },
