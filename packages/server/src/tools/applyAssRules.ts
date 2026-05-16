@@ -527,13 +527,18 @@ const applySetScriptInfo = ({
     )
 
     if (existingIndex !== -1) {
-      const entries = [...section.entries]
-      entries[existingIndex] = {
-        type: "property",
-        key: rule.key,
-        value: rule.value,
+      return {
+        ...section,
+        entries: section.entries.map((entry, entryIndex) =>
+          entryIndex === existingIndex
+            ? {
+                type: "property",
+                key: rule.key,
+                value: rule.value,
+              }
+            : entry,
+        ),
       }
-      return { ...section, entries }
     }
 
     const lastPropertyIndex = section.entries.reduce(
@@ -543,13 +548,18 @@ const applySetScriptInfo = ({
           : lastIndex,
       -1,
     )
-    const entries = [...section.entries]
-    entries.splice(lastPropertyIndex + 1, 0, {
-      type: "property",
-      key: rule.key,
-      value: rule.value,
-    })
-    return { ...section, entries }
+    const insertionIndex = lastPropertyIndex + 1
+    return {
+      ...section,
+      entries: section.entries
+        .slice(0, insertionIndex)
+        .concat({
+          type: "property",
+          key: rule.key,
+          value: rule.value,
+        })
+        .concat(section.entries.slice(insertionIndex)),
+    }
   }),
 })
 
