@@ -20,6 +20,7 @@ import {
   listJobErrors,
 } from "../api/jobErrorStore.js"
 import {
+  buildPersistedJobError,
   reportJobCompleted,
   reportJobFailed,
   reportJobStarted,
@@ -49,6 +50,56 @@ afterEach(() => {
   vi.restoreAllMocks()
   cancelAllScheduledDeliveriesForTests()
   __resetDeliveryDepsForTests()
+})
+
+// ─── buildPersistedJobError (pure) ───────────────────────────────────────────
+
+describe(buildPersistedJobError.name, () => {
+  test("constructs a fully-populated record from the inputs", () => {
+    const record = buildPersistedJobError({
+      commandName: "copyFiles",
+      context: {
+        fileId: "file-7",
+        jobId: "job-from-context-is-ignored",
+        spanId: "span-x",
+        stepIndex: 3,
+        traceId: "trace-y",
+      },
+      error: "ENOENT",
+      id: "err-1",
+      jobId: "job-1",
+      occurredAt: "2026-05-16T07:00:00.000Z",
+    })
+    expect(record).toEqual({
+      errorName: "copyFiles",
+      fileId: "file-7",
+      id: "err-1",
+      jobId: "job-1",
+      level: "error",
+      msg: "ENOENT",
+      occurredAt: "2026-05-16T07:00:00.000Z",
+      spanId: "span-x",
+      stepIndex: 3,
+      traceId: "trace-y",
+      webhookDelivery: { attempts: 0, state: "pending" },
+    })
+  })
+
+  test("leaves optional context fields undefined when missing", () => {
+    const record = buildPersistedJobError({
+      commandName: "copyFiles",
+      context: {},
+      error: "boom",
+      id: "err-2",
+      jobId: "job-2",
+      occurredAt: "2026-05-16T07:00:00.000Z",
+    })
+    expect(record.fileId).toBeUndefined()
+    expect(record.spanId).toBeUndefined()
+    expect(record.stepIndex).toBeUndefined()
+    expect(record.traceId).toBeUndefined()
+    expect(record.webhookDelivery.state).toBe("pending")
+  })
 })
 
 // ─── reportJobStarted ────────────────────────────────────────────────────────

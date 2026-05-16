@@ -1,12 +1,49 @@
 import { randomUUID } from "node:crypto"
 
-import { getLoggingContext } from "@mux-magic/tools"
+import {
+  getLoggingContext,
+  type LoggerContext,
+} from "@mux-magic/tools"
 
 import { queueErrorForDelivery } from "../api/jobErrorDeliveryQueue.js"
 import {
   addJobError,
   type PersistedJobError,
 } from "../api/jobErrorStore.js"
+
+// Pure constructor for the PersistedJobError record. Side-effectful
+// inputs (id, occurredAt, context) are passed in as parameters so the
+// shape can be tested without mocking randomUUID / Date / AsyncLocalStorage.
+export const buildPersistedJobError = ({
+  commandName,
+  context,
+  error,
+  id,
+  jobId,
+  occurredAt,
+}: {
+  commandName: string
+  context: LoggerContext
+  error: string
+  id: string
+  jobId: string
+  occurredAt: string
+}): PersistedJobError => ({
+  errorName: commandName,
+  fileId: context.fileId,
+  id,
+  jobId,
+  level: "error",
+  msg: error,
+  occurredAt,
+  spanId: context.spanId,
+  stepIndex: context.stepIndex,
+  traceId: context.traceId,
+  webhookDelivery: {
+    attempts: 0,
+    state: "pending",
+  },
+})
 
 const postWebhook = async (
   url: string,
@@ -95,23 +132,14 @@ export const reportJobFailed = async ({
   error: string
   jobId: string
 }): Promise<PersistedJobError> => {
-  const context = getLoggingContext()
-  const record: PersistedJobError = {
-    errorName: commandName,
-    fileId: context.fileId,
+  const record = buildPersistedJobError({
+    commandName,
+    context: getLoggingContext(),
+    error,
     id: randomUUID(),
     jobId,
-    level: "error",
-    msg: error,
     occurredAt: new Date().toISOString(),
-    spanId: context.spanId,
-    stepIndex: context.stepIndex,
-    traceId: context.traceId,
-    webhookDelivery: {
-      attempts: 0,
-      state: "pending",
-    },
-  }
+  })
 
   await addJobError(record)
   queueErrorForDelivery(record.id, 0)
