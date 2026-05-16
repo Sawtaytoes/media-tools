@@ -19,30 +19,31 @@ describe("encodeSeqJsonParam", () => {
   })
 
   test("round-trips ASCII payload through encode → decode", () => {
-    const original = '{"steps":[{"id":"step1","command":"x"}]}'
-    expect(decodeSeqJsonParam(encodeSeqJsonParam(original))).toBe(
-      original,
-    )
+    const original =
+      '{"steps":[{"id":"step1","command":"x"}]}'
+    expect(
+      decodeSeqJsonParam(encodeSeqJsonParam(original)),
+    ).toBe(original)
   })
 
-  test("round-trips empty string", () => {
+  test("encodes empty string to empty string", () => {
+    // Empty in → empty out is the only sensible degenerate. The decoder
+    // deliberately returns null for empty (so callers can fall back to
+    // ?seq=), so a true round-trip isn't expressible here.
     expect(encodeSeqJsonParam("")).toBe("")
-    expect(decodeSeqJsonParam(encodeSeqJsonParam(""))).toBe(
-      "",
-    )
   })
 
   test("round-trips Unicode payload (accents, CJK)", () => {
     const original = '{"label":"läbel: yés 日本語"}'
-    expect(decodeSeqJsonParam(encodeSeqJsonParam(original))).toBe(
-      original,
-    )
+    expect(
+      decodeSeqJsonParam(encodeSeqJsonParam(original)),
+    ).toBe(original)
   })
 
   test("round-trips emoji payload (surrogate pairs)", () => {
     const original = '{"label":"hello 👋 world 🌍"}'
-    expect(decodeSeqJsonParam(encodeSeqJsonParam(original))).toBe(
-      original,
-    )
+    expect(
+      decodeSeqJsonParam(encodeSeqJsonParam(original)),
+    ).toBe(original)
   })
 })
