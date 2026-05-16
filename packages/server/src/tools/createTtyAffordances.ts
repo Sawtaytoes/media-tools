@@ -12,15 +12,28 @@ import { getActiveJobId } from "../api/logCapture.js"
 //
 // runFfmpeg already inlined this pattern; this helper is the same shape
 // extracted so every spawn wrapper handles it consistently.
+// Pure gating rule: TTY affordances attach only when the process is
+// running interactively (stdin is a TTY) and NOT inside a server-job
+// context where the per-job AsyncLocalStorage entry signals long-lived
+// daemon mode.
+export const shouldUseTtyAffordances = ({
+  isInApiContext,
+  isStdinTty,
+}: {
+  isInApiContext: boolean
+  isStdinTty: boolean
+}): boolean => !isInApiContext && isStdinTty
+
 export const createTtyAffordances = (
   childProcess: ChildProcess,
 ): {
   isUsingTtyAffordances: boolean
   detach: () => void
 } => {
-  const isInApiContext = Boolean(getActiveJobId())
-  const isUsingTtyAffordances =
-    !isInApiContext && Boolean(process.stdin.isTTY)
+  const isUsingTtyAffordances = shouldUseTtyAffordances({
+    isInApiContext: Boolean(getActiveJobId()),
+    isStdinTty: Boolean(process.stdin.isTTY),
+  })
 
   if (!isUsingTtyAffordances) {
     return {

@@ -8,7 +8,10 @@ import {
   vi,
 } from "vitest"
 
-import { canonicalizeMovieTitle } from "./canonicalizeMovieTitle.js"
+import {
+  canonicalizeMovieTitle,
+  stripAkaAliases,
+} from "./canonicalizeMovieTitle.js"
 
 vi.mock("./searchMovieDb.js", () => ({
   searchMovieDb: vi.fn(),
@@ -33,6 +36,40 @@ const mockSearchResults = (
     ),
   )
 }
+
+// Pure helper exported by worker 2c — exercises the AKA-strip rule
+// independently of the Observable wrapper.
+describe(stripAkaAliases.name, () => {
+  test("returns the title unchanged when no ' AKA ' separator is present", () => {
+    expect(stripAkaAliases("Dragon Lord")).toBe(
+      "Dragon Lord",
+    )
+  })
+
+  test("keeps only the first segment before ' AKA '", () => {
+    expect(
+      stripAkaAliases(
+        "Dragon Lord AKA Long xiao ye AKA Dragon Strike",
+      ),
+    ).toBe("Dragon Lord")
+  })
+
+  test("matches AKA case-insensitively", () => {
+    expect(stripAkaAliases("Soldier aka The Solider")).toBe(
+      "Soldier",
+    )
+  })
+
+  test("trims surrounding whitespace from the kept segment", () => {
+    expect(
+      stripAkaAliases("  Dragon Lord  AKA  Long xiao ye  "),
+    ).toBe("Dragon Lord")
+  })
+
+  test("returns '' for an empty input", () => {
+    expect(stripAkaAliases("")).toBe("")
+  })
+})
 
 describe(canonicalizeMovieTitle.name, () => {
   beforeEach(() => {

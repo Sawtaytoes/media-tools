@@ -21,9 +21,26 @@ const ANIME_TTL_MS = 7 * 24 * 60 * 60 * 1000
 const MIN_REQUEST_INTERVAL_MS = 2_500
 let lastRequestAt = 0
 
+// Pure throttle-math. Given the time of the previous request, the
+// current clock, and the configured minimum interval, returns the
+// remaining sleep (clamped to >= 0). The throttle() wrapper threads
+// Date.now() in and handles the actual setTimeout sleep.
+export const computeThrottleWaitMs = ({
+  lastRequestAt,
+  minIntervalMs,
+  now,
+}: {
+  lastRequestAt: number
+  minIntervalMs: number
+  now: number
+}): number => Math.max(0, minIntervalMs - (now - lastRequestAt))
+
 const throttle = async (): Promise<void> => {
-  const wait =
-    MIN_REQUEST_INTERVAL_MS - (Date.now() - lastRequestAt)
+  const wait = computeThrottleWaitMs({
+    lastRequestAt,
+    minIntervalMs: MIN_REQUEST_INTERVAL_MS,
+    now: Date.now(),
+  })
   if (wait > 0)
     await new Promise((resolve) =>
       setTimeout(resolve, wait),
