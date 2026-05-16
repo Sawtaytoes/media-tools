@@ -27,8 +27,6 @@ describe(pickAnidbCacheDirInput.name, () => {
     // cache dir" downstream rather than silently coercing to default —
     // matches the previous behavior of `?? join(...)` which only
     // applies on undefined/null, not "".
-    expect(
-      pickAnidbCacheDirInput({ fromEnv: "" }),
-    ).toBe("")
+    expect(pickAnidbCacheDirInput({ fromEnv: "" })).toBe("")
   })
 })

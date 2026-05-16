@@ -33,7 +33,8 @@ export const computeThrottleWaitMs = ({
   lastRequestAt: number
   minIntervalMs: number
   now: number
-}): number => Math.max(0, minIntervalMs - (now - lastRequestAt))
+}): number =>
+  Math.max(0, minIntervalMs - (now - lastRequestAt))
 
 const throttle = async (): Promise<void> => {
   const wait = computeThrottleWaitMs({

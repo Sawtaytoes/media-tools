@@ -18,9 +18,9 @@ import {
 // to these. Decoupling lets us test the policy without env-var games.
 describe(pickMaxThreads.name, () => {
   test("returns Number(raw) for a positive integer string", () => {
-    expect(
-      pickMaxThreads({ cpuCount: 16, raw: "6" }),
-    ).toBe(6)
+    expect(pickMaxThreads({ cpuCount: 16, raw: "6" })).toBe(
+      6,
+    )
   })
 
   test("falls back to cpuCount when raw is undefined", () => {
@@ -30,9 +30,9 @@ describe(pickMaxThreads.name, () => {
   })
 
   test("falls back to cpuCount when raw is '0'", () => {
-    expect(
-      pickMaxThreads({ cpuCount: 16, raw: "0" }),
-    ).toBe(16)
+    expect(pickMaxThreads({ cpuCount: 16, raw: "0" })).toBe(
+      16,
+    )
   })
 
   test("falls back to cpuCount when raw is non-numeric", () => {

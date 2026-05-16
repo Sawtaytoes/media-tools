@@ -20,9 +20,9 @@ describe(parseTranscodeCacheMaxBytes.name, () => {
   })
 
   test("returns 4 GiB default when raw is non-numeric", () => {
-    expect(parseTranscodeCacheMaxBytes("not-a-number")).toBe(
-      FOUR_GB,
-    )
+    expect(
+      parseTranscodeCacheMaxBytes("not-a-number"),
+    ).toBe(FOUR_GB)
   })
 
   test("returns 4 GiB default when raw is zero or negative", () => {
