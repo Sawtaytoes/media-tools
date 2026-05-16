@@ -54,7 +54,6 @@ const groupToObject = (
   ),
 })
 
-// eslint-disable-next-line no-restricted-syntax -- web-only serializer return type, not an API response shape
 export type SequenceObject = {
   variables?: Record<string, unknown>
   steps: unknown[]

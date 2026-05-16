@@ -17,15 +17,12 @@
 // File is committed as `*.bench.test.ts` so the existing vitest include
 // glob (`src/**/*.test.{ts,tsx}`) picks it up — no config change needed.
 
-import { describe, expect, test } from "vitest"
-
 import { dump } from "js-yaml"
-
+import { describe, expect, test } from "vitest"
+import { toBase64Url } from "./base64url"
 import { encodeSeqJsonParam } from "./encodeSeqJsonParam"
 import { encodeSeqParam } from "./encodeSeqParam"
-import { toBase64Url } from "./base64url"
 
-// eslint-disable-next-line no-restricted-syntax -- bench-local fixture shape, not an API response shape
 type Fixture = {
   name: string
   payload: {
