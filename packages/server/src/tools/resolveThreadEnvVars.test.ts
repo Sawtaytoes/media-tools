@@ -8,9 +8,86 @@ import {
 } from "vitest"
 
 import {
+  pickDefaultThreadCount,
+  pickMaxThreads,
   resolveDefaultThreadCount,
   resolveMaxThreads,
 } from "./resolveThreadEnvVars.js"
+
+// Pure cores. The wrappers above read process.env + cpus() and delegate
+// to these. Decoupling lets us test the policy without env-var games.
+describe(pickMaxThreads.name, () => {
+  test("returns Number(raw) for a positive integer string", () => {
+    expect(
+      pickMaxThreads({ cpuCount: 16, raw: "6" }),
+    ).toBe(6)
+  })
+
+  test("falls back to cpuCount when raw is undefined", () => {
+    expect(
+      pickMaxThreads({ cpuCount: 16, raw: undefined }),
+    ).toBe(16)
+  })
+
+  test("falls back to cpuCount when raw is '0'", () => {
+    expect(
+      pickMaxThreads({ cpuCount: 16, raw: "0" }),
+    ).toBe(16)
+  })
+
+  test("falls back to cpuCount when raw is non-numeric", () => {
+    expect(
+      pickMaxThreads({ cpuCount: 16, raw: "abc" }),
+    ).toBe(16)
+  })
+})
+
+describe(pickDefaultThreadCount.name, () => {
+  test("defaults to 2 when raw is undefined", () => {
+    expect(
+      pickDefaultThreadCount({
+        maxThreads: 8,
+        raw: undefined,
+      }),
+    ).toBe(2)
+  })
+
+  test("clamps to maxThreads when raw exceeds maxThreads", () => {
+    expect(
+      pickDefaultThreadCount({
+        maxThreads: 4,
+        raw: "16",
+      }),
+    ).toBe(4)
+  })
+
+  test("returns maxThreads when raw is '0'", () => {
+    expect(
+      pickDefaultThreadCount({
+        maxThreads: 8,
+        raw: "0",
+      }),
+    ).toBe(8)
+  })
+
+  test("returns maxThreads when raw is negative", () => {
+    expect(
+      pickDefaultThreadCount({
+        maxThreads: 8,
+        raw: "-3",
+      }),
+    ).toBe(8)
+  })
+
+  test("returns raw when raw is positive and within maxThreads", () => {
+    expect(
+      pickDefaultThreadCount({
+        maxThreads: 8,
+        raw: "4",
+      }),
+    ).toBe(4)
+  })
+})
 
 // Snapshot env vars before each test and restore after, so tests
 // are fully isolated from the real environment.
