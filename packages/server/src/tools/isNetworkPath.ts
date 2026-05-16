@@ -20,6 +20,31 @@ import { parse } from "node:path"
 // implementations handle network paths differently (per-mount .Trash
 // folders) and we don't try to second-guess them.
 
+// Pure core. Takes the platform flag and the pre-enumerated network-
+// drive set as inputs, so the classification logic can be tested on any
+// OS without spawning PowerShell. The wrapper below threads the real
+// platform + cached drive set through this function.
+export const classifyNetworkPath = ({
+  filePath,
+  isWindows,
+  networkDriveLetters,
+}: {
+  filePath: string
+  isWindows: boolean
+  networkDriveLetters: Set<string>
+}): boolean => {
+  if (!isWindows) return false
+  // UNC prefix — `\\server\share\...`. Node's path.parse on UNC paths
+  // returns a root like `\\server\share\` which is fine, but the cheap
+  // string check beats parsing for the common case.
+  if (filePath.startsWith("\\\\")) return true
+  const root = parse(filePath)
+    .root.toUpperCase()
+    .replace(/\\$/u, "")
+  if (!root) return false
+  return networkDriveLetters.has(root)
+}
+
 let cachedNetworkDriveLetters: Set<string> | null = null
 
 const enumerateWindowsNetworkDriveLetters =
@@ -57,16 +82,14 @@ const enumerateWindowsNetworkDriveLetters =
 export const isNetworkPath = (
   filePath: string,
 ): boolean => {
-  if (platform() !== "win32") return false
-  // UNC prefix — `\\server\share\...`. Node's path.parse on UNC paths
-  // returns a root like `\\server\share\` which is fine, but the cheap
-  // string check beats parsing for the common case.
-  if (filePath.startsWith("\\\\")) return true
-  const root = parse(filePath)
-    .root.toUpperCase()
-    .replace(/\\$/u, "")
-  if (!root) return false
-  return enumerateWindowsNetworkDriveLetters().has(root)
+  const isWindows = platform() === "win32"
+  return classifyNetworkPath({
+    filePath,
+    isWindows,
+    networkDriveLetters: isWindows
+      ? enumerateWindowsNetworkDriveLetters()
+      : new Set(),
+  })
 }
 
 // Test seam — lets pathSafety / route tests reset the cache between
