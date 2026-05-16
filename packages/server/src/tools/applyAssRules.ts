@@ -4,6 +4,7 @@ import type {
   AssFile,
   AssFormatEntry,
   AssModificationRule,
+  AssScriptInfoEntry,
   AssScriptInfoSection,
   ComputeFromOp,
   ComputeFromValue,
@@ -526,16 +527,18 @@ const applySetScriptInfo = ({
         entry.type === "property" && entry.key === rule.key,
     )
 
+    const replacementEntry: AssScriptInfoEntry = {
+      type: "property",
+      key: rule.key,
+      value: rule.value,
+    }
+
     if (existingIndex !== -1) {
       return {
         ...section,
         entries: section.entries.map((entry, entryIndex) =>
           entryIndex === existingIndex
-            ? {
-                type: "property",
-                key: rule.key,
-                value: rule.value,
-              }
+            ? replacementEntry
             : entry,
         ),
       }
@@ -553,11 +556,7 @@ const applySetScriptInfo = ({
       ...section,
       entries: section.entries
         .slice(0, insertionIndex)
-        .concat({
-          type: "property",
-          key: rule.key,
-          value: rule.value,
-        })
+        .concat(replacementEntry)
         .concat(section.entries.slice(insertionIndex)),
     }
   }),

@@ -22,8 +22,8 @@ const finalizeSection = (
   sectionLines: string[],
 ): AssSection => {
   if (sectionName === "Script Info") {
-    const entries: AssScriptInfoEntry[] =
-      sectionLines.flatMap((line) => {
+    const entries = sectionLines.flatMap(
+      (line): AssScriptInfoEntry[] => {
         const trimmed = line.trimEnd()
         if (!trimmed) return []
         if (trimmed.startsWith(";")) {
@@ -38,7 +38,8 @@ const finalizeSection = (
             value: trimmed.slice(colonIdx + 2),
           },
         ]
-      })
+      },
+    )
     return {
       sectionName,
       sectionType: "scriptInfo",

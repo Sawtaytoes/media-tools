@@ -101,7 +101,10 @@ export const buildDefaultSubtitleModificationRules = (
       IGNORED_STYLE_NAMES_REGEX_STRING,
   }
 
-  return [scriptTypeRule]
+  const seedRules: SubtitleModificationRule[] = [
+    scriptTypeRule,
+  ]
+  return seedRules
     .concat(colorspaceRules)
     .concat(styleFieldsRule)
 }
