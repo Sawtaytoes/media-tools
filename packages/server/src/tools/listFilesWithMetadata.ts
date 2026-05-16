@@ -175,16 +175,18 @@ export const listFilesWithMetadata = async (
   // Sort: directories first (capital D > files alphabetically wouldn't
   // give that property naturally), then case-insensitive name. Mirrors
   // standard file-explorer expectations.
-  const sortedEntries = entries.toSorted((entryA, entryB) => {
-    if (entryA.isDirectory !== entryB.isDirectory) {
-      return entryA.isDirectory ? -1 : 1
-    }
-    return entryA.name.localeCompare(
-      entryB.name,
-      undefined,
-      { sensitivity: "base" },
-    )
-  })
+  const sortedEntries = entries.toSorted(
+    (entryA, entryB) => {
+      if (entryA.isDirectory !== entryB.isDirectory) {
+        return entryA.isDirectory ? -1 : 1
+      }
+      return entryA.name.localeCompare(
+        entryB.name,
+        undefined,
+        { sensitivity: "base" },
+      )
+    },
+  )
 
   if (!options.isIncludingDuration) {
     return {

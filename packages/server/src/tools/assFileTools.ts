@@ -116,7 +116,9 @@ export const parseAssFile = (content: string): AssFile => {
 
   const finalState = lines.reduce<AssParseState>(
     (state, line) => {
-      const sectionMatch = line.trimEnd().match(/^\[(.+)\]$/)
+      const sectionMatch = line
+        .trimEnd()
+        .match(/^\[(.+)\]$/)
       if (sectionMatch) {
         return {
           sections:
@@ -134,7 +136,8 @@ export const parseAssFile = (content: string): AssFile => {
       }
       if (state.currentSectionName !== null) {
         return {
-          ...state,
+          sections: state.sections,
+          currentSectionName: state.currentSectionName,
           currentSectionLines:
             state.currentSectionLines.concat(line),
         }
