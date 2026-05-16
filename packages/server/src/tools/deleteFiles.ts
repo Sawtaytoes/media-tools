@@ -20,11 +20,13 @@ export type DeleteResult = {
   error: string | null
 }
 
-// Reads the DELETE_TO_TRASH env var. Default 'true'; pass 'false' / '0' /
-// 'no' to opt out (e.g. Docker-on-remote-ZFS where the OS trash isn't
-// useful and the user has filesystem snapshots as the recovery story).
-export const getDeleteMode = (): DeleteMode => {
-  const raw = process.env.DELETE_TO_TRASH
+// Pure classifier for the DELETE_TO_TRASH env-var value. Defaults to
+// 'trash' on undefined; 'false' / '0' / 'no' (any case, trimmed) opt
+// out. Decoupled from process.env so tests don't need to fight the
+// global environment.
+export const parseDeleteMode = (
+  raw: string | undefined,
+): DeleteMode => {
   if (raw === undefined) return "trash"
   const normalized = raw.trim().toLowerCase()
   if (
@@ -37,6 +39,27 @@ export const getDeleteMode = (): DeleteMode => {
   return "trash"
 }
 
+// Pure downgrade rule: when the global mode is 'trash' but the path is
+// on a network share, the OS Recycle Bin can't service it — fall back
+// to 'permanent' so the UI shows the user what actually happens.
+export const pickEffectiveDeleteMode = ({
+  baseMode,
+  isNetwork,
+}: {
+  baseMode: DeleteMode
+  isNetwork: boolean
+}): DeleteMode => {
+  if (baseMode === "permanent") return "permanent"
+  if (isNetwork) return "permanent"
+  return "trash"
+}
+
+// Reads the DELETE_TO_TRASH env var. Default 'true'; pass 'false' / '0' /
+// 'no' to opt out (e.g. Docker-on-remote-ZFS where the OS trash isn't
+// useful and the user has filesystem snapshots as the recovery story).
+export const getDeleteMode = (): DeleteMode =>
+  parseDeleteMode(process.env.DELETE_TO_TRASH)
+
 // Returns the EFFECTIVE mode for a given path: starts from the global
 // DELETE_TO_TRASH but downgrades to 'permanent' when the path is on a
 // Windows network drive — the OS Recycle Bin can't service those, and
@@ -44,12 +67,11 @@ export const getDeleteMode = (): DeleteMode => {
 // or fail.
 export const getEffectiveDeleteMode = (
   path: string,
-): DeleteMode => {
-  const baseMode = getDeleteMode()
-  if (baseMode === "permanent") return "permanent"
-  if (isNetworkPath(path)) return "permanent"
-  return "trash"
-}
+): DeleteMode =>
+  pickEffectiveDeleteMode({
+    baseMode: getDeleteMode(),
+    isNetwork: isNetworkPath(path),
+  })
 
 // Per-path delete with the configured strategy. Each path is validated
 // for absolute-path / no-traversal first; failures don't abort the

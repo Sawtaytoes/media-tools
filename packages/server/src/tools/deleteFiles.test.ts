@@ -11,6 +11,8 @@ import {
 import {
   deleteFiles,
   getDeleteMode,
+  parseDeleteMode,
+  pickEffectiveDeleteMode,
 } from "./deleteFiles.js"
 
 // Mock the `trash` package so trash-mode tests don't shell out to
@@ -61,6 +63,72 @@ describe(getDeleteMode.name, () => {
   test("'trash' when DELETE_TO_TRASH=true", () => {
     process.env.DELETE_TO_TRASH = "true"
     expect(getDeleteMode()).toBe("trash")
+  })
+})
+
+// Pure cores extracted for worker 2c: parseDeleteMode classifies the raw
+// env-var string with no environment access of its own, and
+// pickEffectiveDeleteMode applies the network-share downgrade rule given
+// pre-resolved booleans.
+
+describe(parseDeleteMode.name, () => {
+  test("defaults to 'trash' on undefined", () => {
+    expect(parseDeleteMode(undefined)).toBe("trash")
+  })
+
+  test("'permanent' on 'false' (any case, surrounding whitespace)", () => {
+    expect(parseDeleteMode("false")).toBe("permanent")
+    expect(parseDeleteMode("FALSE")).toBe("permanent")
+    expect(parseDeleteMode("  false  ")).toBe("permanent")
+  })
+
+  test("'permanent' on '0'", () => {
+    expect(parseDeleteMode("0")).toBe("permanent")
+  })
+
+  test("'permanent' on 'no'", () => {
+    expect(parseDeleteMode("no")).toBe("permanent")
+  })
+
+  test("'trash' on 'true' or any other non-opt-out value", () => {
+    expect(parseDeleteMode("true")).toBe("trash")
+    expect(parseDeleteMode("anything-else")).toBe("trash")
+    expect(parseDeleteMode("")).toBe("trash")
+  })
+})
+
+describe(pickEffectiveDeleteMode.name, () => {
+  test("'permanent' passes through unchanged regardless of network status", () => {
+    expect(
+      pickEffectiveDeleteMode({
+        baseMode: "permanent",
+        isNetwork: false,
+      }),
+    ).toBe("permanent")
+    expect(
+      pickEffectiveDeleteMode({
+        baseMode: "permanent",
+        isNetwork: true,
+      }),
+    ).toBe("permanent")
+  })
+
+  test("'trash' downgrades to 'permanent' for network paths", () => {
+    expect(
+      pickEffectiveDeleteMode({
+        baseMode: "trash",
+        isNetwork: true,
+      }),
+    ).toBe("permanent")
+  })
+
+  test("'trash' stays 'trash' for local paths", () => {
+    expect(
+      pickEffectiveDeleteMode({
+        baseMode: "trash",
+        isNetwork: false,
+      }),
+    ).toBe("trash")
   })
 })
 
