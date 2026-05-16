@@ -3,6 +3,56 @@ import { fileURLToPath } from "node:url"
 import { vol } from "memfs"
 import { describe, expect, test, vi } from "vitest"
 
+import { pickBundledOrSystemPath } from "./appPaths.js"
+
+// Pure core. The wrapper (resolveAppPath, private) handles existsSync
+// and platform() so the picker stays trivial and CI-portable. Worker 2c.
+describe(pickBundledOrSystemPath.name, () => {
+  test("returns the bundled path when isWindows and isBundleAvailable", () => {
+    expect(
+      pickBundledOrSystemPath({
+        absolutePath: "C:\\app\\bin\\ffmpeg.exe",
+        isBundleAvailable: true,
+        isWindows: true,
+        systemName: "ffmpeg",
+      }),
+    ).toBe("C:\\app\\bin\\ffmpeg.exe")
+  })
+
+  test("falls back to the system name on non-Windows even if the bundle exists", () => {
+    expect(
+      pickBundledOrSystemPath({
+        absolutePath: "/repo/apps.downloaded/ffmpeg/ffmpeg",
+        isBundleAvailable: true,
+        isWindows: false,
+        systemName: "ffmpeg",
+      }),
+    ).toBe("ffmpeg")
+  })
+
+  test("falls back to the system name on Windows when the bundle is missing", () => {
+    expect(
+      pickBundledOrSystemPath({
+        absolutePath: "C:\\app\\bin\\ffmpeg.exe",
+        isBundleAvailable: false,
+        isWindows: true,
+        systemName: "ffmpeg",
+      }),
+    ).toBe("ffmpeg")
+  })
+
+  test("falls back to the system name when neither is Windows nor bundle present", () => {
+    expect(
+      pickBundledOrSystemPath({
+        absolutePath: "/repo/apps.downloaded/ffmpeg/ffmpeg",
+        isBundleAvailable: false,
+        isWindows: false,
+        systemName: "ffmpeg",
+      }),
+    ).toBe("ffmpeg")
+  })
+})
+
 const repoRoot = resolve(
   dirname(fileURLToPath(import.meta.url)),
   "../../../..",

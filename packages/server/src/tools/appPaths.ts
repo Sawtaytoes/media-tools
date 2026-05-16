@@ -15,14 +15,35 @@ const repoRoot = resolve(
   "../../../..",
 )
 
+// Pure picker for the bundled-vs-system fallback. Given the absolute
+// path of a bundled binary, whether the host is Windows, whether that
+// bundle exists on disk, and the system-PATH fallback name, returns the
+// path the spawn wrappers should use. Testable on any OS without any
+// filesystem access.
+export const pickBundledOrSystemPath = ({
+  absolutePath,
+  isBundleAvailable,
+  isWindows,
+  systemName,
+}: {
+  absolutePath: string
+  isBundleAvailable: boolean
+  isWindows: boolean
+  systemName: string
+}): string =>
+  isWindows && isBundleAvailable ? absolutePath : systemName
+
 const resolveAppPath = (
   relativePath: string,
   systemName: string,
 ): string => {
   const absolutePath = resolve(repoRoot, relativePath)
-  return isWindows && existsSync(absolutePath)
-    ? absolutePath
-    : systemName
+  return pickBundledOrSystemPath({
+    absolutePath,
+    isBundleAvailable: existsSync(absolutePath),
+    isWindows,
+    systemName,
+  })
 }
 
 /** @see https://github.com/bbc/audio-offset-finder */
