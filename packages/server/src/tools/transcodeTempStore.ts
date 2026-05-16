@@ -47,17 +47,25 @@ type CacheEntry = {
 
 const DEFAULT_MAX_BYTES = 4 * 1024 * 1024 * 1024
 
-const parseMaxBytes = (): number => {
-  const fromEnv = process.env.TRANSCODE_CACHE_MAX_BYTES
-  if (typeof fromEnv !== "string" || fromEnv.length === 0) {
+// Pure parser. Returns the default cap when raw is missing/empty/non-
+// numeric/non-positive — anything else parses as a positive byte count.
+export const parseTranscodeCacheMaxBytes = (
+  raw: string | undefined,
+): number => {
+  if (typeof raw !== "string" || raw.length === 0) {
     return DEFAULT_MAX_BYTES
   }
-  const parsed = Number(fromEnv)
+  const parsed = Number(raw)
   if (Number.isNaN(parsed) || parsed <= 0) {
     return DEFAULT_MAX_BYTES
   }
   return parsed
 }
+
+const parseMaxBytes = (): number =>
+  parseTranscodeCacheMaxBytes(
+    process.env.TRANSCODE_CACHE_MAX_BYTES,
+  )
 
 const cacheDirectoryPath = (): string =>
   join(tmpdir(), "mux-magic-transcode-cache")
